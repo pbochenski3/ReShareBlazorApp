@@ -1,0 +1,73 @@
+﻿@page "/add-product"
+@using ReShareBlazorApp.Web.Models
+@using ReShareBlazorApp.Api.Date.Enums
+
+<EditForm Model="@productModel" OnValidSubmit="AddProduct">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="product-page">
+        <div class="product-form">
+            <div class="product-header">
+                <h2>Dodaj produkt</h2>
+                <p>Udostępnij produkt, którego już nie potrzebujesz.</p>
+            </div>
+
+            <div class="product-field">
+                <label>Nazwa produktu</label>
+                <InputText @bind-Value="productModel.Name"
+                           class="product-input"
+                           placeholder="Wpisz nazwę produktu" />
+                <ValidationMessage For="@(() => productModel.Name)" />
+            </div>
+
+            <div class="product-field">
+                <label>Cena</label>
+                <InputNumber @bind-Value="productModel.Price"
+                             class="product-input"
+                             placeholder="Wpisz cenę produktu" />
+                <ValidationMessage For="@(() => productModel.Price)" />
+            </div>
+
+            <div class="product-field">
+                <label>Data dodania</label>
+                <InputDate @bind-Value="productModel.AddedAt"
+                           class="product-input" />
+                <ValidationMessage For="@(() => productModel.AddedAt)" />
+            </div>
+
+            <div class="product-field">
+                <label>Data ważności</label>
+                <InputDate @bind-Value="productModel.ExpiresAt"
+                           class="product-input" />
+                <ValidationMessage For="@(() => productModel.ExpiresAt)" />
+            </div>
+
+            <div class="product-field">
+                <label>Kategoria produktu</label>
+                <InputSelect @bind-Value="productModel.Category"
+                             class="product-input">
+                    <option value="">Wybierz kategorię</option>
+                    @foreach (var category in Enum.GetValues<ProductCategory>())
+                    {
+                        <option value="@category">@category</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => productModel.Category)" />
+            </div>
+
+            <button type="submit" class="product-submit">
+                Dodaj produkt
+            </button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    private ProductModel productModel = new();
+
+    public async Task AddProduct()
+    {
+
+    }
+}

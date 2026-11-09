@@ -2073,3 +2073,99 @@ input[type="search"] {
         padding: 28px 24px;
     }
 }
+/*Product form */
+
+.product-page {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+    background: #f4f6f9;
+}
+
+.product-form {
+    width: 100%;
+    max-width: 520px;
+    padding: 35px;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.product-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+    .product-header h2 {
+        font-size: 26px;
+        font-weight: 700;
+        color: #222;
+        margin-bottom: 8px;
+    }
+
+    .product-header p {
+        color: #777;
+        font-size: 14px;
+    }
+
+.product-field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+
+    .product-field label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+    }
+
+.product-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d5d9df;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    color: #333;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+    .product-input:focus {
+        border-color: #39845b;
+        box-shadow: 0 0 0 3px rgba(57, 132, 91, 0.12);
+    }
+
+.product-field ::deep .validation-message {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.product-submit {
+    width: 100%;
+    padding: 13px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 8px;
+    background: #39845b;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+    .product-submit:hover {
+        background: #2d6948;
+    }
+
+.product-form ::deep .validation-summary {
+    color: #dc3545;
+    font-size: 13px;
+    margin-bottom: 15px;
+}
