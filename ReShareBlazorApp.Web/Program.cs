@@ -18,6 +18,7 @@ builder.Services.AddScoped(sp =>
     return factory.CreateClient("API");
 });
 builder.Services.AddScoped<AuthApiService>();
+builder.Services.AddScoped<ProductApiService>();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

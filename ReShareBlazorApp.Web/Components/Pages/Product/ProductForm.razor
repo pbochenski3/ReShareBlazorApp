@@ -1,6 +1,9 @@
 ﻿@page "/add-product"
-@using ReShareBlazorApp.Web.Models
+@rendermode InteractiveServer
 @using ReShareBlazorApp.Api.Date.Enums
+@using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Models
+@inject ProductApiService productService
 
 <EditForm Model="@productModel" OnValidSubmit="AddProduct">
     <DataAnnotationsValidator />
@@ -64,10 +67,10 @@
 </EditForm>
 
 @code {
-    private ProductModel productModel = new();
+    public ProductModel productModel { get; set; } = new();
 
-    public async Task AddProduct()
+        public async Task AddProduct()
     {
-
+        await productService.AddProductAsync(productModel);
     }
 }

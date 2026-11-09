@@ -16,7 +16,7 @@ namespace ReShareBlazorApp.Api.Controllers
         {
             _productService = productService;
         }
-        [HttpPost("add-product")]
+        [HttpPost("addProduct")]
         public async Task<IActionResult> AddProduct(ProductDTO product)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
