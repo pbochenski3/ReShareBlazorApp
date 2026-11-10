@@ -3,6 +3,12 @@
 @rendermode InteractiveServer
 @inject NavigationManager nav
 <div class="login-container">
+    @if(Error == "1")
+    {
+        <div class="login-error">
+            Nieprawidłowy e-mail lub hasło!
+        </div>
+    }
     <form method="post" action="/auth/login">
         <AntiforgeryToken />
         <h2 class="login-title">Zaloguj się</h2>
@@ -23,4 +29,6 @@
 
 @code {
     public LoginModel LoginModel { get; set; } = new();
+    [SupplyParameterFromQuery(Name ="error")]
+    public string? Error { get; set; }
 }

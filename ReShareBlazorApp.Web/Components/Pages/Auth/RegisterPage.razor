@@ -5,7 +5,6 @@
 @using ReShareBlazorApp.Web.Models
 <EditForm Model="@registerModel" OnValidSubmit="Register" FormName="register">
     <DataAnnotationsValidator />
-    <ValidationSummary/>
     <div class="register-container">
         <div class="register-card">
             <p>@Message</p>
@@ -66,5 +65,6 @@
             return;
         }
         Message = result.Message;
+        StateHasChanged();
     }
 }

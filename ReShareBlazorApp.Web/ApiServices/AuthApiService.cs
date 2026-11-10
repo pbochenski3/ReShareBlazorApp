@@ -38,8 +38,7 @@ namespace ReShareBlazorApp.Web.ApiServices
                 "api/auth/register",
                 request
                 );
-            if (!response.IsSuccessStatusCode)
-                return null;
+
             return await response.Content.ReadFromJsonAsync<RegisterResponse>();
         }
     }
