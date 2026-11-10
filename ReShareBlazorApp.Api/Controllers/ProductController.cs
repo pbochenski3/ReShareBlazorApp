@@ -6,7 +6,6 @@ using System.Security.Claims;
 
 namespace ReShareBlazorApp.Api.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ProductController : ControllerBase
@@ -16,6 +15,7 @@ namespace ReShareBlazorApp.Api.Controllers
         {
             _productService = productService;
         }
+        [Authorize]
         [HttpPost("addProduct")]
         public async Task<IActionResult> AddProduct(ProductDTO product)
         {
@@ -31,5 +31,12 @@ namespace ReShareBlazorApp.Api.Controllers
             }
             return Ok();
         }
+        [HttpGet]
+        public async Task<ActionResult<List<ProductDTO>>> GetProducts([FromQuery] ProductRequest request)
+        {
+            var products = await _productService.GetProductsAsync(request.Number, request.Category);
+            return Ok(products);
+        }
+
     }
 }

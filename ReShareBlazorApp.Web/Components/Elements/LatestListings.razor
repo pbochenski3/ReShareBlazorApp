@@ -1,3 +1,6 @@
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@inject ProductApiService productApi
 <section class="home-section">
     <div class="home-container">
         <div class="home-section-head">
@@ -11,9 +14,17 @@
         </div>
 
         <div class="home-cards">
-            <ListingCard Title="2 bilety na koncert – Kraków"
-                         Category="Bilety i rezerwacje" Type="Sprzedam" Price="240 zł"
-                         Location="Kraków" Term="12.12.2026" Published="08.11.2026" Verified="true" />
+            @foreach (var product in ProductsList)
+            {
+                <ListingCard Title="@product.Name"
+                             Category="@product.Category.ToString()"
+                             Type="Sprzedam"
+                             Price="@product.Price.ToString("F2")"
+                             Location="Kraków"
+                             Term="@product.ExpiresAt.ToString("dd.MM.yyyy HH:mm")"
+                             Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")"
+                             />
+            }
         </div>
 
         <div class="home-section-footer">
@@ -21,3 +32,11 @@
         </div>
     </div>
 </section>
+@code
+{
+    public List<ProductDTO> ProductsList { get; set; } = new();
+    protected override async Task OnInitializedAsync()
+    {
+        ProductsList = await productApi.GetProductsAsync();
+    }
+}

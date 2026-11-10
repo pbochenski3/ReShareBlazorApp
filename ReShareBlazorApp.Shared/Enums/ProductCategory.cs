@@ -2,9 +2,10 @@
 {
     public enum ProductCategory
     {
-        Ticket,
-        Transport,
-        Activity,
-        Trip
+        Tickets,
+        Reservations,
+        Trips,
+        Transports,
+        Services,
     }
 }

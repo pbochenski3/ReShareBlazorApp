@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
+using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Shared.DTOs;
 using ReShareBlazorApp.Web.Models;
 using System.Net.Http.Headers;
@@ -40,6 +41,20 @@ namespace ReShareBlazorApp.Web.ApiServices
             if (!response.IsSuccessStatusCode)
                 return "Nie udało się dodać produkut!";
             return "Produkt dodany pomyślnie!";
+        }
+        public async Task<List<ProductDTO>> GetProductsAsync
+            (int number = 5,
+            ProductCategory? category = null)
+        {
+            var url = $"api/product?number={number}";
+            if(category.HasValue)
+            {
+                url += $"&category={Uri.EscapeDataString(category.Value.ToString())}";
+            }
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<ProductDTO>>()
+                ?? new List<ProductDTO>();
         }
     }
 }
