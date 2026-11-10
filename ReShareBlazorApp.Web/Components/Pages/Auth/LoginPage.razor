@@ -2,28 +2,24 @@
 @using ReShareBlazorApp.Web.Models
 @rendermode InteractiveServer
 @inject NavigationManager nav
-<h3>LoginPage</h3>
-<form method="post" action="/auth/login">
-    <AntiforgeryToken />
-    <div class="login-card">
-        <div class="login-label">
-            <label>E-mail</label>
-            <input name="Email"
-                   type="email"
-                   placeholder="Wpisz e-mail!"
-                   required />
+<div class="login-container">
+    <form method="post" action="/auth/login">
+        <AntiforgeryToken />
+        <h2 class="login-title">Zaloguj się</h2>
+        <div class="login-card">
+            <div class="login-label">
+                <label>E-mail</label>
+                <input name="Email" type="email" placeholder="Wpisz e-mail!" required />
+            </div>
+            <div class="login-label">
+                <label>Hasło</label>
+                <input name="Password" type="password" placeholder="Wpisz hasło!" required />
+            </div>
         </div>
-        <div class="login-label">
-            <label>Hasło</label>
-            <input name="Password"
-                   type="password"
-                   placeholder="Wpisz hasło!"
-                   required />
-        </div>
-    </div>
-    <button class="btn btn-primary" type="submit">Zaloguj się</button>
-</form>
-<button class="btn btn-primary" @onclick='() => nav.NavigateTo("/register")'>Nie masz konta? Zarejestruj się!</button>
+        <button class="login-button" type="submit">Zaloguj się</button>
+    </form>
+    <button class="login-secondary" @onclick='() => nav.NavigateTo("/register")'>Nie masz konta? Zarejestruj się!</button>
+</div>
 
 @code {
     public LoginModel LoginModel { get; set; } = new();

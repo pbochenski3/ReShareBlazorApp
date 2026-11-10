@@ -30,7 +30,8 @@
                 <label>Hasło</label>
                 <InputText @bind-Value="registerModel.Password"
                            class="register-input"
-                           placeholder="Wpisz hasło" />
+                           placeholder="Wpisz hasło"
+                           type="password" />
                 <ValidationMessage For="@(() => registerModel.Password)" />
             </div>
             <div class="register-field">
@@ -38,6 +39,7 @@
                 <label>Potwierdź</label>
                 <InputText @bind-Value="registerModel.ConfirmPassword"
                            class="register-input"
+                           type="password"
                            placeholder="Potwierdź hasło." />
                 <ValidationMessage For="@(() => registerModel.ConfirmPassword)" />
             </div>

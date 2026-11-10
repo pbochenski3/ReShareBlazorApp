@@ -2169,3 +2169,199 @@ input[type="search"] {
     font-size: 13px;
     margin-bottom: 15px;
 }
+/* ---------- 14. Login i rejestracja (Blazor) ---------- */
+.login-container,
+.register-container {
+    display: grid;
+    place-items: center;
+    min-height: calc(100vh - 70px);
+    padding: 56px 24px 84px;
+    background: var(--gray);
+}
+
+    /* Karty */
+    .login-container > form,
+    .register-card {
+        width: min(460px, 100%);
+        display: grid;
+        gap: 18px;
+        padding: 44px;
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        background: #fff;
+        box-shadow: var(--shadow-md);
+    }
+
+.register-card {
+    gap: 6px;
+}
+
+    .login-title,
+    .register-card h2 {
+        margin: 0;
+        font-size: 1.9rem;
+        letter-spacing: -.03em;
+    }
+
+        .register-card h2 + p {
+            margin: 0 0 14px;
+            color: var(--muted);
+        }
+
+/* Pola */
+.login-card {
+    display: grid;
+    gap: 18px;
+}
+
+.login-label,
+.register-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    margin-bottom: 8px;
+}
+
+    .login-label label,
+    .register-field label {
+        font-size: .85rem;
+        font-weight: 600;
+        color: var(--muted);
+    }
+
+    .login-label input,
+    .register-input {
+        width: 100%;
+        min-width: 0;
+        padding: 13px 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background-color: #fff;
+        font-family: var(--font);
+        font-size: 1rem;
+        font-weight: 400;
+        color: var(--ink);
+    }
+
+        .login-label input::placeholder,
+        .register-input::placeholder {
+            color: #94a0ad;
+        }
+
+        .login-label input:focus,
+        .register-input:focus {
+            outline: none;
+            border-color: var(--brand);
+            box-shadow: var(--focus-ring);
+        }
+
+        /* Walidacja Blazora (InputText dodaje te klasy) */
+        .register-input.invalid,
+        .register-input.modified.invalid {
+            border-color: var(--promo);
+        }
+
+        .register-input.valid.modified {
+            border-color: var(--ok);
+        }
+
+/* Regulamin */
+.register-terms {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 0 2px;
+    font-size: .92rem;
+    cursor: pointer;
+}
+
+    .register-terms input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--brand);
+    }
+
+/* Przyciski */
+.login-button,
+.register-button {
+    width: 100%;
+    margin-top: 10px;
+    padding: 13px 26px;
+    border: 2px solid transparent;
+    border-radius: var(--pill);
+    background: var(--brand);
+    color: #fff;
+    font-family: var(--font);
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+}
+
+    .login-button:hover,
+    .register-button:hover {
+        background: var(--brand-dark);
+    }
+
+.login-secondary {
+    width: min(460px, 100%);
+    margin-top: 16px;
+    padding: 11px 26px;
+    border: 2px solid var(--brand);
+    border-radius: var(--pill);
+    background: transparent;
+    color: var(--brand);
+    font-family: var(--font);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+    .login-secondary:hover {
+        background: var(--brand);
+        color: #fff;
+    }
+
+/* Komunikat po rejestracji (<p>@Message</p>) */
+.register-card > p:first-child:not(:empty) {
+    margin: 0 0 8px;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--brand-soft);
+    color: var(--brand-dark);
+    font-weight: 500;
+}
+
+.register-card > p:first-child:empty {
+    display: none;
+}
+
+/* ValidationSummary i ValidationMessage */
+.register-card .validation-errors {
+    margin: 0 0 8px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .login-container > form,
+    .register-card {
+        animation: rise .6s cubic-bezier(.2, .7, .2, 1) both;
+    }
+
+    .login-button,
+    .register-button,
+    .login-secondary {
+        transition: background-color .2s ease, color .2s ease, transform .2s ease;
+    }
+
+        .login-button:hover,
+        .register-button:hover {
+            transform: translateY(-1px);
+        }
+}
+
+@media (max-width: 520px) {
+    .login-container > form,
+    .register-card {
+        padding: 28px 22px;
+    }
+}
