@@ -9,15 +9,14 @@ namespace ReShareBlazorApp.Web.Models
         [MinLength(3, ErrorMessage = "Nazwa produktu musi mieć minimum 3 znaki.")]
         [MaxLength(50, ErrorMessage = "Nazwa produktu nie może mieć więcej niż 50 znaków.")]
         public string Name { get; set; } = "";
+        [Required(ErrorMessage = "Uzuepłnij opis.")]
+        public string Description { get; set; } = "";
 
         [Range(0.01, 100000, ErrorMessage = "Cena musi być większa od 0.")]
         public decimal Price { get; set; }
 
-        [Required(ErrorMessage = "Podaj datę dodania produktu.")]
-        public DateTime AddedAt { get; set; } = DateTime.Now;
-
         [Required(ErrorMessage = "Podaj datę ważności produktu.")]
-        public DateTime ExpiresAt { get; set; }
+        public DateTime ExpiresAt { get; set; } = DateTime.Now;
 
         [Required(ErrorMessage = "Wybierz kategorię produktu.")]
         public ProductCategory Category { get; set; }

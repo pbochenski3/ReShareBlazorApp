@@ -31,12 +31,12 @@
                              placeholder="Wpisz cenę produktu" />
                 <ValidationMessage For="@(() => productModel.Price)" />
             </div>
-
             <div class="product-field">
-                <label>Data dodania</label>
-                <InputDate @bind-Value="productModel.AddedAt"
-                           class="product-input" />
-                <ValidationMessage For="@(() => productModel.AddedAt)" />
+                <label>Opis</label>
+                <InputTextArea @bind-Value="productModel.Description"
+                             class="product-input"
+                             placeholder="Wpisz opis produktu" />
+                <ValidationMessage For="@(() => productModel.Description)" />
             </div>
 
             <div class="product-field">

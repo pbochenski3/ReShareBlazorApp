@@ -1,11 +1,12 @@
-@page "/profil"
+@page "/user/{Username}"
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+@using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Components.Elements
+@inject UserApiService userApi
 
-<PageTitle>Mój profil – ODDAJ DALEJ</PageTitle>
-
-<PageHeader Title="Mój profil" Subtitle="Twoje dane, ogłoszenia i opinie w jednym miejscu." />
-
+@if(exist)
+{
 <section class="home-section">
     <div class="home-container">
 
@@ -14,12 +15,8 @@
             <span class="avatar avatar-lg">TY</span>
 
             <div class="profile-info">
-                <h2>Twoje imię</h2>
-                <AuthorizeView>
-                    <Authorized Context="auth">
-                        <p class="profile-email">@auth.User.FindFirst(ClaimTypes.Email)?.Value</p>
-                    </Authorized>
-                </AuthorizeView>
+                    <h2>@Username</h2>
+                        <p class="profile-email">XXX</p>
                 <p class="home-card-verified">✔ E-mail zweryfikowany</p>
                 <p class="profile-rating">★ 4,8 <span>(12 opinii)</span></p>
             </div>
@@ -47,9 +44,9 @@
         <!-- Moje ogłoszenia -->
         <div class="home-cards">
             <ListingCard Title="2 bilety na koncert – Kraków" Category="Bilety i rezerwacje" Type="Sprzedam"
-                         Price="240 zł" Location="Kraków" Term="12.12.2026" Published="08.11.2026" Verified="true" />
+                         Price="240 zł" Location="Kraków" Term="12.12.2026" Published="08.11.2026" />
             <ListingCard Title="Wózek dziecięcy do oddania" Category="Rodzina i dzieci" Type="Oddam"
-                         Price="Bezpłatnie" Location="Łódź" Term="od zaraz" Published="07.11.2026" Verified="true" />
+                         Price="Bezpłatnie" Location="Łódź" Term="od zaraz" Published="07.11.2026" />
         </div>
 
         <!-- Opinie -->
@@ -66,5 +63,20 @@
         </div>
     </div>
 </section>
+}
+else
+{
+    <h4>Nie znaleziono użytkownika!</h4>
+}
 
-<SiteFooter />
+
+@code
+{
+    [Parameter]
+    public string Username { get; set; } = string.Empty;
+    private bool exist;
+    protected override async Task OnParametersSetAsync()
+    {
+        exist = await userApi.CheckIfUserExistsAsync(Username);
+    }
+}

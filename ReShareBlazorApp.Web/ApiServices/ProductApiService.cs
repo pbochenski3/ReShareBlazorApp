@@ -26,7 +26,6 @@ namespace ReShareBlazorApp.Web.ApiServices
             {
                 Name = productModel.Name,
                 Price = productModel.Price,
-                AddedAt = productModel.AddedAt,
                 ExpiresAt = productModel.ExpiresAt,
                 Category = productModel.Category,
             };

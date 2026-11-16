@@ -8,7 +8,7 @@ namespace ReShareBlazorApp.Api.Date
         public int Id { get; set; }
         public required string Name { get; set; }
         public decimal Price { get; set; }
-        public DateTime AddedAt { get; set; }
+        public DateTime AddedAt { get; set; } = DateTime.Now;
         public DateTime ExpiresAt { get; set; }
         public ProductCategory Category { get; set; }
         public int UserId { get; set; }
