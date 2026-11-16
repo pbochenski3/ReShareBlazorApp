@@ -1,13 +1,20 @@
+@using ReShareBlazorApp.Api.Date.Enums
+
 <section class="home-section home-section-alt">
     <div class="home-container">
         <h2 class="home-section-title">Kategorie</h2>
 
         <div class="home-categories">
-            @foreach (var cat in categories)
+            @foreach (var cat in Enum.GetValues<ProductCategory>())
             {
-                <a class="home-category" href="/kategorie/@cat.Slug">
-                    <strong>@cat.Name</strong>
-                    <span>@cat.Description</span>
+                <a class="home-category" href="@($"/category/{(int)cat}")">
+                    <strong>
+                        @GetCategoryName(cat)
+                    </strong>
+
+                    <span>
+                        @GetCategoryDescription(cat)
+                    </span>
                 </a>
             }
         </div>
@@ -15,18 +22,29 @@
 </section>
 
 @code {
-    private class Category
+    private string GetCategoryName(ProductCategory category)
     {
-        public string Name { get; set; } = "";
-        public string Slug { get; set; } = "";
-        public string Description { get; set; } = "";
+        return category switch
+        {
+            ProductCategory.Tickets => "Bilety",
+            ProductCategory.Reservations => "Rezerwacje",
+            ProductCategory.Trips => "Wyjazdy i podróże",
+            ProductCategory.Transports => "Transport i miejsca",
+            ProductCategory.Services => "Usługi i wolne terminy",
+            _ => "Inne"
+        };
     }
 
-    private List<Category> categories = new()
+    private string GetCategoryDescription(ProductCategory category)
     {
-        new Category { Name = "Bilety i rezerwacje", Slug = "bilety-i-rezerwacje", Description = "Koncerty, mecze, vouchery, bilety, spa" },
-        new Category { Name = "Wyjazdy i podróże", Slug = "wyjazdy-i-podroze", Description = "Hotele, wakacje, wycieczki, noclegi" },
-        new Category { Name = "Transport i miejsca", Slug = "transport-i-miejsca", Description = "Przejazdy, samochody, busy, przewóz" },
-        new Category { Name = "Usługi i wolne terminy", Slug = "uslugi-i-wolne-terminy", Description = "Fachowcy, fotografia, opieka, instruktorzy" },
-    };
+        return category switch
+        {
+            ProductCategory.Tickets => "Koncerty, mecze, vouchery, bilety",
+            ProductCategory.Reservations => "Hotele, wakacje, wycieczki, noclegi",
+            ProductCategory.Trips => "Wakacje, wycieczki, podróże",
+            ProductCategory.Transports => "Przejazdy, samochody, busy, przewóz",
+            ProductCategory.Services => "Fachowcy, fotografia, opieka, instruktorzy",
+            _ => ""
+        };
+    }
 }

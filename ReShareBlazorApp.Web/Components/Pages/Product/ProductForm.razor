@@ -4,6 +4,7 @@
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Models
 @inject ProductApiService productService
+@inject NotificationService notify
 
 <EditForm Model="@productModel" OnValidSubmit="AddProduct">
     <DataAnnotationsValidator />
@@ -72,6 +73,7 @@
     public async Task AddProduct()
     {
         await productService.AddProductAsync(productModel);
+        notify.AddNotification("Ogłoszenie", "Ogłoszenie pomyślnie utworzone!");
     }
     private string GetCategoryName(ProductCategory category)
     {

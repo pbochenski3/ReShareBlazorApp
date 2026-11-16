@@ -1,0 +1,76 @@
+﻿@page "/category/{Category:int}"
+
+@using ReShareBlazorApp.Api.Date.Enums
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Components.Elements
+
+@inject ProductApiService productApi
+
+<div class="category-page">
+    <section class="category-page-content">
+        <div class="category-container">
+
+            <div class="category-header">
+                <span class="category-label">ODKRYWAJ OGŁOSZENIA</span>
+
+                <h2 class="category-title">
+                    @((ProductCategory)Category)
+                </h2>
+
+                <p class="category-subtitle">
+                    Przeglądaj dostępne ogłoszenia w wybranej kategorii.
+                </p>
+            </div>
+
+            <div class="category-products-grid">
+                @if (ListOfProducts.Any())
+                {
+                    @foreach (var product in ListOfProducts)
+                    {
+                        <ListingCard Title="@product.Name"
+                                     Category="@product.Category.ToString()"
+                                     Type="Sprzedam"
+                                     Price="@product.Price.ToString("F2")"
+                                     Location="Kraków"
+                                     Term="@product.ExpiresAt.ToString("dd.MM.yyyy HH:mm")"
+                                     Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")" />
+                    }
+                }
+                else
+                {
+                    <div class="category-empty">
+                        <div class="category-empty-icon">⌕</div>
+                        <h3>Brak ogłoszeń</h3>
+                        <p>W tej kategorii nie znaleziono jeszcze żadnych produktów.</p>
+                        <a href="/odkrywaj" class="category-empty-button">
+                            Przeglądaj inne ogłoszenia
+                        </a>
+                    </div>
+                }
+            </div>
+
+        </div>
+    </section>
+</div>
+
+@code {
+    [Parameter]
+    public int Category { get; set; }
+
+    public List<ProductDTO> ListOfProducts { get; set; } = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Enum.IsDefined(typeof(ProductCategory), Category))
+        {
+            ListOfProducts = new();
+            return;
+        }
+
+        ListOfProducts = await productApi.GetProductsAsync(
+            20,
+            (ProductCategory)Category
+        );
+    }
+}
