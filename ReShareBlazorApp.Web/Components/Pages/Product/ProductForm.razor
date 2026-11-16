@@ -53,7 +53,7 @@
                     <option value="">Wybierz kategorię</option>
                     @foreach (var category in Enum.GetValues<ProductCategory>())
                     {
-                        <option value="@category">@category</option>
+                        <option value="@category">@GetCategoryName(category)</option>
                     }
                 </InputSelect>
                 <ValidationMessage For="@(() => productModel.Category)" />
@@ -69,8 +69,20 @@
 @code {
     public ProductModel productModel { get; set; } = new();
 
-        public async Task AddProduct()
+    public async Task AddProduct()
     {
         await productService.AddProductAsync(productModel);
+    }
+    private string GetCategoryName(ProductCategory category)
+    {
+        return category switch
+        {
+            ProductCategory.Tickets => "Bilety",
+            ProductCategory.Reservations => "Rezerwacje",
+            ProductCategory.Trips => "Wyjazdy i podróże",
+            ProductCategory.Transports => "Transport",
+            ProductCategory.Services => "Usługi",
+            _ => category.ToString()
+        };
     }
 }
