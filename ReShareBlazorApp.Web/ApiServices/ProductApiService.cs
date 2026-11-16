@@ -25,9 +25,11 @@ namespace ReShareBlazorApp.Web.ApiServices
             var product = new ProductDTO
             {
                 Name = productModel.Name,
+                Description = productModel.Description,
                 Price = productModel.Price,
                 ExpiresAt = productModel.ExpiresAt,
                 Category = productModel.Category,
+                City = productModel.City,
             };
             using var request = new HttpRequestMessage(
                 HttpMethod.Post,
@@ -54,6 +56,25 @@ namespace ReShareBlazorApp.Web.ApiServices
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<List<ProductDTO>>()
                 ?? new List<ProductDTO>();
+        }
+        public async Task<ProductDTO> GetProductByIdAsync(int id)
+        {
+            var url = $"api/product/{id}";
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<ProductDTO>()
+                ?? new ProductDTO();
+        }
+        public async Task<List<LocationDTO>> SearchLocationsAsync(string query)
+        {
+            var url = $"api/product/searchLocations?query={Uri.EscapeDataString(query)}";
+
+            var response = await _httpClient.GetAsync(url);
+
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content.ReadFromJsonAsync<List<LocationDTO>>()
+                ?? new List<LocationDTO>();
         }
     }
 }

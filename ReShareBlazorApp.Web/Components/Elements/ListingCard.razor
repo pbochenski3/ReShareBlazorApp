@@ -20,7 +20,9 @@
         </ul>
 
 
-        <a class="home-btn home-btn-outline" href="@Link">Zobacz szczegóły</a>
+        <a class="home-btn home-btn-outline" href="@($"/details/{Link}")">
+            Zobacz szczegóły
+        </a>
     </div>
 </article>
 
@@ -32,10 +34,9 @@
     [Parameter] public string Location { get; set; } = "";
     [Parameter] public string Term { get; set; } = "";
     [Parameter] public string Published { get; set; } = "";
-    [Parameter] public string Link { get; set; } = "#";
+    [Parameter] public int Link { get; set; } 
     [Parameter] public string? ImageUrl { get; set; }
 
-    // Każdy typ ogłoszenia dostaje swój kolor (klasy są w site.css)
     private string TypeClass => Type switch
     {
         "Sprzedam" => "type-sell",

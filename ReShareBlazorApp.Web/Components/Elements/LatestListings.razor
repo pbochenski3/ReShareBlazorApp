@@ -5,12 +5,6 @@
     <div class="home-container">
         <div class="home-section-head">
             <h2 class="home-section-title">Najnowsze okazje</h2>
-
-            <div class="home-view-switch" role="group" aria-label="Widok ogłoszeń">
-                <button class="home-view-btn active" type="button">Kafelki</button>
-                <button class="home-view-btn" type="button">Lista</button>
-                <button class="home-view-btn" type="button">Mapa</button>
-            </div>
         </div>
 
         <div class="home-cards">
@@ -23,12 +17,13 @@
                              Location="Kraków"
                              Term="@product.ExpiresAt.ToString("dd.MM.yyyy HH:mm")"
                              Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")"
+                             Link=@product.ProductId
                              />
             }
         </div>
 
         <div class="home-section-footer">
-            <a class="home-btn home-btn-outline" href="/oferty">Zobacz wszystkie oferty</a>
+            <a class="home-btn home-btn-outline" href="/odkrywaj">Zobacz wszystkie oferty</a>
         </div>
     </div>
 </section>

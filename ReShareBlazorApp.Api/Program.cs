@@ -65,6 +65,12 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider
+         .GetRequiredService<ReshareDbContext>();
+    await LocationImportService.ImportAsync(context, app.Environment.ContentRootPath);
+}
 
 if (app.Environment.IsDevelopment())
 {

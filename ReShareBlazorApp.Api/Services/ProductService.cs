@@ -20,10 +20,12 @@ namespace ReShareBlazorApp.Api.Services
             var productModel = new Product
             {
                 Name = product.Name,
+                Description = product.Description,
                 Price = product.Price,
                 AddedAt = product.AddedAt,
                 ExpiresAt = product.ExpiresAt,
                 Category = product.Category,
+                City = product.City,
                 UserId = product.UserId
             };
             var result = await _productRepository.AddProductAsync(productModel);
@@ -38,6 +40,7 @@ namespace ReShareBlazorApp.Api.Services
                 Select(p => new ProductDTO
                 {
                     Name = p.Name,
+                    ProductId = p.Id,
                     Price = p.Price,
                     AddedAt = p.AddedAt,
                     ExpiresAt = p.ExpiresAt,
@@ -46,6 +49,26 @@ namespace ReShareBlazorApp.Api.Services
                 })
                 .ToList();
             return productsDtoList;
+        }
+        public async Task<ProductDTO> GetProductById(int id)
+        {
+            var product = await _productRepository.GetProductById(id);
+            return new ProductDTO
+            {
+                Name = product.Name,
+                Description = product.Description,
+                Price = product.Price,
+                City = product.City,
+                Category = product.Category,
+                AddedAt = product.AddedAt,
+                ExpiresAt = product.ExpiresAt,
+                AddedBy = product.user.UserName ?? "",
+            };
+        }
+        public async Task<List<LocationDTO>> GetLocationsAsync(string query)
+        {
+            query = query.Trim();
+            return await _productRepository.GetLocationsAsync(query);
         }
     }
 }

@@ -7,5 +7,7 @@ namespace ReShareBlazorApp.Api.Interfaces.Services
     {
         Task<bool> AddProductAsync(ProductDTO product);
         Task<List<ProductDTO>> GetProductsAsync(int number = 5,ProductCategory? category = null);
+        Task<List<LocationDTO>> GetLocationsAsync(string query);
+        Task<ProductDTO> GetProductById(int id);
     }
 }

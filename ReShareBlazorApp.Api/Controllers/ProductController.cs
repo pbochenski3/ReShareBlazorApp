@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Security.Claims;
@@ -36,6 +37,25 @@ namespace ReShareBlazorApp.Api.Controllers
         {
             var products = await _productService.GetProductsAsync(request.Number, request.Category);
             return Ok(products);
+        }
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<ProductDTO>> GetProduct(int id)
+        {
+            var product = await _productService.GetProductById(id);
+
+            if (product == null)
+                return NotFound();
+
+            return Ok(product);
+        }
+        [HttpGet("searchLocations")]
+        public async Task<ActionResult<List<LocationDTO>>> SearchLocations(
+          [FromQuery] string query)
+        {
+            if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 2)
+                return Ok(new List<LocationDTO>());
+            var locations = await _productService.GetLocationsAsync(query);
+            return Ok(locations);
         }
 
     }

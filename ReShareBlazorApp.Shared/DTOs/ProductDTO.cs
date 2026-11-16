@@ -8,8 +8,11 @@ namespace ReShareBlazorApp.Shared.DTOs
 {
     public class ProductDTO
     {
+        public int ProductId { get; set; }
         public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
 
+        public string City { get; set; } = "";
         public decimal Price { get; set; }
 
         public DateTime AddedAt { get; set; } = DateTime.Now;
@@ -17,7 +20,7 @@ namespace ReShareBlazorApp.Shared.DTOs
         public DateTime ExpiresAt { get; set; }
 
         public ProductCategory Category { get; set; }
-
+        public string AddedBy { get; set; } = "";
         public int UserId { get; set; }
     }
 }

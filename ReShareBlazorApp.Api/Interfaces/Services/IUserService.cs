@@ -1,4 +1,7 @@
-﻿namespace ReShareBlazorApp.Api.Interfaces.Services
+﻿using ReShareBlazorApp.Api.Date;
+using ReShareBlazorApp.Shared.DTOs;
+
+namespace ReShareBlazorApp.Api.Interfaces.Services
 {
     public interface IUserService
     {

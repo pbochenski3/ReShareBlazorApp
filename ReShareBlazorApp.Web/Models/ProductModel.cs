@@ -17,7 +17,8 @@ namespace ReShareBlazorApp.Web.Models
 
         [Required(ErrorMessage = "Podaj datę ważności produktu.")]
         public DateTime ExpiresAt { get; set; } = DateTime.Now;
-
+        [Required(ErrorMessage = "Nie udało się pobrać miejscowości.")]
+        public string City { get; set; } = "";
         [Required(ErrorMessage = "Wybierz kategorię produktu.")]
         public ProductCategory Category { get; set; }
 

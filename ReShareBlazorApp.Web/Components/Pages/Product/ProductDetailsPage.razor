@@ -1,0 +1,152 @@
+﻿@page "/details/{ProductId:int}"
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@inject ProductApiService productApi
+
+<div class="details-page">
+    <div class="details-container">
+
+        <a href="/" class="details-back">
+            <span>←</span> Wróć do ogłoszeń
+        </a>
+
+        @if (IsLoading)
+        {
+            <div class="details-state">
+                <div class="details-loader"></div>
+                <p>Ładowanie ogłoszenia...</p>
+            </div>
+        }
+        else if (Product == null)
+        {
+            <div class="details-state">
+                <div class="details-empty-icon">!</div>
+                <h2>Nie znaleziono ogłoszenia</h2>
+                <p>Ogłoszenie mogło zostać usunięte lub nie istnieje.</p>
+                <a href="/" class="details-primary-button">Wróć na stronę główną</a>
+            </div>
+        }
+        else
+        {
+            <div class="details-layout">
+
+                <main class="details-main">
+
+                    <div class="details-category">
+                        @Product.Category
+                    </div>
+
+                    <h1 class="details-title">
+                        @Product.Name
+                    </h1>
+
+                    <div class="details-location">
+                        <span>📍</span>
+                        @Product.City
+                    </div>
+
+                    <section class="details-section">
+                        <h2>Opis ogłoszenia</h2>
+
+                        <p class="details-description">
+                            @if (string.IsNullOrWhiteSpace(Product.Description))
+                            {
+                                <span>Brak opisu ogłoszenia.</span>
+                            }
+                            else
+                            {
+                                @Product.Description
+                            }
+                        </p>
+                    </section>
+
+                    <section class="details-section">
+                        <h2>Informacje o ogłoszeniu</h2>
+
+                        <div class="details-info-grid">
+                            <div class="details-info-item">
+                                <span class="details-info-label">Data dodania</span>
+                                <strong>@Product.AddedAt.ToString("dd.MM.yyyy HH:mm")</strong>
+                            </div>
+
+                            <div class="details-info-item">
+                                <span class="details-info-label">Wygasa</span>
+                                <strong>@Product.ExpiresAt.ToString("dd.MM.yyyy HH:mm")</strong>
+                            </div>
+                        </div>
+                    </section>
+
+                </main>
+
+                <aside class="details-sidebar">
+
+                    <div class="details-price-card">
+                        <span class="details-price-label">Cena</span>
+
+                        <div class="details-price">
+                            @Product.Price.ToString("N2") <span>zł</span>
+                        </div>
+
+                        <div class="details-divider"></div>
+
+                        <h3>Informacje o wystawiającym</h3>
+
+                        <div class="details-user">
+                            <div class="details-user-avatar">
+                                @(string.IsNullOrWhiteSpace(Product.AddedBy)
+                                    ? "?"
+                                    : Product.AddedBy.Substring(0, 1).ToUpper())
+                            </div>
+
+                            <div class="details-user-info">
+                                <strong>
+                                    @(string.IsNullOrWhiteSpace(Product.AddedBy)
+                                        ? "Użytkownik"
+                                        : Product.AddedBy)
+                                </strong>
+                                <span>Wystawiający ogłoszenie</span>
+                            </div>
+                        </div>
+
+                        <div class="details-user-id">
+                            ID użytkownika: @Product.UserId
+                        </div>
+
+                        <a href="/" class="details-primary-button">
+                            Przeglądaj inne ogłoszenia
+                        </a>
+                    </div>
+
+                    <div class="details-safety">
+                        <span>🛡️</span>
+                        <div>
+                            <strong>Zachowaj ostrożność</strong>
+                            <p>Przed dokonaniem transakcji upewnij się, że wszystkie szczegóły są jasne.</p>
+                        </div>
+                    </div>
+
+                </aside>
+
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int ProductId { get; set; }
+
+    public ProductDTO? Product { get; set; }
+
+    public bool IsLoading { get; set; } = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        IsLoading = true;
+
+        Product = await productApi.GetProductByIdAsync(ProductId);
+
+        IsLoading = false;
+    }
+}

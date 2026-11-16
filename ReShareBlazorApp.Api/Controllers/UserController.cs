@@ -18,6 +18,5 @@ namespace ReShareBlazorApp.Api.Controllers
         {
             return await _userService.CheckIfUserExistAsync(username);
         }
-
     }
 }

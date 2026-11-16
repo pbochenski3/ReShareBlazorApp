@@ -3,6 +3,8 @@
 @using ReShareBlazorApp.Api.Date.Enums
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Models
+@inject IJSRuntime JS
+@inject IHttpClientFactory HttpClientFactory
 @inject ProductApiService productService
 @inject NotificationService notify
 
@@ -32,11 +34,12 @@
                              placeholder="Wpisz cenę produktu" />
                 <ValidationMessage For="@(() => productModel.Price)" />
             </div>
+
             <div class="product-field">
                 <label>Opis</label>
                 <InputTextArea @bind-Value="productModel.Description"
-                             class="product-input"
-                             placeholder="Wpisz opis produktu" />
+                               class="product-input"
+                               placeholder="Wpisz opis produktu" />
                 <ValidationMessage For="@(() => productModel.Description)" />
             </div>
 
@@ -45,6 +48,16 @@
                 <InputDate @bind-Value="productModel.ExpiresAt"
                            class="product-input" />
                 <ValidationMessage For="@(() => productModel.ExpiresAt)" />
+            </div>
+
+            <div class="product-field">
+                <label>Miejscowość</label>
+                <label class="product-input">
+                    @(string.IsNullOrEmpty(productModel.City)
+                        ? "Pobieranie miejscowości..."
+                        : productModel.City)
+                </label>
+                <ValidationMessage For="@(() => productModel.City)" />
             </div>
 
             <div class="product-field">
@@ -69,7 +82,27 @@
 
 @code {
     public ProductModel productModel { get; set; } = new();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var location = await JS.InvokeAsync<LocationResult>("getUserLocation");
 
+                productModel.City = await GetCityAsync(
+                    location.Latitude,
+                    location.Longitude
+                );
+
+                StateHasChanged();
+            }
+            catch
+            {
+                notify.AddNotification("Lokalizacja", "Nie udało się pobrać lokalizacji.");
+            }
+        }
+    }
     public async Task AddProduct()
     {
         await productService.AddProductAsync(productModel);
@@ -86,5 +119,27 @@
             ProductCategory.Services => "Usługi",
             _ => category.ToString()
         };
+    }
+    private async Task<string> GetCityAsync(double latitude, double longitude)
+    {
+        using var http = HttpClientFactory.CreateClient();
+
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("ReShareBlazorApp/1.0");
+
+        var url = $"https://nominatim.openstreetmap.org/reverse?lat={latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}&lon={longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}&format=jsonv2&addressdetails=1";
+
+        var response = await http.GetStringAsync(url);
+
+        using var json = System.Text.Json.JsonDocument.Parse(response);
+
+        var address = json.RootElement.GetProperty("address");
+
+        foreach (var field in new[] { "city", "town", "village", "hamlet" })
+        {
+            if (address.TryGetProperty(field, out var value))
+                return value.GetString() ?? "";
+        }
+
+        return "";
     }
 }
