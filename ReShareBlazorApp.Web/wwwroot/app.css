@@ -2941,5 +2941,143 @@ input[type="search"] {
         font-size: 32px;
     }
 }
+/*Type buttons*/
+.type-selection {
+    width: 100%;
+    max-width: 850px;
+    margin: 60px auto;
+    padding: 20px;
+}
+
+.type-selection-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.type-selection-label {
+    display: inline-block;
+    color: #6366f1;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+}
+
+.type-selection-header h1 {
+    font-size: clamp(26px, 4vw, 36px);
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 12px;
+}
+
+.type-selection-header p {
+    color: #64748b;
+    font-size: 15px;
+}
+
+.type-selection-options {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.type-option {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    padding: 24px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+    .type-option:hover {
+        transform: translateY(-3px);
+        border-color: #6366f1;
+        box-shadow: 0 10px 25px rgba(99, 102, 241, 0.10);
+    }
+
+.type-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    font-size: 27px;
+    background: #eef2ff;
+}
+
+.sell .type-icon {
+    background: #ecfdf5;
+}
+
+.giveaway .type-icon {
+    background: #fff7ed;
+}
+
+.looking .type-icon {
+    background: #eff6ff;
+}
+
+.type-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+}
+
+    .type-content strong {
+        color: #1e293b;
+        font-size: 18px;
+        font-weight: 750;
+    }
+
+    .type-content small {
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+.type-arrow {
+    color: #94a3b8;
+    font-size: 26px;
+    transition: all 0.25s ease;
+}
+
+.type-option:hover .type-arrow {
+    color: #6366f1;
+    transform: translateX(5px);
+}
+
+@media (max-width: 600px) {
+    .type-selection {
+        margin: 30px auto;
+        padding: 15px;
+    }
+
+    .type-option {
+        padding: 18px;
+        gap: 14px;
+    }
+
+    .type-icon {
+        min-width: 48px;
+        height: 48px;
+        font-size: 23px;
+    }
+
+    .type-content strong {
+        font-size: 16px;
+    }
+
+    .type-content small {
+        font-size: 12px;
+    }
+}
 
 

@@ -1,5 +1,6 @@
 ﻿
 using ReShareBlazorApp.Api.Date.Enums;
+using ReShareBlazorApp.Shared.Enums;
 
 namespace ReShareBlazorApp.Api.Date
 {
@@ -12,6 +13,7 @@ namespace ReShareBlazorApp.Api.Date
         public decimal Price { get; set; }
         public DateTime AddedAt { get; set; } = DateTime.Now;
         public DateTime ExpiresAt { get; set; }
+        public ProductType Type { get; set; }
         public ProductCategory Category { get; set; }
         public required string City { get; set; }
         public int UserId { get; set; }

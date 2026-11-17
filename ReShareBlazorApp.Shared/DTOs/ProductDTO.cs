@@ -1,4 +1,5 @@
 ﻿using ReShareBlazorApp.Api.Date.Enums;
+using ReShareBlazorApp.Shared.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -18,7 +19,7 @@ namespace ReShareBlazorApp.Shared.DTOs
         public DateTime AddedAt { get; set; } = DateTime.Now;
 
         public DateTime ExpiresAt { get; set; }
-
+        public ProductType Type { get; set; }
         public ProductCategory Category { get; set; }
         public string AddedBy { get; set; } = "";
         public int UserId { get; set; }

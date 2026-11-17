@@ -59,8 +59,7 @@ namespace ReShareBlazorApp.Web.ApiServices
         }
         public async Task<ProductDTO> GetProductByIdAsync(int id)
         {
-            var url = $"api/product/{id}";
-            var response = await _httpClient.GetAsync(url);
+            var response = await _httpClient.GetAsync($"api/product/{id}");
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<ProductDTO>()
                 ?? new ProductDTO();

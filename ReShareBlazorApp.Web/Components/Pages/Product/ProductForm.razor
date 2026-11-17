@@ -1,23 +1,39 @@
-﻿@page "/add-product"
+﻿@page "/add-product/{isSelected:bool}"
+@inject NavigationManager Navigation
 @rendermode InteractiveServer
 @using ReShareBlazorApp.Api.Date.Enums
+@using ReShareBlazorApp.Shared.Enums
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Models
 @inject IJSRuntime JS
 @inject IHttpClientFactory HttpClientFactory
 @inject ProductApiService productService
 @inject NotificationService notify
-
+@if(isSelected)
+{
 <EditForm Model="@productModel" OnValidSubmit="AddProduct">
     <DataAnnotationsValidator />
     <ValidationSummary />
 
     <div class="product-page">
-        <div class="product-form">
-            <div class="product-header">
-                <h2>Dodaj produkt</h2>
-                <p>Udostępnij produkt, którego już nie potrzebujesz.</p>
-            </div>
+            <div class="product-form">
+                <div class="product-header">
+                    @if (productModel.Type == ProductType.Sell)
+                    {
+                        <h2>Dodaj produkt</h2>
+                        <p>Udostępnij produkt, który chcesz sprzedać.</p>
+                    }
+                    else if (productModel.Type == ProductType.GiveAway)
+                    {
+                        <h2>Oddaj produkt</h2>
+                        <p>Udostępnij produkt, który chcesz oddać za darmo.</p>
+                    }
+                    else if (productModel.Type == ProductType.LookingFor)
+                    {
+                        <h2>Szukam produktu</h2>
+                        <p>Opublikuj ogłoszenie i znajdź produkt, którego szukasz.</p>
+                    }
+                </div>
 
             <div class="product-field">
                 <label>Nazwa produktu</label>
@@ -79,8 +95,50 @@
         </div>
     </div>
 </EditForm>
+}
+else
+{
+    <div class="type-selection">
+        <div class="type-selection-header">
+            <span class="type-selection-label">NOWE OGŁOSZENIE</span>
+            <h1>Jakiego typu ogłoszenie chcesz dodać?</h1>
+            <p>Wybierz jedną z poniższych opcji, aby przejść dalej.</p>
+        </div>
+
+        <div class="type-selection-options">
+            <button type="button" @onclick="() => ChooseType(ProductType.Sell)" class="type-option sell">
+                <span class="type-icon">💰</span>
+                <span class="type-content">
+                    <strong>Sprzedam</strong>
+                    <small>Wystaw produkt na sprzedaż i znajdź kupca.</small>
+                </span>
+                <span class="type-arrow">→</span>
+            </button>
+
+            <button type="button" @onclick="() => ChooseType(ProductType.GiveAway)" class="type-option giveaway">
+                <span class="type-icon">🎁</span>
+                <span class="type-content">
+                    <strong>Oddam</strong>
+                    <small>Podaruj komuś coś, czego już nie potrzebujesz.</small>
+                </span>
+                <span class="type-arrow">→</span>
+            </button>
+
+            <button type="button" @onclick="() => ChooseType(ProductType.LookingFor)" class="type-option looking">
+                <span class="type-icon">🔎</span>
+                <span class="type-content">
+                    <strong>Szukam</strong>
+                    <small>Opublikuj ogłoszenie i znajdź to, czego potrzebujesz.</small>
+                </span>
+                <span class="type-arrow">→</span>
+            </button>
+        </div>
+    </div>
+}
 
 @code {
+    [Parameter]
+    public bool isSelected { get; set; }
     public ProductModel productModel { get; set; } = new();
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -107,6 +165,24 @@
     {
         await productService.AddProductAsync(productModel);
         notify.AddNotification("Ogłoszenie", "Ogłoszenie pomyślnie utworzone!");
+    }
+    private void ChooseType(ProductType type)
+    {
+        switch(type)
+        {
+            case ProductType.Sell:
+                productModel.Type = ProductType.Sell;
+                break;
+            case ProductType.GiveAway:
+                productModel.Type = ProductType.GiveAway;
+                break;
+            case ProductType.LookingFor:
+                productModel.Type = ProductType.LookingFor;
+                break;
+        }
+        isSelected = true;
+        Navigation.NavigateTo("/add-product/true");
+        StateHasChanged();
     }
     private string GetCategoryName(ProductCategory category)
     {

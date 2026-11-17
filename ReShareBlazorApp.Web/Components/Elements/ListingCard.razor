@@ -1,3 +1,4 @@
+@using ReShareBlazorApp.Shared.Enums
 <article class="home-card">
     <div class="home-card-image @TypeClass">
         @if (!string.IsNullOrEmpty(ImageUrl))
@@ -29,7 +30,7 @@
 @code {
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Category { get; set; } = "";
-    [Parameter] public string Type { get; set; } = "";
+    [Parameter] public ProductType Type { get; set; } 
     [Parameter] public string Price { get; set; } = "Bezpłatnie";
     [Parameter] public string Location { get; set; } = "";
     [Parameter] public string Term { get; set; } = "";
@@ -39,11 +40,9 @@
 
     private string TypeClass => Type switch
     {
-        "Sprzedam" => "type-sell",
-        "Oddam" => "type-give",
-        "Mam wolne miejsce" => "type-seat",
-        "Mam wolny termin" => "type-slot",
-        "Szukam" => "type-seek",
+        ProductType.Sell => "type-sell",
+        ProductType.GiveAway => "type-give",
+        ProductType.LookingFor => "type-seek",
         _ => "type-other"
     };
 }

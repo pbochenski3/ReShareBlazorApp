@@ -127,7 +127,7 @@
                 {
                     <ListingCard Title="@product.Name"
                                  Category="@GetCategoryName(product.Category)"
-                                 Type="Sprzedam"
+                                 Type="@product.Type"
                                  Price="@product.Price.ToString("F2", CultureInfo.InvariantCulture)"
                                  Location="@product.City"
                                  Term="@(product.ExpiresAt.ToString("HH:mm") ?? "Brak terminu")"

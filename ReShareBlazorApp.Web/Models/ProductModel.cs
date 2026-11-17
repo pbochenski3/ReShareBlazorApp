@@ -1,4 +1,5 @@
 ﻿using ReShareBlazorApp.Api.Date.Enums;
+using ReShareBlazorApp.Shared.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace ReShareBlazorApp.Web.Models
@@ -11,6 +12,9 @@ namespace ReShareBlazorApp.Web.Models
         public string Name { get; set; } = "";
         [Required(ErrorMessage = "Uzuepłnij opis.")]
         public string Description { get; set; } = "";
+        [Required(ErrorMessage = "Wybierz typ ogłoszenia:")]
+
+        public ProductType Type { get; set; }
 
         [Range(0.01, 100000, ErrorMessage = "Cena musi być większa od 0.")]
         public decimal Price { get; set; }

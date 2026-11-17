@@ -25,6 +25,7 @@ namespace ReShareBlazorApp.Api.Services
                 AddedAt = product.AddedAt,
                 ExpiresAt = product.ExpiresAt,
                 Category = product.Category,
+                Type = product.Type,
                 City = product.City,
                 UserId = product.UserId
             };
@@ -40,11 +41,14 @@ namespace ReShareBlazorApp.Api.Services
                 Select(p => new ProductDTO
                 {
                     Name = p.Name,
+                    Description = p.Description,
                     ProductId = p.Id,
                     Price = p.Price,
                     AddedAt = p.AddedAt,
                     ExpiresAt = p.ExpiresAt,
                     Category = p.Category,
+                    City = p.City,
+                    Type = p.Type,
                     UserId = p.UserId,
                 })
                 .ToList();
@@ -62,6 +66,7 @@ namespace ReShareBlazorApp.Api.Services
                 Category = product.Category,
                 AddedAt = product.AddedAt,
                 ExpiresAt = product.ExpiresAt,
+                Type = product.Type,
                 AddedBy = product.user.UserName ?? "",
             };
         }
