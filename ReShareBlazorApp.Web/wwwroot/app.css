@@ -3101,3 +3101,518 @@ input[type="search"] {
     font: inherit;
     font-weight: 500;
 }
+/* ==========================================================
+   PRZEŁĄCZNIK MOTYWU (przycisk w navbarze)
+   ========================================================== */
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--pill);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background-color .2s ease, color .2s ease;
+}
+
+    .theme-toggle:hover {
+        background: var(--gray);
+        color: var(--ink);
+    }
+
+    .theme-toggle .theme-icon-sun {
+        display: none;
+    }
+
+:root[data-theme="dark"] .theme-toggle .theme-icon-moon {
+    display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .theme-icon-sun {
+    display: inline;
+}
+
+/* ==========================================================
+   MOTYW CIEMNY
+   Zmienne nadpisują :root, a reszta to nadpisania miejsc,
+   które miały kolory wpisane na sztywno (:where() = zerowa
+   specyficzność, więc :hover/:focus z app.css dalej działają).
+   ========================================================== */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --brand: #0d8f8f;
+    --brand-dark: #0a7373;
+    --brand-soft: #123636;
+    --bg: #0f1419;
+    --surface: #1a2129;
+    --gray: #151b22;
+    --border: #2a343f;
+    --ink: #e6eaee;
+    --muted: #9aa7b5;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, .4);
+    --shadow-md: 0 10px 24px -10px rgba(0, 0, 0, .6);
+    --focus-ring: 0 0 0 4px rgba(13, 143, 143, .3);
+}
+
+/* ---- Karty i panele (było: background #fff) ---- */
+:where([data-theme="dark"]) :is( .home-search, .home-tile, .home-category, .home-wanted, .home-nearby-list a, .home-step, .home-card, .home-card-type, .home-card-fav, .page-filters, .chat, .msg-in, .profile-card, .profile-review, .auth-shell, .product-form, .register-card, .category-empty, .notification-window, .type-option, .details-state ) {
+    background-color: var(--surface);
+}
+
+/* ---- Pola formularzy ---- */
+:where([data-theme="dark"]) :is(.page-sort select, .register-input, .product-input) {
+    background-color: var(--surface);
+    color: var(--ink);
+}
+
+:where([data-theme="dark"]) .auth-field input:not([type="checkbox"]) {
+    background-color: var(--surface);
+    color: var(--ink);
+}
+
+:where([data-theme="dark"]) .navbar-search .navbar-search-input:focus,
+:where([data-theme="dark"]) .chat-list-search input:focus,
+:where([data-theme="dark"]) .chat-form input[type="text"]:focus {
+    background-color: var(--surface);
+}
+
+/* ---- Navbar, stopka, drobiazgi ---- */
+:where([data-theme="dark"]) .main-navbar {
+    background-color: rgba(15, 20, 25, .9);
+}
+
+:where([data-theme="dark"]) .avatar-lg {
+    box-shadow: 0 0 0 4px var(--surface), 0 0 0 6px var(--brand);
+}
+
+:where([data-theme="dark"]) .home-footer {
+    background-color: #0a0e13;
+    border-top: 1px solid var(--border);
+}
+
+:where([data-theme="dark"]) .home-btn-light:hover {
+    background-color: #0a0e13;
+}
+
+:where([data-theme="dark"]) .msg-offer {
+    background-color: rgba(245, 165, 36, .15);
+}
+
+:where([data-theme="dark"]) .validation-errors {
+    background-color: rgba(220, 53, 69, .15);
+}
+
+:where([data-theme="dark"]) .login-error {
+    background-color: rgba(180, 35, 24, .18);
+    border-color: rgba(253, 162, 155, .35);
+    color: #fda29b;
+}
+
+/* ---- Kolory typów ogłoszeń ---- */
+:where([data-theme="dark"]) .type-sell {
+    --t-bg: #1b2b52;
+    --t-fg: #9db8ff;
+}
+
+:where([data-theme="dark"]) .type-give {
+    --t-bg: #12331f;
+    --t-fg: #7fe0a3;
+}
+
+:where([data-theme="dark"]) .type-rent {
+    --t-bg: #3a2e0d;
+    --t-fg: #f5cf6a;
+}
+
+:where([data-theme="dark"]) .type-seat {
+    --t-bg: #3d1a1e;
+    --t-fg: #ff9aa5;
+}
+
+:where([data-theme="dark"]) .type-slot {
+    --t-bg: #2a2150;
+    --t-fg: #bba6ff;
+}
+
+:where([data-theme="dark"]) .type-seek {
+    --t-bg: #0e3338;
+    --t-fg: #6fd3e6;
+}
+
+:where([data-theme="dark"]) .type-other {
+    --t-bg: #232b33;
+    --t-fg: #aab6c3;
+}
+
+/* ---- Strona dodawania ogłoszenia ---- */
+:where([data-theme="dark"]) .product-page {
+    background: var(--bg);
+}
+
+:where([data-theme="dark"]) .product-header h2,
+:where([data-theme="dark"]) .product-field label,
+:where([data-theme="dark"]) .product-back:hover {
+    color: var(--ink);
+}
+
+:where([data-theme="dark"]) .product-header p,
+:where([data-theme="dark"]) .product-back {
+    color: var(--muted);
+}
+
+:where([data-theme="dark"]) .product-input {
+    border-color: var(--border);
+}
+
+/* ---- Wybór typu ogłoszenia ---- */
+:where([data-theme="dark"]) .type-selection-label {
+    color: #a5b4fc;
+}
+
+:where([data-theme="dark"]) .type-selection-header h1,
+:where([data-theme="dark"]) .type-content strong {
+    color: var(--ink);
+}
+
+:where([data-theme="dark"]) .type-selection-header p,
+:where([data-theme="dark"]) .type-content small {
+    color: var(--muted);
+}
+
+:where([data-theme="dark"]) .type-option {
+    border-color: var(--border);
+}
+
+:where([data-theme="dark"]) .type-icon {
+    background: rgba(99, 102, 241, .18);
+}
+
+:where([data-theme="dark"]) .sell .type-icon {
+    background: rgba(22, 163, 74, .18);
+}
+
+:where([data-theme="dark"]) .giveaway .type-icon {
+    background: rgba(245, 165, 36, .18);
+}
+
+:where([data-theme="dark"]) .looking .type-icon {
+    background: rgba(37, 99, 235, .22);
+}
+
+/* ---- Strona kategorii ---- */
+:where([data-theme="dark"]) .category-page {
+    background: var(--bg);
+}
+
+:where([data-theme="dark"]) .category-header {
+    border-bottom-color: var(--border);
+}
+
+:where([data-theme="dark"]) .category-title,
+:where([data-theme="dark"]) .category-empty h3 {
+    color: var(--ink);
+}
+
+:where([data-theme="dark"]) .category-label,
+:where([data-theme="dark"]) .category-subtitle,
+:where([data-theme="dark"]) .category-empty p,
+:where([data-theme="dark"]) .category-empty-icon {
+    color: var(--muted);
+}
+
+:where([data-theme="dark"]) .category-empty {
+    border-color: var(--border);
+}
+
+:where([data-theme="dark"]) .category-empty-icon {
+    background: var(--gray);
+}
+
+/* ---- Powiadomienia ---- */
+:where([data-theme="dark"]) .notification-window {
+    border-color: var(--border);
+}
+
+    :where([data-theme="dark"]) .notification-window h4 {
+        color: var(--ink);
+    }
+
+    :where([data-theme="dark"]) .notification-window p {
+        color: var(--muted);
+    }
+
+/* ---- Szczegóły ogłoszenia ---- */
+:where([data-theme="dark"]) .details-page {
+    background: var(--bg);
+}
+
+:where([data-theme="dark"]) .details-title,
+:where([data-theme="dark"]) .details-section h2,
+:where([data-theme="dark"]) .details-info-item strong,
+:where([data-theme="dark"]) .details-price-card h3,
+:where([data-theme="dark"]) .details-user-info strong,
+:where([data-theme="dark"]) .details-state h2 {
+    color: var(--ink);
+}
+
+:where([data-theme="dark"]) .details-back,
+:where([data-theme="dark"]) .details-location,
+:where([data-theme="dark"]) .details-description,
+:where([data-theme="dark"]) .details-info-label,
+:where([data-theme="dark"]) .details-price-label,
+:where([data-theme="dark"]) .details-user-info span,
+:where([data-theme="dark"]) .details-user-id,
+:where([data-theme="dark"]) .details-state p,
+:where([data-theme="dark"]) .details-safety p {
+    color: var(--muted);
+}
+
+    :where([data-theme="dark"]) .details-back:hover,
+    :where([data-theme="dark"]) .details-price,
+    :where([data-theme="dark"]) .details-category,
+    :where([data-theme="dark"]) .details-user-avatar {
+        color: var(--brand);
+    }
+
+:where([data-theme="dark"]) .details-category,
+:where([data-theme="dark"]) .details-user-avatar {
+    background: var(--brand-soft);
+}
+
+:where([data-theme="dark"]) .details-section {
+    border-top-color: var(--border);
+}
+
+:where([data-theme="dark"]) .details-divider {
+    background: var(--border);
+}
+
+:where([data-theme="dark"]) .details-info-item {
+    background: var(--gray);
+}
+
+:where([data-theme="dark"]) .details-state {
+    border-color: var(--border);
+}
+
+:where([data-theme="dark"]) .details-safety {
+    background-color: rgba(13, 143, 143, .12);
+    border-color: rgba(13, 143, 143, .35);
+}
+
+    :where([data-theme="dark"]) .details-safety strong {
+        color: #8fdad5;
+    }
+
+:where([data-theme="dark"]) .details-empty-icon {
+    background: rgba(220, 85, 85, .15);
+}
+
+:where([data-theme="dark"]) .details-loader {
+    border-color: var(--border);
+    border-top-color: var(--brand);
+}
+/* ==========================================================
+   MOTYW CIEMNY – paleta v2 (dopisz na końcu app.css)
+   ========================================================== */
+:root[data-theme="dark"] {
+    --brand: #12a19d;
+    --brand-dark: #0d8582;
+    --brand-soft: #123a3d;
+    --bg: #0a1519; /* tło strony */
+    --gray: #0e1d23; /* sekcje naprzemienne, nagłówki stron */
+    --surface: #132830; /* karty i panele */
+    --field: #0d1b21; /* pola formularzy (ciemniejsze niż karta) */
+    --border: #234049;
+    --ink: #e8f3f3;
+    --muted: #93acb3;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, .45);
+    --shadow-md: 0 14px 30px -12px rgba(0, 0, 0, .7);
+    --focus-ring: 0 0 0 4px rgba(18, 161, 157, .3);
+}
+
+/* ---- Baner, CTA i panel logowania: gradient z poświatą zamiast płaskiego koloru ---- */
+:where([data-theme="dark"]) :is(.home-hero, .home-cta, .auth-aside) {
+    background: radial-gradient(circle at 85% 0%, rgba(18, 161, 157, .38), transparent 50%), linear-gradient(135deg, #0c4a50 0%, #0b2f3d 55%, #0a1f33 100%);
+}
+
+/* ---- Pola formularzy ciemniejsze niż karta, na której leżą ---- */
+:where([data-theme="dark"]) :is(.page-sort select, .register-input, .product-input) {
+    background-color: var(--field);
+}
+
+:where([data-theme="dark"]) .auth-field input:not([type="checkbox"]) {
+    background-color: var(--field);
+}
+
+/* ---- Karty reagują na najechanie turkusową poświatą ---- */
+:where([data-theme="dark"]) :is(.home-card, .home-category, .home-wanted, .home-tile, .type-option):hover {
+    border-color: var(--brand);
+    box-shadow: 0 14px 30px -14px rgba(18, 161, 157, .45);
+}
+
+/* ---- Navbar i stopka ---- */
+:where([data-theme="dark"]) .main-navbar {
+    background-color: rgba(10, 21, 25, .85);
+}
+
+:where([data-theme="dark"]) .home-footer,
+:where([data-theme="dark"]) .home-btn-light:hover {
+    background-color: #060e11;
+}
+
+/* ---- Ramka z ostrzeżeniem na stronie szczegółów w nowym turkusie ---- */
+:where([data-theme="dark"]) .details-safety {
+    background-color: rgba(18, 161, 157, .12);
+    border-color: rgba(18, 161, 157, .35);
+}
+/* ==========================================================
+   MOTYW CIEMNY – szare przyciski (dopisz na końcu app.css)
+   ========================================================== */
+:root[data-theme="dark"] {
+    --btn-bg: linear-gradient(180deg, #3f4852 0%, #262d35 100%);
+    --btn-bg-hover: linear-gradient(180deg, #4d5863 0%, #313a44 100%);
+    --btn-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 4px 12px -4px rgba(0, 0, 0, .6);
+}
+
+/* ---- Wypełnione przyciski: szary gradient zamiast zieleni/niebieskiego ---- */
+:where([data-theme="dark"]) :is( .home-btn-primary, .navbar-search-button, .login-button, .register-button, .product-submit, .details-primary-button, .category-empty-button ) {
+    background: var(--btn-bg);
+    color: #fff;
+    box-shadow: var(--btn-shadow);
+}
+
+    :where([data-theme="dark"]) :is( .home-btn-primary, .navbar-search-button, .login-button, .register-button, .product-submit, .details-primary-button, .category-empty-button ):hover {
+        background: var(--btn-bg-hover);
+        box-shadow: var(--btn-shadow);
+    }
+
+/* ---- Przyciski z obramowaniem (np. "Zobacz szczegóły", "Zarejestruj się") ---- */
+:where([data-theme="dark"]) :is(.home-btn-outline, .login-secondary) {
+    border-color: #4a5461;
+    color: var(--ink);
+}
+
+    :where([data-theme="dark"]) :is(.home-btn-outline, .login-secondary):hover {
+        background: var(--btn-bg-hover);
+        border-color: #5a6572;
+        color: #fff;
+    }
+/* ==========================================================
+   MOTYW CIEMNY – wszystko w szarościach (dopisz na końcu app.css)
+   ========================================================== */
+:root[data-theme="dark"] {
+    --bg: #0e1013; /* tło strony */
+    --gray: #14171b; /* sekcje naprzemienne, nagłówki stron */
+    --surface: #1b1f24; /* karty i panele */
+    --field: #12151a; /* pola formularzy */
+    --border: #2c323a;
+    --ink: #eceff3; /* główny tekst */
+    --muted: #9aa3ad; /* tekst drugorzędny */
+
+    --brand: #565d66; /* dawny turkus: tła, obramowania, kropki */
+    --brand-dark: #3f464f;
+    --brand-soft: #262c33;
+    --accent-text: #e6ebf0; /* dawne zielone teksty/linki */
+    --ok: #c9d1da; /* dawna zieleń statusów */
+
+    --focus-ring: 0 0 0 4px rgba(154, 167, 181, .25);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, .5);
+    --shadow-md: 0 14px 30px -12px rgba(0, 0, 0, .75);
+    --btn-bg: linear-gradient(180deg, #434a52 0%, #292e34 100%);
+    --btn-bg-hover: linear-gradient(180deg, #50585f 0%, #343a41 100%);
+}
+
+/* ---- Baner, CTA i panel logowania ---- */
+:where([data-theme="dark"]) :is(.home-hero, .home-cta, .auth-aside) {
+    background: radial-gradient(circle at 85% 0%, rgba(255, 255, 255, .07), transparent 50%), linear-gradient(135deg, #2c3239 0%, #1c2025 55%, #13161a 100%);
+}
+
+/* ---- Navbar i stopka ---- */
+:where([data-theme="dark"]) .main-navbar {
+    background-color: rgba(14, 16, 19, .88);
+}
+
+:where([data-theme="dark"]) .home-footer,
+:where([data-theme="dark"]) .home-btn-light:hover {
+    background-color: #08090b;
+}
+
+:where([data-theme="dark"]) .main-navbar-brand::before {
+    background: #9aa3ad;
+}
+
+/* ---- Teksty, które były turkusowe (linki, ceny, aktywne pozycje) ---- */
+:where([data-theme="dark"]) :is( .home-link, .main-navbar-brand, .main-navbar-link.active, .home-map-placeholder, .page-page:hover, .profile-stat strong, .profile-tab:hover, .auth-switch a, .auth-message, .details-back:hover, .details-price, .details-category, .details-user-avatar ) {
+    color: var(--accent-text);
+}
+
+:where([data-theme="dark"]) .register-card > p:first-child:not(:empty) {
+    color: var(--accent-text);
+}
+
+:where([data-theme="dark"]) .home-card-image {
+    --t-fg: #c3ccd6;
+}
+
+/* ---- Karty: szara poświata zamiast turkusowej ---- */
+:where([data-theme="dark"]) :is(.home-card, .home-category, .home-wanted, .home-tile, .type-option):hover {
+    border-color: #5a6572;
+    box-shadow: 0 14px 30px -14px rgba(0, 0, 0, .8);
+}
+
+:where([data-theme="dark"]) .avatar-lg {
+    box-shadow: 0 0 0 4px var(--surface), 0 0 0 6px #5a6572;
+}
+
+:where([data-theme="dark"]) .notification-window {
+    --brand: #7b8794;
+}
+
+/* ---- Pola wyboru (checkboxy) ---- */
+:where([data-theme="dark"]) :is(.auth-terms input, .register-terms input) {
+    accent-color: #aab4be;
+}
+
+/* ---- Strona dodawania ogłoszenia: focus był zielony ---- */
+:where([data-theme="dark"]) .product-input:focus {
+    border-color: #9aa7b5;
+}
+
+/* ---- Strona szczegółów ogłoszenia ---- */
+:where([data-theme="dark"]) .details-safety {
+    background-color: rgba(255, 255, 255, .04);
+    border-color: var(--border);
+}
+
+    :where([data-theme="dark"]) .details-safety strong {
+        color: var(--accent-text);
+    }
+
+:where([data-theme="dark"]) .details-loader {
+    border-top-color: #9aa3ad;
+}
+
+/* ---- Typy ogłoszeń: zielony i turkusowy -> szare ---- */
+:where([data-theme="dark"]) .type-give {
+    --t-bg: #2a3038;
+    --t-fg: #d0d7df;
+}
+
+:where([data-theme="dark"]) .type-seek {
+    --t-bg: #333b44;
+    --t-fg: #e6ebf0;
+}
+
+:where([data-theme="dark"]) .type-other {
+    --t-bg: #20252b;
+    --t-fg: #aab4be;
+}
+
+:where([data-theme="dark"]) .sell .type-icon {
+    background: rgba(255, 255, 255, .08);
+}
