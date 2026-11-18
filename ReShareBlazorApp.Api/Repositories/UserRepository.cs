@@ -17,12 +17,25 @@ namespace ReShareBlazorApp.Api.Repositories
         {
             try
             {
-            return await _context.Users.AnyAsync(u => u.UserName.Equals(username));
+                return await _context.Users.AnyAsync(u => u.UserName.Equals(username));
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogInformation($"[UserRepository]CheckIfUserExistAsync {ex}");
                 return false;
+            }
+        }
+        public async Task<User?> GetUserByUserNameAsync(string username)
+        {
+            try
+            {
+                return await _context.Users.AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.UserName == username && u.IsActive);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation($"[UserRepository]GetUserByUserNameAsync {ex}");
+                throw;
             }
         }
         public async Task<User> GetUserByIdAsync(int userId)

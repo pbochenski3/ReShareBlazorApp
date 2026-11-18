@@ -1,0 +1,182 @@
+@page "/ustawienia"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Models
+@inject UserApiService UserApi
+@inject NavigationManager Nav
+
+<PageTitle>Edytuj profil – ODDAJ DALEJ</PageTitle>
+
+<EditForm Model="@model" OnValidSubmit="Save" FormName="edit-profile">
+    <DataAnnotationsValidator />
+    <div class="register-container">
+        <div class="register-card">
+            <h2>Edytuj profil</h2>
+            <p>Zaktualizuj swoje dane widoczne w serwisie.</p>
+
+            @if (!string.IsNullOrEmpty(message))
+            {
+                <p class="@(messageIsError ? "avatar-upload-error" : "edit-profile-info")">@message</p>
+            }
+
+            <div class="avatar-upload">
+                @if (DisplayedAvatar is not null)
+                {
+                    <img class="avatar-upload-preview" src="@DisplayedAvatar" alt="Zdjęcie profilowe" />
+                }
+                else
+                {
+                    <span class="avatar avatar-lg">@Initials</span>
+                }
+                <div class="avatar-upload-actions">
+                    <label class="home-btn home-btn-outline avatar-upload-btn">
+                        Zmień zdjęcie
+                        <InputFile OnChange="OnAvatarSelected" accept="image/png,image/jpeg,image/webp" hidden />
+                    </label>
+                    @if (DisplayedAvatar is not null)
+                    {
+                        <button type="button" class="avatar-upload-remove" @onclick="RemoveAvatar">Usuń</button>
+                    }
+                    <small>JPG, PNG lub WebP, maks. 2 MB.</small>
+                    @if (avatarError is not null)
+                    {
+                        <small class="avatar-upload-error">@avatarError</small>
+                    }
+                </div>
+            </div>
+
+            <div class="register-field">
+                <label>Nazwa użytkownika</label>
+                <input class="register-input" value="@model.Username" disabled />
+            </div>
+            <div class="register-field">
+                <label>Miejscowość</label>
+                <InputText @bind-Value="model.City" class="register-input" placeholder="np. Kraków" />
+                <ValidationMessage For="@(() => model.City)" />
+            </div>
+            <div class="register-field">
+                <label>O mnie</label>
+                <InputTextArea @bind-Value="model.Bio" class="register-input" rows="4" placeholder="Napisz kilka słów o sobie" />
+                <ValidationMessage For="@(() => model.Bio)" />
+            </div>
+
+            <button type="submit" class="register-button" disabled="@saving">@(saving ? "Zapisywanie..." : "Zapisz zmiany")</button>
+            <button type="button" class="login-secondary" @onclick="Cancel">Anuluj</button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    private const long MaxAvatarBytes = 2 * 1024 * 1024;
+    private static readonly string[] AllowedTypes = { "image/png", "image/jpeg", "image/webp" };
+
+    private EditProfileModel model = new();
+    private bool saving;
+    private string? message;
+    private bool messageIsError;
+
+    private string? currentAvatarUrl;          // zdjęcie zapisane w bazie
+    private string? pendingPreview;            // nowo wybrane, jeszcze niezapisane
+    private byte[]? pendingBytes;
+    private string? pendingFileName;
+    private string? pendingContentType;
+    private bool removeAvatar;
+    private string? avatarError;
+
+    private string? DisplayedAvatar => pendingPreview ?? (removeAvatar ? null : currentAvatarUrl);
+    private string Initials => string.IsNullOrWhiteSpace(model.Username)
+        ? "?" : model.Username[..Math.Min(2, model.Username.Length)].ToUpper();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var me = await UserApi.GetMyProfileAsync();
+        if (me == null)
+        {
+            message = "Nie udało się wczytać profilu.";
+            messageIsError = true;
+            return;
+        }
+        model.Username = me.UserName;
+        model.City = me.City;
+        model.Bio = me.Bio;
+        currentAvatarUrl = UserApi.GetAvatarUrl(me.AvatarUrl);
+    }
+
+    private async Task OnAvatarSelected(InputFileChangeEventArgs e)
+    {
+        avatarError = null;
+        var file = e.File;
+        if (!AllowedTypes.Contains(file.ContentType))
+        {
+            avatarError = "Dozwolone formaty: JPG, PNG, WebP.";
+            return;
+        }
+        if (file.Size > MaxAvatarBytes)
+        {
+            avatarError = "Zdjęcie jest za duże (maks. 2 MB).";
+            return;
+        }
+        using var stream = file.OpenReadStream(MaxAvatarBytes);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        pendingBytes = ms.ToArray();
+        pendingFileName = file.Name;
+        pendingContentType = file.ContentType;
+        pendingPreview = $"data:{file.ContentType};base64,{Convert.ToBase64String(pendingBytes)}";
+        removeAvatar = false;
+    }
+
+    private void RemoveAvatar()
+    {
+        pendingPreview = null;
+        pendingBytes = null;
+        removeAvatar = currentAvatarUrl is not null;
+        avatarError = null;
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        message = null;
+
+        var error = await UserApi.UpdateProfileAsync(new UpdateProfileRequest
+        {
+            City = model.City,
+            Bio = model.Bio
+        });
+
+        if (error == null && pendingBytes is not null)
+        {
+            error = await UserApi.UploadAvatarAsync(pendingBytes, pendingFileName!, pendingContentType!);
+            if (error == null)
+            {
+                pendingBytes = null;
+                pendingPreview = null;
+            }
+        }
+        else if (error == null && removeAvatar)
+        {
+            error = await UserApi.DeleteAvatarAsync();
+        }
+
+        saving = false;
+        if (error != null)
+        {
+            message = error;
+            messageIsError = true;
+            return;
+        }
+
+        // Odśwież dane z bazy (nowy adres zdjęcia itd.).
+        var me = await UserApi.GetMyProfileAsync();
+        currentAvatarUrl = UserApi.GetAvatarUrl(me?.AvatarUrl);
+        removeAvatar = false;
+        message = "✔ Zmiany zostały zapisane.";
+        messageIsError = false;
+    }
+
+    private void Cancel() => Nav.NavigateTo($"/user/{Uri.EscapeDataString(model.Username)}");
+}
