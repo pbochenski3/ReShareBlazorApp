@@ -1,0 +1,50 @@
+@page "/admin"
+@layout AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@attribute [Authorize(Roles = "Admin")]
+@inject AdminApiService adminApi
+
+<h1 class="admin-title">Dashboard</h1>
+
+@if (loading)
+{
+    <p class="admin-muted">Ładowanie...</p>
+}
+else if (stats is null)
+{
+    <div class="admin-alert">Nie udało się pobrać statystyk. Sprawdź, czy API działa.</div>
+}
+else
+{
+    <div class="admin-cards">
+        <div class="admin-card">
+            <span class="admin-card-label">Użytkownicy</span>
+            <strong class="admin-card-value">@stats.TotalUsers</strong>
+        </div>
+        <div class="admin-card">
+            <span class="admin-card-label">Aktywni użytkownicy</span>
+            <strong class="admin-card-value">@stats.ActiveUsers</strong>
+        </div>
+        <div class="admin-card">
+            <span class="admin-card-label">Ogłoszenia</span>
+            <strong class="admin-card-value">@stats.TotalProducts</strong>
+        </div>
+        <div class="admin-card">
+            <span class="admin-card-label">Nowe ogłoszenia (7 dni)</span>
+            <strong class="admin-card-value">@stats.ProductsLast7Days</strong>
+        </div>
+    </div>
+}
+
+@code {
+    private AdminStatsDTO? stats;
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        stats = await adminApi.GetStatsAsync();
+        loading = false;
+    }
+}

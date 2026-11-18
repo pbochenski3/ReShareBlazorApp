@@ -1,0 +1,104 @@
+@page "/admin/products"
+@layout AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@attribute [Authorize(Roles = "Admin")]
+@inject AdminApiService adminApi
+
+<h1 class="admin-title">Ogłoszenia</h1>
+
+<input class="admin-search"
+       placeholder="Szukaj po nazwie, mieście lub autorze..."
+       @bind="search"
+       @bind:event="oninput" />
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="admin-alert">@message</div>
+}
+
+@if (products is null)
+{
+    <p class="admin-muted">Ładowanie...</p>
+}
+else if (!Filtered.Any())
+{
+    <p class="admin-muted">Brak ogłoszeń.</p>
+}
+else
+{
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Nazwa</th>
+                    <th>Kategoria</th>
+                    <th>Typ</th>
+                    <th>Cena</th>
+                    <th>Miasto</th>
+                    <th>Autor</th>
+                    <th>Dodano</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Filtered)
+                {
+                    <tr>
+                        <td>@p.ProductId</td>
+                        <td><a href="/details/@p.ProductId">@p.Name</a></td>
+                        <td>@p.Category</td>
+                        <td>@p.Type</td>
+                        <td>@p.Price.ToString("F2") zł</td>
+                        <td>@p.City</td>
+                        <td>@p.AddedBy</td>
+                        <td>@p.AddedAt.ToString("dd.MM.yyyy")</td>
+                        <td class="admin-actions">
+                            @if (confirmId == p.ProductId)
+                            {
+                                <button class="admin-btn admin-btn-danger" @onclick="() => Delete(p)">Potwierdź</button>
+                                <button class="admin-btn" @onclick="() => confirmId = null">Anuluj</button>
+                            }
+                            else
+                            {
+                                <button class="admin-btn admin-btn-danger" @onclick="() => confirmId = p.ProductId">Usuń</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<ProductDTO>? products;
+    private string search = "";
+    private string? message;
+    private int? confirmId;
+
+    private IEnumerable<ProductDTO> Filtered =>
+        products!.Where(p =>
+            string.IsNullOrWhiteSpace(search)
+            || p.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || p.City.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || p.AddedBy.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await adminApi.GetProductsAsync();
+    }
+
+    private async Task Delete(ProductDTO product)
+    {
+        message = null;
+        confirmId = null;
+        var ok = await adminApi.DeleteProductAsync(product.ProductId);
+        if (ok)
+            products!.Remove(product);
+        else
+            message = "Nie udało się usunąć ogłoszenia.";
+    }
+}
