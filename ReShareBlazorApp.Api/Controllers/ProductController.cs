@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Security.Claims;
@@ -33,9 +34,25 @@ namespace ReShareBlazorApp.Api.Controllers
             return Ok();
         }
         [HttpGet]
-        public async Task<ActionResult<List<ProductDTO>>> GetProducts([FromQuery] ProductRequest request)
+        public async Task<ActionResult<List<ProductDTO>>> GetProducts(
+        [FromQuery] int number = 5,
+        [FromQuery] ProductCategory? category = null,
+        [FromQuery] string? q = null,
+        [FromQuery] string? lokalizacja = null,
+        [FromQuery] decimal? cenaMin = null,
+        [FromQuery] decimal? cenaMax = null,
+        [FromQuery] string? sortowanie = null)
         {
-            var products = await _productService.GetProductsAsync(request.Number, request.Category);
+            var products = await _productService.GetProductsAsync(
+                number,
+                category,
+                q,
+                lokalizacja,
+                cenaMin,
+                cenaMax,
+                sortowanie
+            );
+
             return Ok(products);
         }
         [HttpGet("{id:int}")]
