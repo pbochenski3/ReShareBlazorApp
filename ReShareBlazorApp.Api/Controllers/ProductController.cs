@@ -21,9 +21,8 @@ namespace ReShareBlazorApp.Api.Controllers
         public async Task<IActionResult> AddProduct(ProductDTO product)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null)
+            if (!int.TryParse(userId, out var id))
                 return Unauthorized();
-            int id = int.Parse(userId);
             product.UserId = id;
             var result = await _productService.AddProductAsync(product);
             if (!result)
@@ -32,6 +31,37 @@ namespace ReShareBlazorApp.Api.Controllers
             }
             return Ok();
         }
+
+        [Authorize]
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> UpdateProduct(int id, ProductUpdateDTO product)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            var result = await _productService.UpdateProductAsync(id, currentUserId, product);
+            if (!result)
+                return NotFound();
+
+            return NoContent();
+        }
+
+        [Authorize]
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> DeleteProduct(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            var result = await _productService.DeleteProductAsync(id, currentUserId);
+            if (!result)
+                return NotFound();
+
+            return NoContent();
+        }
+
         [HttpGet]
         public async Task<ActionResult<List<ProductDTO>>> GetProducts([FromQuery] ProductRequest request)
         {

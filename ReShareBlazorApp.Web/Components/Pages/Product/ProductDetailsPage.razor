@@ -1,7 +1,12 @@
 ﻿@page "/details/{ProductId:int}"
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Web.ApiServices
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @inject ProductApiService productApi
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject NotificationService notify
 
 <div class="details-page">
     <div class="details-container">
@@ -115,6 +120,16 @@
                         <a href="/" class="details-primary-button">
                             Przeglądaj inne ogłoszenia
                         </a>
+
+                        @if (IsOwner)
+                        {
+                            <a href="/edit-product/@Product.ProductId" class="details-secondary-button">
+                                Edytuj ogłoszenie
+                            </a>
+                            <button type="button" class="details-danger-button" @onclick="OpenDeleteDialog">
+                                Usuń ogłoszenie
+                            </button>
+                        }
                     </div>
 
                     <div class="details-safety">
@@ -130,6 +145,26 @@
             </div>
         }
 
+        @if (IsDeleteDialogVisible)
+        {
+            <div class="delete-dialog-backdrop">
+                <div class="delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
+                    <div class="delete-dialog-icon">!</div>
+                    <h2 id="delete-dialog-title">Usunąć ogłoszenie?</h2>
+                    <p>Tej operacji nie można cofnąć. Ogłoszenie zostanie trwale usunięte.</p>
+
+                    <div class="delete-dialog-actions">
+                        <button type="button" class="delete-dialog-cancel" @onclick="CloseDeleteDialog" disabled="@IsDeleting">
+                            Anuluj
+                        </button>
+                        <button type="button" class="delete-dialog-confirm" @onclick="ConfirmDeleteAsync" disabled="@IsDeleting">
+                            @(IsDeleting ? "Usuwanie..." : "Usuń ogłoszenie")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+
     </div>
 </div>
 
@@ -140,13 +175,56 @@
     public ProductDTO? Product { get; set; }
 
     public bool IsLoading { get; set; } = true;
+    private bool IsOwner { get; set; }
+    private bool IsDeleteDialogVisible { get; set; }
+    private bool IsDeleting { get; set; }
 
     protected override async Task OnParametersSetAsync()
     {
         IsLoading = true;
 
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var currentUserId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? authState.User.FindFirst("nameid")?.Value;
+
         Product = await productApi.GetProductByIdAsync(ProductId);
+        IsOwner = Product != null
+            && int.TryParse(currentUserId, out var userId)
+            && Product.UserId == userId;
 
         IsLoading = false;
+    }
+
+    private void OpenDeleteDialog()
+    {
+        if (Product == null || !IsOwner)
+            return;
+
+        IsDeleteDialogVisible = true;
+    }
+
+    private void CloseDeleteDialog()
+    {
+        if (!IsDeleting)
+            IsDeleteDialogVisible = false;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (Product == null || !IsOwner || IsDeleting)
+            return;
+
+        IsDeleting = true;
+
+        var result = await productApi.DeleteProductAsync(Product.ProductId);
+        notify.AddNotification("Ogłoszenie", result);
+
+        if (result == "Ogłoszenie zostało usunięte!")
+            Navigation.NavigateTo("/");
+        else
+        {
+            IsDeleting = false;
+            IsDeleteDialogVisible = false;
+        }
     }
 }

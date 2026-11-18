@@ -31,6 +31,55 @@ namespace ReShareBlazorApp.Api.Repositories
                 return false;
             }
         }
+        public async Task<bool> UpdateProductAsync(int productId, int userId, ProductUpdateDTO product)
+        {
+            try
+            {
+                var existingProduct = await _context.Products
+                    .FirstOrDefaultAsync(p => p.Id == productId && p.UserId == userId);
+
+                if (existingProduct == null)
+                    return false;
+
+                existingProduct.Name = product.Name;
+                existingProduct.Description = product.Description;
+                existingProduct.Price = product.Price;
+                existingProduct.ExpiresAt = product.ExpiresAt;
+                existingProduct.Type = product.Type;
+                existingProduct.Category = product.Category;
+                existingProduct.City = product.City;
+
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ProductRepository] Error occurred in UpdateProductAsync");
+                return false;
+            }
+        }
+
+        public async Task<bool> DeleteProductAsync(int productId, int userId)
+        {
+            try
+            {
+                var product = await _context.Products
+                    .FirstOrDefaultAsync(p => p.Id == productId && p.UserId == userId);
+
+                if (product == null)
+                    return false;
+
+                _context.Products.Remove(product);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ProductRepository] Error occurred in DeleteProductAsync");
+                return false;
+            }
+        }
+
         public async Task<List<Product>> GetProducts(
             int number = 5,
             ProductCategory? category = null

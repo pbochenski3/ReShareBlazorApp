@@ -31,6 +31,17 @@ namespace ReShareBlazorApp.Api.Services
             var result = await _productRepository.AddProductAsync(productModel);
             return result;
         }
+
+        public async Task<bool> UpdateProductAsync(int productId, int userId, ProductUpdateDTO product)
+        {
+            return await _productRepository.UpdateProductAsync(productId, userId, product);
+        }
+
+        public async Task<bool> DeleteProductAsync(int productId, int userId)
+        {
+            return await _productRepository.DeleteProductAsync(productId, userId);
+        }
+
         public async Task<List<ProductDTO>> GetProductsAsync
             (int number = 5,
             ProductCategory? category = null)
@@ -58,6 +69,7 @@ namespace ReShareBlazorApp.Api.Services
             var product = await _productRepository.GetProductById(id);
             return new ProductDTO
             {
+                ProductId = product.Id,
                 Name = product.Name,
                 Description = product.Description,
                 Price = product.Price,
@@ -66,6 +78,7 @@ namespace ReShareBlazorApp.Api.Services
                 AddedAt = product.AddedAt,
                 ExpiresAt = product.ExpiresAt,
                 Type = product.Type,
+                UserId = product.UserId,
                 AddedBy = product.user.UserName ?? "",
             };
         }
