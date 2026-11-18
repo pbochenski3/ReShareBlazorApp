@@ -9,7 +9,6 @@
 
 @inject ReportApiService reportApi
 @inject NotificationService notify
-@inject IJSRuntime JS
 
 <PageTitle>Zgłoszenia – ODDAJ DALEJ</PageTitle>
 
@@ -102,14 +101,14 @@
                                     <button type="button"
                                             class="home-btn home-btn-outline"
                                             disabled="@isBusy"
-                                            @onclick="() => DismissReport(report)">
+                                            @onclick="() => AskDismiss(report)">
                                         Usuń zgłoszenie (ogłoszenie zostaje)
                                     </button>
 
                                     <button type="button"
                                             class="home-btn home-btn-danger"
                                             disabled="@isBusy"
-                                            @onclick="() => DeleteProduct(report)">
+                                            @onclick="() => AskDeleteProduct(report)">
                                         Usuń ogłoszenie
                                     </button>
                                 </div>
@@ -124,12 +123,58 @@
     </div>
 </section>
 
+@if (pendingReport != null)
+{
+    <div class="confirm-backdrop" @onclick="CancelConfirm">
+        <div class="confirm-modal"
+             role="dialog"
+             aria-modal="true"
+             @onclick:stopPropagation="true">
+
+            <h3>@(pendingDeleteProduct ? "Usunąć ogłoszenie?" : "Usunąć zgłoszenie?")</h3>
+
+            @if (pendingDeleteProduct)
+            {
+                <p>
+                    Ogłoszenie <strong>„@pendingReport.ProductName”</strong> zostanie trwale usunięte
+                    razem ze wszystkimi zgłoszeniami tego ogłoszenia. Tej operacji nie można cofnąć.
+                </p>
+            }
+            else
+            {
+                <p>
+                    Zgłoszenie zostanie usunięte, a ogłoszenie
+                    <strong>„@pendingReport.ProductName”</strong> zostanie na stronie.
+                </p>
+            }
+
+            <div class="confirm-actions">
+                <button type="button"
+                        class="home-btn home-btn-outline"
+                        disabled="@isBusy"
+                        @onclick="CancelConfirm">
+                    Anuluj
+                </button>
+
+                <button type="button"
+                        class="home-btn @(pendingDeleteProduct ? "home-btn-danger" : "home-btn-primary")"
+                        disabled="@isBusy"
+                        @onclick="ConfirmAction">
+                    @(pendingDeleteProduct ? "Usuń ogłoszenie" : "Usuń zgłoszenie")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<ReportDTO> reports = new();
     private bool isLoading = true;
     private bool loadFailed;
     private bool isBusy;
     private int? expandedReportId;
+    private ReportDTO? pendingReport;
+    private bool pendingDeleteProduct;
 
     protected override async Task OnInitializedAsync()
     {
@@ -149,14 +194,40 @@
         expandedReportId = expandedReportId == reportId ? null : reportId;
     }
 
-    private async Task DismissReport(ReportDTO report)
+    private void AskDismiss(ReportDTO report)
     {
-        var confirmed = await JS.InvokeAsync<bool>(
-            "confirm",
-            "Usunąć to zgłoszenie? Ogłoszenie zostanie na stronie.");
-        if (!confirmed)
+        pendingReport = report;
+        pendingDeleteProduct = false;
+    }
+
+    private void AskDeleteProduct(ReportDTO report)
+    {
+        pendingReport = report;
+        pendingDeleteProduct = true;
+    }
+
+    private void CancelConfirm()
+    {
+        if (isBusy)
+            return;
+        pendingReport = null;
+    }
+
+    private async Task ConfirmAction()
+    {
+        if (pendingReport == null)
             return;
 
+        if (pendingDeleteProduct)
+            await DeleteProduct(pendingReport);
+        else
+            await DismissReport(pendingReport);
+
+        pendingReport = null;
+    }
+
+    private async Task DismissReport(ReportDTO report)
+    {
         isBusy = true;
         var result = await reportApi.DeleteReportAsync(report.ReportId);
         isBusy = false;
@@ -175,12 +246,6 @@
 
     private async Task DeleteProduct(ReportDTO report)
     {
-        var confirmed = await JS.InvokeAsync<bool>(
-            "confirm",
-            $"Na pewno usunąć ogłoszenie „{report.ProductName}”? Zostaną też usunięte wszystkie zgłoszenia tego ogłoszenia.");
-        if (!confirmed)
-            return;
-
         isBusy = true;
         var result = await reportApi.DeleteReportedProductAsync(report.ReportId);
         isBusy = false;

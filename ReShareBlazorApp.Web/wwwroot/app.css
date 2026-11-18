@@ -3364,3 +3364,74 @@ textarea.details-report-input {
         flex-direction: column;
     }
 }
+
+/* ---------- Okienko potwierdzenia ---------- */
+.confirm-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, .55);
+    animation: confirm-fade .15s ease-out;
+}
+
+.confirm-modal {
+    width: min(440px, 100%);
+    padding: 28px;
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    animation: confirm-pop .18s ease-out;
+}
+
+    .confirm-modal h3 {
+        margin: 0 0 10px;
+        font-size: 20px;
+    }
+
+    .confirm-modal p {
+        margin: 0;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+    }
+
+    .confirm-modal strong {
+        color: var(--ink);
+    }
+
+.confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+@keyframes confirm-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes confirm-pop {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .confirm-actions {
+        flex-direction: column-reverse;
+    }
+
+        .confirm-actions .home-btn {
+            width: 100%;
+        }
+}
