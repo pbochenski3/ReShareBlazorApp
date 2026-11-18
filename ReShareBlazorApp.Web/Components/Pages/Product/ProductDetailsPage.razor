@@ -37,6 +37,31 @@
 
                 <main class="details-main">
 
+                    @if (Product.ImageIds.Count > 0)
+                    {
+                        <div class="details-gallery">
+                            <div class="details-gallery-main">
+                                <img src="@GetImageUrl(Product.ImageIds[selectedImageIndex])" alt="@Product.Name" />
+                            </div>
+
+                            @if (Product.ImageIds.Count > 1)
+                            {
+                                <div class="details-gallery-thumbs">
+                                    @for (var i = 0; i < Product.ImageIds.Count; i++)
+                                    {
+                                        var index = i;
+                                        <button type="button"
+                                                class="details-gallery-thumb @(index == selectedImageIndex ? "active" : "")"
+                                                aria-label="Pokaż zdjęcie @(index + 1)"
+                                                @onclick="() => selectedImageIndex = index">
+                                            <img src="@GetImageUrl(Product.ImageIds[index])" alt="Zdjęcie @(index + 1)" loading="lazy" />
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+
                     <div class="details-category">
                         @Product.Category
                     </div>
@@ -203,6 +228,10 @@
 
     public bool IsLoading { get; set; } = true;
 
+    private int selectedImageIndex;
+
+    private static string GetImageUrl(int imageId) => $"/images/{imageId}";
+
     private bool isReporting;
     private bool isSendingReport;
     private ReportModel reportModel = new();
@@ -210,6 +239,7 @@
     protected override async Task OnParametersSetAsync()
     {
         IsLoading = true;
+        selectedImageIndex = 0;
         isReporting = false;
         reportModel = new ReportModel();
 

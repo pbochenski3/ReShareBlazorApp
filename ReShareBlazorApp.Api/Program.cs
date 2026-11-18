@@ -56,6 +56,7 @@ builder.Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddSingleton<IImageStorage, DiskImageStorage>();
 builder.Services.AddScoped<IReportService, ReportService>();
 //Repositories
 builder.Services.AddScoped<IProductRepository, ProductRepository>();

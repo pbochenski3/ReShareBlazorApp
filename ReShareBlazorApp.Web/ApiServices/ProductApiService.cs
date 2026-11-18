@@ -15,12 +15,12 @@ namespace ReShareBlazorApp.Web.ApiServices
             _httpClient = httpClient;
             _authStateProvider = authStateProvider;
         }
-        public async Task<string> AddProductAsync(ProductModel productModel)
+        public async Task<(bool Success, string Message)> AddProductAsync(ProductModel productModel)
         {
             var authState = await _authStateProvider.GetAuthenticationStateAsync();
             var token = authState.User.FindFirst("access_token")?.Value;
             if (string.IsNullOrEmpty(token))
-                return "Brak tokenu uwierzytelniającego!";
+                return (false, "Brak tokenu uwierzytelniającego!");
 
             var product = new ProductDTO
             {
@@ -30,7 +30,15 @@ namespace ReShareBlazorApp.Web.ApiServices
                 ExpiresAt = productModel.ExpiresAt,
                 Category = productModel.Category,
                 City = productModel.City,
-                Type = productModel.Type
+                Type = productModel.Type,
+                Images = productModel.Images
+                    .Select(i => new ProductImageDTO
+                    {
+                        FileName = i.FileName,
+                        ContentType = i.ContentType,
+                        Data = i.Data
+                    })
+                    .ToList()
             };
             using var request = new HttpRequestMessage(
                 HttpMethod.Post,
@@ -41,8 +49,16 @@ namespace ReShareBlazorApp.Web.ApiServices
             request.Content = JsonContent.Create(product);
             var response = await _httpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode)
-                return "Nie udało się dodać produkut!";
-            return "Produkt dodany pomyślnie!";
+            {
+                // API zwraca komunikat walidacji zdjęć w treści odpowiedzi 400
+                var error = response.StatusCode == System.Net.HttpStatusCode.BadRequest
+                    ? (await response.Content.ReadAsStringAsync()).Trim('"')
+                    : "";
+                return (false, string.IsNullOrWhiteSpace(error)
+                    ? "Nie udało się dodać produktu!"
+                    : error);
+            }
+            return (true, "Produkt dodany pomyślnie!");
         }
         public async Task<List<ProductDTO>> GetProductsAsync
             (int number = 5,

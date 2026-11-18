@@ -12,8 +12,13 @@ using ReShareBlazorApp.Api.Date;
 namespace ReShareBlazorApp.Api.Migrations
 {
     [DbContext(typeof(ReshareDbContext))]
+<<<<<<<< HEAD:ReShareBlazorApp.Api/Migrations/20261118120410_Init.Designer.cs
     [Migration("20261118120410_Init")]
     partial class Init
+========
+    [Migration("20261118082614_Migracja")]
+    partial class Migracja
+>>>>>>>> origin/PBiel:ReShareBlazorApp.Api/Migrations/20261118082614_Migracja.Designer.cs
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

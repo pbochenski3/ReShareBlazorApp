@@ -91,8 +91,53 @@
                 <ValidationMessage For="@(() => productModel.Category)" />
             </div>
 
-            <button type="submit" class="product-submit">
-                Dodaj produkt
+            <div class="product-field">
+                <label>Zdjęcia (opcjonalnie, maks. @MaxImages)</label>
+
+                <label class="product-upload @(productModel.Images.Count >= MaxImages ? "disabled" : "")">
+                    <InputFile OnChange="OnImagesSelected"
+                               accept="image/jpeg,image/png,image/webp"
+                               multiple
+                               disabled="@(productModel.Images.Count >= MaxImages)"
+                               class="product-upload-input" />
+                    <span>📷 Wybierz zdjęcia</span>
+                </label>
+                <small class="product-image-hint">
+                    JPG, PNG lub WEBP. Pierwsze zdjęcie będzie zdjęciem głównym.
+                </small>
+
+                @if (!string.IsNullOrEmpty(imageError))
+                {
+                    <div class="product-image-error">@imageError</div>
+                }
+
+                @if (productModel.Images.Count > 0)
+                {
+                    <div class="product-images">
+                        @for (var i = 0; i < productModel.Images.Count; i++)
+                        {
+                            var index = i;
+                            var image = productModel.Images[index];
+                            <div class="product-image-item">
+                                <img src="@image.PreviewSrc" alt="@image.FileName" />
+                                @if (index == 0)
+                                {
+                                    <span class="product-image-main">Główne</span>
+                                }
+                                <button type="button"
+                                        class="product-image-remove"
+                                        aria-label="Usuń zdjęcie"
+                                        @onclick="() => RemoveImage(index)">
+                                    ×
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <button type="submit" class="product-submit" disabled="@isSubmitting">
+                @(isSubmitting ? "Dodawanie..." : "Dodaj produkt")
             </button>
         </div>
     </div>
@@ -142,6 +187,16 @@ else
     [Parameter]
     public bool isSelected { get; set; }
     public ProductModel productModel { get; set; } = new();
+
+    private const int MaxImages = 5;
+    private const long MaxOriginalFileSize = 10 * 1024 * 1024; // plik wybrany przez użytkownika
+    private const long MaxProcessedFileSize = 3 * 1024 * 1024;  // po zmniejszeniu (limit API)
+    private const int MaxImageDimension = 1280;
+    private static readonly string[] AllowedImageTypes = { "image/jpeg", "image/png", "image/webp" };
+
+    private string? imageError;
+    private bool isSubmitting;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -165,10 +220,87 @@ else
     }
     public async Task AddProduct()
     {
-        await productService.AddProductAsync(productModel);
-        notify.AddNotification("Ogłoszenie", "Ogłoszenie pomyślnie utworzone!");
-        productModel = new ProductModel();
-        isSelected = false;
+        if (isSubmitting)
+            return;
+
+        isSubmitting = true;
+        try
+        {
+            var (success, message) = await productService.AddProductAsync(productModel);
+            if (success)
+            {
+                notify.AddNotification("Ogłoszenie", "Ogłoszenie pomyślnie utworzone!");
+                productModel = new ProductModel { City = productModel.City };
+                imageError = null;
+                isSelected = false;
+            }
+            else
+            {
+                notify.AddNotification("Ogłoszenie", message);
+            }
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+    private async Task OnImagesSelected(InputFileChangeEventArgs e)
+    {
+        imageError = null;
+        if (e.FileCount == 0)
+            return;
+
+        var freeSlots = MaxImages - productModel.Images.Count;
+        if (e.FileCount > freeSlots)
+        {
+            imageError = $"Możesz dodać maksymalnie {MaxImages} zdjęć.";
+        }
+
+        foreach (var file in e.GetMultipleFiles(e.FileCount).Take(Math.Max(freeSlots, 0)))
+        {
+            if (!AllowedImageTypes.Contains(file.ContentType))
+            {
+                imageError = $"Plik „{file.Name}” ma nieobsługiwany format (dozwolone: JPG, PNG, WEBP).";
+                continue;
+            }
+            if (file.Size > MaxOriginalFileSize)
+            {
+                imageError = $"Plik „{file.Name}” jest za duży (maks. 10 MB).";
+                continue;
+            }
+
+            try
+            {
+                // zmniejszamy zdjęcie w przeglądarce, żeby ograniczyć rozmiar zapisywany w bazie
+                var resized = await file.RequestImageFileAsync(
+                    "image/jpeg", MaxImageDimension, MaxImageDimension);
+
+                using var stream = resized.OpenReadStream(MaxProcessedFileSize);
+                using var memory = new MemoryStream();
+                await stream.CopyToAsync(memory);
+                var data = memory.ToArray();
+
+                productModel.Images.Add(new ProductImageModel
+                {
+                    FileName = file.Name,
+                    ContentType = "image/jpeg",
+                    Data = data,
+                    PreviewSrc = $"data:image/jpeg;base64,{Convert.ToBase64String(data)}"
+                });
+            }
+            catch
+            {
+                imageError = $"Nie udało się wczytać pliku „{file.Name}”.";
+            }
+        }
+    }
+    private void RemoveImage(int index)
+    {
+        if (index >= 0 && index < productModel.Images.Count)
+        {
+            productModel.Images.RemoveAt(index);
+            imageError = null;
+        }
     }
     private void ChooseType(ProductType type)
     {

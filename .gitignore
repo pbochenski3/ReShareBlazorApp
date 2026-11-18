@@ -362,5 +362,9 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
+# Zdjecia ogloszen zapisywane na dysku
+**/Uploads/
+FodyWeavers.xsd
+
 /ReShareBlazorApp.Api/Avatars
 ReShareBlazorApp.Api/Uploads

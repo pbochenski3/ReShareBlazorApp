@@ -18,5 +18,6 @@ namespace ReShareBlazorApp.Api.Date
         public required string City { get; set; }
         public int UserId { get; set; }
         public User user { get; set; }
+        public List<ProductImage> Images { get; set; } = new();
     }
 }

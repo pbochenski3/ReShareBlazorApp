@@ -58,6 +58,25 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapAuthEndpoints();
+// Zdjęcia ogłoszeń pobierane z API i serwowane pod tym samym adresem co aplikacja
+app.MapGet("/images/{id:int}", async (
+    int id,
+    HttpContext context,
+    IHttpClientFactory httpClientFactory,
+    CancellationToken cancellationToken) =>
+{
+    var client = httpClientFactory.CreateClient("API");
+    using var response = await client.GetAsync($"api/product/image/{id}", cancellationToken);
+    if (!response.IsSuccessStatusCode)
+        return Results.NotFound();
+
+    var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+    var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+
+    context.Response.Headers.CacheControl = "public,max-age=86400";
+    context.Response.Headers.XContentTypeOptions = "nosniff";
+    return Results.File(bytes, contentType);
+});
 app.MapAvatarEndpoints();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

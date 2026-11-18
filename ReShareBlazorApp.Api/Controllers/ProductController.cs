@@ -25,6 +25,9 @@ namespace ReShareBlazorApp.Api.Controllers
                 return Unauthorized();
             int id = int.Parse(userId);
             product.UserId = id;
+            var imagesError = _productService.ValidateImages(product.Images);
+            if (imagesError != null)
+                return BadRequest(imagesError);
             var result = await _productService.AddProductAsync(product);
             if (!result)
             {
@@ -47,6 +50,17 @@ namespace ReShareBlazorApp.Api.Controllers
                 return NotFound();
 
             return Ok(product);
+        }
+        [HttpGet("image/{id:int}")]
+        [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)]
+        public async Task<IActionResult> GetImage(int id)
+        {
+            var image = await _productService.GetImageAsync(id);
+
+            if (image == null)
+                return NotFound();
+
+            return File(image.Data, image.ContentType);
         }
         [HttpGet("searchLocations")]
         public async Task<ActionResult<List<LocationDTO>>> SearchLocations(
