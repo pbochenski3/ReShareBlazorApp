@@ -50,6 +50,41 @@ namespace ReShareBlazorApp.Api.Services
                 };
             }
 
+            // Walidacja nazwy użytkownika przez Identity (dozwolone znaki itp.)
+            var tempUserForValidation = new User { UserName = request.UserName, Email = request.Email };
+            if (_userManager.UserValidators != null)
+            {
+                foreach (var validator in _userManager.UserValidators)
+                {
+                    var validationResult = await validator.ValidateAsync(_userManager, tempUserForValidation);
+                    if (!validationResult.Succeeded)
+                    {
+                        var errors = string.Join(" ", validationResult.Errors.Select(e => e.Description));
+                        return new RegisterResponse
+                        {
+                            Message = $"Nieprawidłowa nazwa użytkownika: {errors}"
+                        };
+                    }
+                }
+            }
+
+            // Walidacja hasła przez Identity
+            if (_userManager.PasswordValidators != null)
+            {
+                foreach (var validator in _userManager.PasswordValidators)
+                {
+                    var validationResult = await validator.ValidateAsync(_userManager, tempUserForValidation, request.Password);
+                    if (!validationResult.Succeeded)
+                    {
+                        var errors = string.Join(" ", validationResult.Errors.Select(e => e.Description));
+                        return new RegisterResponse
+                        {
+                            Message = $"Nieprawidłowe hasło: {errors}"
+                        };
+                    }
+                }
+            }
+
             // Usuń poprzednie oczekujące rejestracje dla tego emaila
             var oldPending = await _dbContext.PendingRegistrations
                 .Where(p => p.Email == request.Email)

@@ -1,6 +1,7 @@
 ﻿@page "/register"
 @inject AuthApiService authApi
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Models
@@ -89,6 +90,7 @@ else
                 {
                     var index = i;
                     <input type="text"
+                           inputmode="numeric"
                            maxlength="1"
                            class="verify-code-digit"
                            value="@GetDigit(index)"
@@ -133,6 +135,14 @@ else
 
     private string GetDigit(int index) => digits[index];
 
+    private async Task FocusDigit(int index)
+    {
+        if (index >= 0 && index < 6)
+        {
+            await JS.InvokeVoidAsync("eval", $"document.getElementById('digit-{index}')?.focus()");
+        }
+    }
+
     private async Task OnDigitInput(int index, ChangeEventArgs e)
     {
         var value = e.Value?.ToString() ?? "";
@@ -145,31 +155,36 @@ else
             {
                 digits[i] = i < cleaned.Length ? cleaned[i].ToString() : "";
             }
+            var lastFilledIndex = Math.Min(cleaned.Length, 5);
             StateHasChanged();
+            await FocusDigit(lastFilledIndex);
             return;
         }
 
         if (value.Length == 1 && char.IsDigit(value[0]))
         {
             digits[index] = value;
+            StateHasChanged();
+            // Automatycznie przejdź do następnego pola
             if (index < 5)
             {
-                // Przesuń focus na następne pole (via JS interop nie jest konieczne w tym podejściu)
+                await FocusDigit(index + 1);
             }
         }
         else
         {
             digits[index] = "";
+            StateHasChanged();
         }
-        StateHasChanged();
     }
 
-    private void OnDigitKeyDown(int index, KeyboardEventArgs e)
+    private async Task OnDigitKeyDown(int index, KeyboardEventArgs e)
     {
         if (e.Key == "Backspace" && string.IsNullOrEmpty(digits[index]) && index > 0)
         {
             digits[index - 1] = "";
             StateHasChanged();
+            await FocusDigit(index - 1);
         }
     }
 
@@ -194,7 +209,9 @@ else
             {
                 pendingEmail = result.Email ?? registerModel.Email;
                 showVerification = true;
+                Message = ""; // Wyczyść komunikat błędu z kroku 1
             }
+            // Jeśli RequiresEmailConfirmation == false, to błąd — zostajemy na kroku 1 z komunikatem
         }
         finally
         {
