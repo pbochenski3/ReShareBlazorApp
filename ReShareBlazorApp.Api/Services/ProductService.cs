@@ -9,6 +9,7 @@ namespace ReShareBlazorApp.Api.Services
 {
     public class ProductService : IProductService
     {
+        private const string ImageFolder = "products";
         public const int MaxImagesPerProduct = 5;
         public const int MaxImageSizeBytes = 3 * 1024 * 1024;
 
@@ -35,7 +36,7 @@ namespace ReShareBlazorApp.Api.Services
                         return false;
                     }
 
-                    var storedFileName = await _imageStorage.SaveAsync(image.Data, GetExtension(contentType));
+                    var storedFileName = await _imageStorage.SaveAsync(image.Data, GetExtension(contentType), ImageFolder);
                     savedFiles.Add(storedFileName);
                     images.Add(new ProductImage
                     {
@@ -83,7 +84,15 @@ namespace ReShareBlazorApp.Api.Services
 
         public async Task<bool> DeleteProductAsync(int productId, int userId)
         {
-            return await _productRepository.DeleteProductAsync(productId, userId);
+            var product = await _productRepository.GetProductById(productId);
+            if (product == null || product.UserId != userId)
+                return false;
+
+            var deleted = await _productRepository.DeleteProductAsync(productId, userId);
+            if (deleted)
+                DeleteFiles(product.Images.Select(image => image.StoredFileName));
+
+            return deleted;
         }
 
         public async Task<List<ProductDTO>> GetProductsAsync
@@ -111,13 +120,15 @@ namespace ReShareBlazorApp.Api.Services
                 .ToList();
             return productsDtoList;
         }
-        public async Task<ProductDTO> GetProductById(int id)
+        public async Task<ProductDTO?> GetProductById(int id)
         {
             var product = await _productRepository.GetProductById(id);
+            if (product == null)
+                return null;
+
             var imageIds = await _productRepository.GetImageIdsAsync(new[] { id });
             return new ProductDTO
             {
-                ProductId = product.Id,
                 ImageIds = imageIds.GetValueOrDefault(id) ?? new List<int>(),
                 ProductId = product.Id,
                 UserId = product.UserId,
@@ -129,7 +140,6 @@ namespace ReShareBlazorApp.Api.Services
                 AddedAt = product.AddedAt,
                 ExpiresAt = product.ExpiresAt,
                 Type = product.Type,
-                UserId = product.UserId,
                 AddedBy = product.user.UserName ?? "",
             };
         }
@@ -144,7 +154,7 @@ namespace ReShareBlazorApp.Api.Services
             if (image == null)
                 return null;
 
-            var data = await _imageStorage.ReadAsync(image.StoredFileName);
+            var data = await _imageStorage.ReadAsync(image.StoredFileName, ImageFolder);
             if (data == null)
                 return null;
 
@@ -181,7 +191,7 @@ namespace ReShareBlazorApp.Api.Services
         private void DeleteFiles(IEnumerable<string> storedFileNames)
         {
             foreach (var storedFileName in storedFileNames)
-                _imageStorage.Delete(storedFileName);
+                _imageStorage.Delete(storedFileName, ImageFolder);
         }
         private static string GetExtension(string contentType) => contentType switch
         {

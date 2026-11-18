@@ -33,6 +33,6 @@
     public List<ProductDTO> ProductsList { get; set; } = new();
     protected override async Task OnInitializedAsync()
     {
-        ProductsList = await productApi.GetProductsAsync();
+        ProductsList = await productApi.GetProductsAsync() ?? new List<ProductDTO>();
     }
 }

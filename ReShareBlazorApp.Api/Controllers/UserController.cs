@@ -55,6 +55,8 @@ namespace ReShareBlazorApp.Api.Controllers
         public async Task<IActionResult> UploadAvatar(IFormFile file)
         {
             if (!TryGetUserId(out var userId)) return Unauthorized();
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "Nie wybrano pliku." });
             await using var stream = file.OpenReadStream();
             var error = await _userService.SetAvatarAsync(userId, stream, file.ContentType, file.Length);
             return error == null ? NoContent() : BadRequest(new { message = error });

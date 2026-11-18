@@ -10,38 +10,46 @@ namespace ReShareBlazorApp.Api.Services
         {
             var configured = configuration["ImageStorage:Path"];
             if (string.IsNullOrWhiteSpace(configured))
-                configured = Path.Combine("Uploads", "products");
+                configured = "Uploads";
 
             // ścieżka względna liczona od katalogu projektu Api, bezwzględna działa bez zmian
             _rootPath = Path.GetFullPath(configured, environment.ContentRootPath);
             Directory.CreateDirectory(_rootPath);
         }
 
-        public async Task<string> SaveAsync(byte[] data, string extension)
+        public async Task<string> SaveAsync(byte[] data, string extension, string folder)
         {
             var storedFileName = $"{Guid.NewGuid():N}{extension}";
-            await File.WriteAllBytesAsync(GetFullPath(storedFileName), data);
+            await File.WriteAllBytesAsync(GetFullPath(storedFileName, folder), data);
             return storedFileName;
         }
 
-        public async Task<byte[]?> ReadAsync(string storedFileName)
+        public async Task<byte[]?> ReadAsync(string storedFileName, string folder)
         {
-            var path = GetFullPath(storedFileName);
+            var path = GetFullPath(storedFileName, folder);
             if (!File.Exists(path))
                 return null;
 
             return await File.ReadAllBytesAsync(path);
         }
 
-        public void Delete(string storedFileName)
+        public void Delete(string storedFileName, string folder)
         {
-            var path = GetFullPath(storedFileName);
+            var path = GetFullPath(storedFileName, folder);
             if (File.Exists(path))
                 File.Delete(path);
         }
 
         // Path.GetFileName odcina ewentualne ścieżki (ochrona przed ../)
-        private string GetFullPath(string storedFileName)
-            => Path.Combine(_rootPath, Path.GetFileName(storedFileName));
+        public string GetFolderPath(string folder)
+        {
+            var safeFolder = Path.GetFileName(folder);
+            var path = Path.Combine(_rootPath, safeFolder);
+            Directory.CreateDirectory(path);
+            return path;
+        }
+
+        private string GetFullPath(string storedFileName, string folder)
+            => Path.Combine(GetFolderPath(folder), Path.GetFileName(storedFileName));
     }
 }

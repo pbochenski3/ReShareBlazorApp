@@ -11,16 +11,17 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject ProductApiService productService
 @inject NotificationService notify
-@if(isSelected)
+
+@if (isSelected)
 {
-<EditForm Model="@productModel" OnValidSubmit="SaveProduct">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-    <div class="product-page">
+    <EditForm Model="@productModel" OnValidSubmit="SaveProduct">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="product-page">
             <div class="product-form">
-        <button type="button" class="product-back" @onclick="() => isSelected = false">
-            ← Wróć do wyboru
-        </button>
+                <button type="button" class="product-back" @onclick="() => isSelected = false">
+                    ← Wróć do wyboru
+                </button>
                 <div class="product-header">
                     @if (productModel.Type == ProductType.Sell)
                     {
@@ -39,116 +40,118 @@
                     }
                 </div>
 
-            <div class="product-field">
-                <label>Nazwa produktu</label>
-                <InputText @bind-Value="productModel.Name"
-                           class="product-input"
-                           placeholder="Wpisz nazwę produktu" />
-                <ValidationMessage For="@(() => productModel.Name)" />
-            </div>
-
-            <div class="product-field">
-                <label>Cena</label>
-                <InputNumber @bind-Value="productModel.Price"
-                             class="product-input"
-                             placeholder="Wpisz cenę produktu" />
-                <ValidationMessage For="@(() => productModel.Price)" />
-            </div>
-
-            <div class="product-field">
-                <label>Opis</label>
-                <InputTextArea @bind-Value="productModel.Description"
+                <div class="product-field">
+                    <label>Nazwa produktu</label>
+                    <InputText @bind-Value="productModel.Name"
                                class="product-input"
-                               placeholder="Wpisz opis produktu" />
-                <ValidationMessage For="@(() => productModel.Description)" />
-            </div>
+                               placeholder="Wpisz nazwę produktu" />
+                    <ValidationMessage For="@(() => productModel.Name)" />
+                </div>
 
-            <div class="product-field">
-                <label>Data ważności</label>
-                <InputDate @bind-Value="productModel.ExpiresAt"
-                           class="product-input" />
-                <ValidationMessage For="@(() => productModel.ExpiresAt)" />
-            </div>
+                <div class="product-field">
+                    <label>Cena</label>
+                    <InputNumber @bind-Value="productModel.Price"
+                                 class="product-input"
+                                 placeholder="Wpisz cenę produktu" />
+                    <ValidationMessage For="@(() => productModel.Price)" />
+                </div>
 
-            <div class="product-field">
-                <label>Miejscowość</label>
-                <label class="product-input">
-                    @(string.IsNullOrEmpty(productModel.City)
-                        ? "Pobieranie miejscowości..."
-                        : productModel.City)
-                </label>
-                <ValidationMessage For="@(() => productModel.City)" />
-            </div>
+                <div class="product-field">
+                    <label>Opis</label>
+                    <InputTextArea @bind-Value="productModel.Description"
+                                   class="product-input"
+                                   placeholder="Wpisz opis produktu" />
+                    <ValidationMessage For="@(() => productModel.Description)" />
+                </div>
 
-            <div class="product-field">
-                <label>Kategoria produktu</label>
-                <InputSelect @bind-Value="productModel.Category"
-                             class="product-input">
-                    <option value="">Wybierz kategorię</option>
-                    @foreach (var category in Enum.GetValues<ProductCategory>())
-                    {
-                        <option value="@category">@GetCategoryName(category)</option>
-                    }
-                </InputSelect>
-                <ValidationMessage For="@(() => productModel.Category)" />
-            </div>
+                <div class="product-field">
+                    <label>Data ważności</label>
+                    <InputDate @bind-Value="productModel.ExpiresAt"
+                               class="product-input" />
+                    <ValidationMessage For="@(() => productModel.ExpiresAt)" />
+                </div>
 
-            <button type="submit" class="product-submit">
-                @(IsEditMode ? "Zapisz zmiany" : "Dodaj produkt")
-            </button>
-        </div>
-    </div>
-            <div class="product-field">
-                <label>Zdjęcia (opcjonalnie, maks. @MaxImages)</label>
+                <div class="product-field">
+                    <label>Miejscowość</label>
+                    <label class="product-input">
+                        @(string.IsNullOrEmpty(productModel.City)
+                            ? "Pobieranie miejscowości..."
+                            : productModel.City)
+                    </label>
+                    <ValidationMessage For="@(() => productModel.City)" />
+                </div>
 
-                <label class="product-upload @(productModel.Images.Count >= MaxImages ? "disabled" : "")">
-                    <InputFile OnChange="OnImagesSelected"
-                               accept="image/jpeg,image/png,image/webp"
-                               multiple
-                               disabled="@(productModel.Images.Count >= MaxImages)"
-                               class="product-upload-input" />
-                    <span>📷 Wybierz zdjęcia</span>
-                </label>
-                <small class="product-image-hint">
-                    JPG, PNG lub WEBP. Pierwsze zdjęcie będzie zdjęciem głównym.
-                </small>
-
-                @if (!string.IsNullOrEmpty(imageError))
-                {
-                    <div class="product-image-error">@imageError</div>
-                }
-
-                @if (productModel.Images.Count > 0)
-                {
-                    <div class="product-images">
-                        @for (var i = 0; i < productModel.Images.Count; i++)
+                <div class="product-field">
+                    <label>Kategoria produktu</label>
+                    <InputSelect @bind-Value="productModel.Category"
+                                 class="product-input">
+                        <option value="">Wybierz kategorię</option>
+                        @foreach (var category in Enum.GetValues<ProductCategory>())
                         {
-                            var index = i;
-                            var image = productModel.Images[index];
-                            <div class="product-image-item">
-                                <img src="@image.PreviewSrc" alt="@image.FileName" />
-                                @if (index == 0)
-                                {
-                                    <span class="product-image-main">Główne</span>
-                                }
-                                <button type="button"
-                                        class="product-image-remove"
-                                        aria-label="Usuń zdjęcie"
-                                        @onclick="() => RemoveImage(index)">
-                                    ×
-                                </button>
-                            </div>
+                            <option value="@category">@GetCategoryName(category)</option>
                         }
-                    </div>
-                }
-            </div>
+                    </InputSelect>
+                    <ValidationMessage For="@(() => productModel.Category)" />
+                </div>
 
-            <button type="submit" class="product-submit" disabled="@isSubmitting">
-                @(isSubmitting ? "Dodawanie..." : "Dodaj produkt")
-            </button>
+                <div class="product-field">
+                    <label>Zdjęcia (opcjonalnie, maks. @MaxImages)</label>
+
+                    <label class="product-upload @(productModel.Images.Count >= MaxImages ? "disabled" : "")">
+                        <InputFile OnChange="OnImagesSelected"
+                                   accept="image/jpeg,image/png,image/webp"
+                                   multiple
+                                   disabled="@(productModel.Images.Count >= MaxImages)"
+                                   class="product-upload-input" />
+                        <span>📷 Wybierz zdjęcia</span>
+                    </label>
+                    <small class="product-image-hint">
+                        JPG, PNG lub WEBP. Pierwsze zdjęcie będzie zdjęciem głównym.
+                    </small>
+
+                    @if (!string.IsNullOrEmpty(imageError))
+                    {
+                        <div class="product-image-error">@imageError</div>
+                    }
+
+                    @if (productModel.Images.Count > 0)
+                    {
+                        <div class="product-images">
+                            @for (var i = 0; i < productModel.Images.Count; i++)
+                            {
+                                var index = i;
+                                var image = productModel.Images[index];
+                                <div class="product-image-item">
+                                    <img src="@image.PreviewSrc" alt="@image.FileName" />
+                                    @if (index == 0)
+                                    {
+                                        <span class="product-image-main">Główne</span>
+                                    }
+                                    <button type="button"
+                                            class="product-image-remove"
+                                            aria-label="Usuń zdjęcie"
+                                            @onclick="() => RemoveImage(index)">
+                                        ×
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <button type="submit" class="product-submit" disabled="@isSubmitting">
+                    @if (isSubmitting)
+                    {
+                        <span>Zapisywanie...</span>
+                    }
+                    else
+                    {
+                        <span>@(IsEditMode ? "Zapisz zmiany" : "Dodaj produkt")</span>
+                    }
+                </button>
+            </div>
         </div>
-    </div>
-</EditForm>
+    </EditForm>
 }
 else
 {
@@ -192,10 +195,9 @@ else
 
 @code {
     [Parameter]
-    public bool isSelected { get; set; }
-    [Parameter]
     public int? ProductId { get; set; }
 
+    private bool isSelected;
     public ProductModel productModel { get; set; } = new();
 
     private bool IsEditMode => ProductId.HasValue;
@@ -206,24 +208,26 @@ else
             return;
 
         var product = await productService.GetProductByIdAsync(ProductId.Value);
-        productModel = new ProductModel
+        if (product != null)
         {
-            Name = product.Name,
-            Description = product.Description,
-            Price = product.Price,
-            ExpiresAt = product.ExpiresAt,
-            Category = product.Category,
-            City = product.City,
-            Type = product.Type,
-            UserId = product.UserId
-        };
-        isSelected = true;
+            productModel = new ProductModel
+            {
+                Name = product.Name,
+                Description = product.Description,
+                Price = product.Price,
+                ExpiresAt = product.ExpiresAt,
+                Category = product.Category,
+                City = product.City,
+                Type = product.Type,
+                UserId = product.UserId
+            };
+            isSelected = true;
+        }
     }
 
-
     private const int MaxImages = 5;
-    private const long MaxOriginalFileSize = 10 * 1024 * 1024; // plik wybrany przez użytkownika
-    private const long MaxProcessedFileSize = 3 * 1024 * 1024;  // po zmniejszeniu (limit API)
+    private const long MaxOriginalFileSize = 10 * 1024 * 1024;
+    private const long MaxProcessedFileSize = 3 * 1024 * 1024;
     private const int MaxImageDimension = 1280;
     private static readonly string[] AllowedImageTypes = { "image/jpeg", "image/png", "image/webp" };
 
@@ -232,7 +236,7 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !IsEditMode)
+        if (firstRender && !IsEditMode && string.IsNullOrEmpty(productModel.City))
         {
             try
             {
@@ -251,25 +255,8 @@ else
             }
         }
     }
+
     public async Task SaveProduct()
-    {
-        if (IsEditMode)
-        {
-            var result = await productService.UpdateProductAsync(ProductId!.Value, productModel);
-            notify.AddNotification("Ogłoszenie", result);
-
-            if (result == "Ogłoszenie zostało zaktualizowane!")
-                Navigation.NavigateTo($"/details/{ProductId.Value}");
-
-            return;
-        }
-
-        var addResult = await productService.AddProductAsync(productModel);
-        notify.AddNotification("Ogłoszenie", addResult);
-        productModel = new ProductModel();
-        isSelected = false;
-    }
-    public async Task AddProduct()
     {
         if (isSubmitting)
             return;
@@ -277,17 +264,26 @@ else
         isSubmitting = true;
         try
         {
-            var (success, message) = await productService.AddProductAsync(productModel);
-            if (success)
+            if (IsEditMode)
             {
-                notify.AddNotification("Ogłoszenie", "Ogłoszenie pomyślnie utworzone!");
-                productModel = new ProductModel { City = productModel.City };
-                imageError = null;
-                isSelected = false;
+                var result = await productService.UpdateProductAsync(ProductId!.Value, productModel);
+                notify.AddNotification("Ogłoszenie", result);
+
+                if (result == "Ogłoszenie zostało zaktualizowane!")
+                {
+                    Navigation.NavigateTo($"/details/{ProductId.Value}");
+                }
             }
             else
             {
-                notify.AddNotification("Ogłoszenie", message);
+                var result = await productService.AddProductAsync(productModel);
+                notify.AddNotification("Ogłoszenie", result.Message);
+
+                if (!result.Success)
+                {
+                    productModel = new ProductModel();
+                    isSelected = false;
+                }
             }
         }
         finally
@@ -295,6 +291,7 @@ else
             isSubmitting = false;
         }
     }
+
     private async Task OnImagesSelected(InputFileChangeEventArgs e)
     {
         imageError = null;
@@ -322,7 +319,6 @@ else
 
             try
             {
-                // zmniejszamy zdjęcie w przeglądarce, żeby ograniczyć rozmiar zapisywany w bazie
                 var resized = await file.RequestImageFileAsync(
                     "image/jpeg", MaxImageDimension, MaxImageDimension);
 
@@ -345,6 +341,7 @@ else
             }
         }
     }
+
     private void RemoveImage(int index)
     {
         if (index >= 0 && index < productModel.Images.Count)
@@ -353,12 +350,14 @@ else
             imageError = null;
         }
     }
+
     private void ChooseType(ProductType type)
     {
         productModel.Type = type;
         isSelected = true;
         StateHasChanged();
     }
+
     private string GetCategoryName(ProductCategory category)
     {
         return category switch
@@ -371,6 +370,7 @@ else
             _ => category.ToString()
         };
     }
+
     private async Task<string> GetCityAsync(double latitude, double longitude)
     {
         using var http = HttpClientFactory.CreateClient();

@@ -1,21 +1,16 @@
 ﻿@page "/details/{ProductId:int}"
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Components.Authorization
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Shared.Enums
 @using ReShareBlazorApp.Web.ApiServices
-@using Microsoft.AspNetCore.Components.Authorization
-@using System.Security.Claims
 @using ReShareBlazorApp.Web.Models
 @inject ProductApiService productApi
-@inject AuthenticationStateProvider AuthStateProvider
-@inject NavigationManager Navigation
-@inject NotificationService notify
 @inject ReviewApiService ReviewApiService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ReportApiService reportApi
 @inject NotificationService notify
+@inject NavigationManager Navigation
 
 <div class="details-page">
     <div class="details-container">
@@ -243,10 +238,10 @@
 
                         @if (IsOwner)
                         {
-                            <a href="/edit-product/@Product.ProductId" class="details-secondary-button">
+                            <a href="/edit-product/@Product.ProductId" class="details-secondary-button d-block text-center mt-2">
                                 Edytuj ogłoszenie
                             </a>
-                            <button type="button" class="details-danger-button" @onclick="OpenDeleteDialog">
+                            <button type="button" class="details-danger-button w-100 mt-2" @onclick="OpenDeleteDialog">
                                 Usuń ogłoszenie
                             </button>
                         }
@@ -351,11 +346,11 @@
 
     public ProductDTO? Product { get; set; }
     public bool IsLoading { get; set; } = true;
-    private bool IsOwner { get; set; }
     private bool IsDeleteDialogVisible { get; set; }
     private bool IsDeleting { get; set; }
 
     private string? currentUserName;
+    private int? currentUserIdInt;
 
     private bool IsOwner
     {
@@ -363,11 +358,12 @@
         {
             if (Product == null) return false;
 
+            bool matchById = currentUserIdInt.HasValue && Product.UserId == currentUserIdInt.Value;
             bool matchByName = !string.IsNullOrEmpty(currentUserName) &&
                                !string.IsNullOrEmpty(Product.AddedBy) &&
                                string.Equals(currentUserName, Product.AddedBy, StringComparison.OrdinalIgnoreCase);
 
-            return matchByName;
+            return matchById || matchByName;
         }
     }
 
@@ -396,14 +392,16 @@
         reportModel = new ReportModel();
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var currentUserId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? authState.User.FindFirst("nameid")?.Value;
-
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
         if (user.Identity?.IsAuthenticated == true)
         {
             currentUserName = user.Identity.Name;
+
+            var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirst("nameid")?.Value;
+            if (int.TryParse(userIdClaim, out var parsedId))
+            {
+                currentUserIdInt = parsedId;
+            }
 
             if (string.IsNullOrWhiteSpace(newAuthor) && !string.IsNullOrWhiteSpace(currentUserName))
             {
@@ -412,9 +410,6 @@
         }
 
         Product = await productApi.GetProductByIdAsync(ProductId);
-        IsOwner = Product != null
-            && int.TryParse(currentUserId, out var userId)
-            && Product.UserId == userId;
         if (Product != null)
         {
             await LoadReviews();
@@ -422,40 +417,6 @@
 
         IsLoading = false;
     }
-
-    private void OpenDeleteDialog()
-    {
-        if (Product == null || !IsOwner)
-            return;
-
-        IsDeleteDialogVisible = true;
-    }
-
-    private void CloseDeleteDialog()
-    {
-        if (!IsDeleting)
-            IsDeleteDialogVisible = false;
-    }
-
-    private async Task ConfirmDeleteAsync()
-    {
-        if (Product == null || !IsOwner || IsDeleting)
-            return;
-
-        IsDeleting = true;
-
-        var result = await productApi.DeleteProductAsync(Product.ProductId);
-        notify.AddNotification("Ogłoszenie", result);
-
-        if (result == "Ogłoszenie zostało usunięte!")
-            Navigation.NavigateTo("/");
-        else
-        {
-            IsDeleting = false;
-            IsDeleteDialogVisible = false;
-        }
-    }
-}
 
     private async Task LoadReviews()
     {
@@ -498,6 +459,41 @@
             stars += i <= rating ? "★" : "☆";
         }
         return stars;
+    }
+
+    private void OpenDeleteDialog()
+    {
+        if (Product == null || !IsOwner)
+            return;
+
+        IsDeleteDialogVisible = true;
+    }
+
+    private void CloseDeleteDialog()
+    {
+        if (!IsDeleting)
+            IsDeleteDialogVisible = false;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (Product == null || !IsOwner || IsDeleting)
+            return;
+
+        IsDeleting = true;
+
+        var result = await productApi.DeleteProductAsync(Product.ProductId);
+        notify.AddNotification("Ogłoszenie", result);
+
+        if (result == "Ogłoszenie zostało usunięte!")
+        {
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            IsDeleting = false;
+            IsDeleteDialogVisible = false;
+        }
     }
 
     private async Task SendReport()

@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Api.Repositories;
 using ReShareBlazorApp.Api.Services;
-using Microsoft.Extensions.FileProviders;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -92,18 +92,14 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-// Zdjęcia profilowe: pliki z folderu Avatars dostępne pod /avatars/...
-var avatarsPath = Path.Combine(app.Environment.ContentRootPath, "Avatars");
-Directory.CreateDirectory(avatarsPath);
+var imageStorage = app.Services.GetRequiredService<IImageStorage>();
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(avatarsPath),
+    FileProvider = new PhysicalFileProvider(imageStorage.GetFolderPath("avatars")),
     RequestPath = "/avatars"
 });
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();
-
 app.MapControllers();
 
 app.Run();

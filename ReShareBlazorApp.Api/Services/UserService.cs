@@ -9,19 +9,19 @@ namespace ReShareBlazorApp.Api.Services
     public class UserService : IUserService
     {
         private const long MaxAvatarBytes = 2 * 1024 * 1024;
+        private const string AvatarFolder = "avatars";
         private readonly IUserRepository _userRepository;
         private readonly UserManager<User> _userManager;
-        private readonly string _avatarsPath;
+        private readonly IImageStorage _imageStorage;
 
         public UserService(
             IUserRepository userRepository,
             UserManager<User> userManager,
-            IWebHostEnvironment env)
+            IImageStorage imageStorage)
         {
             _userRepository = userRepository;
             _userManager = userManager;
-            _avatarsPath = Path.Combine(env.ContentRootPath, "Avatars");
-            Directory.CreateDirectory(_avatarsPath);
+            _imageStorage = imageStorage;
         }
 
         public async Task<bool> CheckIfUserExistAsync(string username)
@@ -70,15 +70,14 @@ namespace ReShareBlazorApp.Api.Services
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null) return "Nie znaleziono użytkownika.";
 
-            var fileName = $"{userId}-{Guid.NewGuid():N}{ext}";
-            await File.WriteAllBytesAsync(Path.Combine(_avatarsPath, fileName), bytes);
+            var fileName = await _imageStorage.SaveAsync(bytes, ext, AvatarFolder);
 
             var oldFile = user.AvatarPath;
             user.AvatarPath = fileName;
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
             {
-                File.Delete(Path.Combine(_avatarsPath, fileName));
+                _imageStorage.Delete(fileName, AvatarFolder);
                 return "Nie udało się zapisać zdjęcia.";
             }
             DeleteFile(oldFile);
@@ -112,8 +111,7 @@ namespace ReShareBlazorApp.Api.Services
         {
             if (string.IsNullOrEmpty(fileName)) return;
             // Path.GetFileName chroni przed wyjściem poza folder Avatars.
-            var path = Path.Combine(_avatarsPath, Path.GetFileName(fileName));
-            if (File.Exists(path)) File.Delete(path);
+            _imageStorage.Delete(Path.GetFileName(fileName), AvatarFolder);
         }
 
         private static string? DetectImageExtension(byte[] b)

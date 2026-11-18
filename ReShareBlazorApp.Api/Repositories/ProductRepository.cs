@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Identity.Client;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
@@ -64,6 +63,7 @@ namespace ReShareBlazorApp.Api.Repositories
             try
             {
                 var product = await _context.Products
+                    .Include(p => p.Images)
                     .FirstOrDefaultAsync(p => p.Id == productId && p.UserId == userId);
 
                 if (product == null)
@@ -110,6 +110,7 @@ namespace ReShareBlazorApp.Api.Repositories
             {
                 var product = await _context.Products
                     .Include(p => p.user)
+                    .Include(p => p.Images)
                     .FirstOrDefaultAsync(p => p.Id == id);
 
                 return product;
