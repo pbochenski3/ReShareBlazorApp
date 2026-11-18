@@ -30,6 +30,7 @@ namespace ReShareBlazorApp.Web.ApiServices
                 ExpiresAt = productModel.ExpiresAt,
                 Category = productModel.Category,
                 City = productModel.City,
+                Type = productModel.Type
             };
             using var request = new HttpRequestMessage(
                 HttpMethod.Post,

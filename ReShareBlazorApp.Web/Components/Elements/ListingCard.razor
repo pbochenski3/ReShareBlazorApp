@@ -1,3 +1,4 @@
+@using ReShareBlazorApp.Api.Date.Enums
 @using ReShareBlazorApp.Shared.Enums
 <article class="home-card">
     <div class="home-card-image @TypeClass">
@@ -5,7 +6,7 @@
         {
             <img src="@ImageUrl" alt="@Title" loading="lazy" />
         }
-        <span class="home-card-type">@Type</span>
+        <span class="home-card-type">@GetCategoryName(@Type)</span>
         <button class="home-card-fav" type="button" aria-label="Dodaj do ulubionych">♡</button>
     </div>
 
@@ -45,4 +46,16 @@
         ProductType.LookingFor => "type-seek",
         _ => "type-other"
     };
+    private string GetCategoryName(ProductType type)
+    {
+        return type switch
+        {
+            ProductType.Sell => "Sprzedam",
+            ProductType.GiveAway => "Oddam",
+            ProductType.LookingFor => "Szukam",
+
+            _ => type.ToString()
+        };
+    }
+
 }

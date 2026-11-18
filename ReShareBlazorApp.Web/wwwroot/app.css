@@ -3079,5 +3079,19 @@ input[type="search"] {
         font-size: 12px;
     }
 }
+.product-back {
+    background: transparent;
+    border: none;
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 8px 0;
+    margin-bottom: 15px;
+    transition: color 0.2s;
+}
+
+    .product-back:hover {
+        color: #000;
+    }
 
 

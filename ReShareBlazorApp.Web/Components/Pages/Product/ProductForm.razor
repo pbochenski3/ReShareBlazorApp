@@ -1,4 +1,4 @@
-﻿@page "/add-product/{isSelected:bool}"
+﻿@page "/add-product"
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 @using ReShareBlazorApp.Api.Date.Enums
@@ -14,9 +14,11 @@
 <EditForm Model="@productModel" OnValidSubmit="AddProduct">
     <DataAnnotationsValidator />
     <ValidationSummary />
-
     <div class="product-page">
             <div class="product-form">
+        <button type="button" class="product-back" @onclick="() => isSelected = false">
+            ← Wróć do wyboru
+        </button>
                 <div class="product-header">
                     @if (productModel.Type == ProductType.Sell)
                     {
@@ -165,23 +167,13 @@ else
     {
         await productService.AddProductAsync(productModel);
         notify.AddNotification("Ogłoszenie", "Ogłoszenie pomyślnie utworzone!");
+        productModel = new ProductModel();
+        isSelected = false;
     }
     private void ChooseType(ProductType type)
     {
-        switch(type)
-        {
-            case ProductType.Sell:
-                productModel.Type = ProductType.Sell;
-                break;
-            case ProductType.GiveAway:
-                productModel.Type = ProductType.GiveAway;
-                break;
-            case ProductType.LookingFor:
-                productModel.Type = ProductType.LookingFor;
-                break;
-        }
+        productModel.Type = type;
         isSelected = true;
-        Navigation.NavigateTo("/add-product/true");
         StateHasChanged();
     }
     private string GetCategoryName(ProductCategory category)
