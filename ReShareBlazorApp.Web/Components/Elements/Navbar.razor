@@ -34,11 +34,20 @@
                                  ActiveClass="active"
                                  href="@($"/user/{auth.User.FindFirst(ClaimTypes.Name)?.Value}")">
                             Profil
+
                         </NavLink>
+                    </li>
+                    <li class="main-navbar-item">
+                        <form method="post" action="/auth/logout">
+                            <AntiforgeryToken />
+                            <button type="submit" class="main-navbar-link main-navbar-logout">
+                                Wyloguj się
+                            </button>
+                        </form>
                     </li>
                 </Authorized>
             </AuthorizeView>
-
+      
             <AuthorizeView>
                 <NotAuthorized>
                     <li class="main-navbar-item">
