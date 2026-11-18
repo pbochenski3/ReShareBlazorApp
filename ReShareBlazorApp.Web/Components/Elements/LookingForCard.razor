@@ -1,0 +1,50 @@
+﻿@using ReShareBlazorApp.Shared.DTOs
+
+<div class="looking-card">
+
+    <h3 class="looking-card-title">
+        @Product.Name
+    </h3>
+
+    <p class="looking-card-description">
+        @Product.Description
+    </p>
+
+    <div class="looking-card-details">
+
+        <div>
+            @Product.City
+        </div>
+
+        <div>
+            Termin: @Product.ExpiresAt.ToString("dd.MM.yyyy")
+        </div>
+
+        <div>
+            Budżet: do @Product.Price zł
+        </div>
+
+    </div>
+
+    <div class="looking-card-actions">
+
+        <a class="home-btn home-btn-primary"
+           href="@($"/details/{Product.ProductId}")">
+            Szczegóły ogłoszenia
+        </a>
+
+        <a class="home-btn home-btn-outline"
+           href="#">
+            Skontaktuj się
+        </a>
+
+    </div>
+
+</div>
+
+@code {
+
+    [Parameter]
+    public ProductDTO Product { get; set; } = default!;
+
+}

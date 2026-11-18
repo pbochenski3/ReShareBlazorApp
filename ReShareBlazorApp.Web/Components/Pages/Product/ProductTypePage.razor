@@ -1,0 +1,115 @@
+﻿@page "/type/{TypeName}"
+
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Shared.Enums
+@using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Components.Elements
+
+@inject ProductApiService productApi
+
+<div class="category-page">
+
+    <section class="category-page-content">
+
+        <div class="category-container">
+
+            <div class="category-header">
+
+                <span class="category-label">
+                    SZUKAM
+                </span>
+
+                <h2 class="category-title">
+                    @GetPageTitle()
+                </h2>
+
+                <p class="category-subtitle">
+                    Przeglądaj wszystkie ogłoszenia typu Szukam.
+                </p>
+
+            </div>
+
+            <div class="category-products-grid">
+
+                @if (ListOfProducts.Any())
+                {
+                    @foreach (var product in ListOfProducts)
+                    {
+                        <ListingCard Title="@product.Name"
+                                     Category="@product.Category.ToString()"
+                                     Type="@product.Type"
+                                     Price="@product.Price.ToString("F2")"
+                                     Location="@product.City"
+                                     Term="@product.ExpiresAt.ToString("dd.MM.yyyy")"
+                                     Published="@product.AddedAt.ToString("dd.MM.yyyy")"
+                                     Link="@product.ProductId" />
+                    }
+                }
+                else
+                {
+                    <div class="category-empty">
+
+                        <div class="category-empty-icon">
+                            ⌕
+                        </div>
+
+                        <h3>
+                            Brak ogłoszeń
+                        </h3>
+
+                        <p>
+                            Użytkownicy nie dodali jeszcze żadnych ogłoszeń typu Szukam.
+                        </p>
+
+                    </div>
+                }
+
+            </div>
+
+        </div>
+
+    </section>
+
+</div>
+
+@code {
+
+    [Parameter]
+    public string TypeName { get; set; } = "";
+
+    public List<ProductDTO> ListOfProducts { get; set; } = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var products = await productApi.GetProductsAsync();
+
+        ProductType? selectedType = TypeName.ToLower() switch
+        {
+            "sprzedam" => ProductType.Sell,
+            "oddam" => ProductType.GiveAway,
+            "szukam" => ProductType.LookingFor,
+            _ => null
+        };
+
+        if (selectedType is null)
+        {
+            ListOfProducts = new();
+            return;
+        }
+
+        ListOfProducts = products
+            .Where(x => x.Type == selectedType)
+            .OrderByDescending(x => x.AddedAt)
+            .ToList();
+    }
+    private string GetPageTitle()
+    {
+        return TypeName.ToLower() switch
+        {
+            "szukam" => "Czego szukają użytkownicy?",
+            "sprzedam" => "Oferty sprzedaży",
+            "oddam" => "Oferty do oddania",
+            _ => "Ogłoszenia"
+        };
+    }
+}
