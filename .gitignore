@@ -363,3 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 
 /ReShareBlazorApp.Api/Avatars
+ReShareBlazorApp.Api/Uploads
