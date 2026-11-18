@@ -1,0 +1,285 @@
+@page "/polityka-prywatnosci"
+@rendermode InteractiveServer
+@using ReShareBlazorApp.Web.Components.Elements
+@inject IJSRuntime JS
+
+<PageTitle>Polityka prywatności – ODDAJ DALEJ</PageTitle>
+
+<div class="legal-page">
+    <header class="legal-hero">
+        <div class="home-container">
+            <span class="legal-hero-badge">Bezpieczeństwo i prawo</span>
+            <h1 class="legal-hero-title">Polityka Prywatności i Ochrona Danych</h1>
+            <p class="legal-hero-subtitle">
+                Twoja prywatność i zaufanie są dla nas kluczowe. Wyjaśniamy przejrzyście, w jaki sposób zbieramy,
+                przetwarzamy i chronimy Twoje dane osobowe zgodnie z RODO.
+            </p>
+            <div class="legal-hero-meta">
+                <span class="legal-hero-meta-item">🛡️ Zgodność z RODO (UE 2016/679)</span>
+                <span class="legal-hero-meta-item">📅 Obowiązuje od: 18 listopada 2026 r.</span>
+            </div>
+        </div>
+    </header>
+
+    <LegalNav ActiveRoute="/polityka-prywatnosci" CurrentTitle="Polityka prywatności" />
+
+    <section class="legal-body">
+        <div class="home-container">
+            <div class="legal-grid">
+
+                <main class="legal-main">
+                    <!-- Nagłówek widoczny na wydruku / PDF -->
+                    <div class="legal-print-banner">
+                        <div class="legal-print-brand">
+                            <strong>ODDAJ DALEJ</strong>
+                            <span>Platforma wymiany i bezpiecznego przekazywania rezerwacji</span>
+                        </div>
+                        <div class="legal-print-doc-info">
+                            Polityka Prywatności i Ochrona Danych (RODO)<br />
+                            Obowiązuje od: 18 listopada 2026 r.
+                        </div>
+                    </div>
+
+                    <article class="legal-article">
+
+                        <div class="legal-callout legal-callout-info">
+                            <span class="legal-callout-icon">ℹ️</span>
+                            <div>
+                                <strong>Podsumowanie w pigułce:</strong>
+                                Przetwarzamy Twoje dane tylko w celach niezbędnych do działania platformy ODDAJ DALEJ (założenie konta,
+                                kontakt z innymi użytkownikami, zamieszczanie ofert). Nigdy nie sprzedajemy Twoich danych stronom trzecim
+                                ani nie profilujemy Cię w celach natrętnego marketingu.
+                            </div>
+                        </div>
+
+                        <div class="legal-takeaways">
+                            <div class="legal-takeaway-card">
+                                <div class="legal-takeaway-header">
+                                    <span>🔒</span> Bezpieczeństwo
+                                </div>
+                                <p>Szyfrowanie SSL/TLS oraz bezpieczne, jednokierunkowe hashowanie haseł.</p>
+                            </div>
+                            <div class="legal-takeaway-card">
+                                <div class="legal-takeaway-header">
+                                    <span>🚫</span> Zero sprzedaży
+                                </div>
+                                <p>Nigdy nie przekazujemy ani nie sprzedajemy Twoich danych brokerom danych.</p>
+                            </div>
+                            <div class="legal-takeaway-card">
+                                <div class="legal-takeaway-header">
+                                    <span>📋</span> Twoje prawa RODO
+                                </div>
+                                <p>W każdej chwili masz prawo wglądu, korekty lub całkowitego usunięcia konta.</p>
+                            </div>
+                        </div>
+
+                        <h2 id="sekcja-1">1. Kto jest administratorem Twoich danych?</h2>
+                        <p>
+                            Administratorem Twoich danych osobowych w rozumieniu Rozporządzenia Parlamentu Europejskiego i Rady (UE) 2016/679
+                            z dnia 27 kwietnia 2016 r. (RODO) jest operator serwisu <strong>ODDAJ DALEJ</strong> z siedzibą w Rzeczypospolitej Polskiej
+                            (zwany dalej „Administratorem”).
+                        </p>
+                        <p>
+                            W sprawach dotyczących przetwarzania danych osobowych oraz realizacji Twoich praw możesz skontaktować się
+                            z naszym Inspektorem Ochrony Danych pod adresem: <strong>prywatnosc@oddajdalej.pl</strong>.
+                        </p>
+
+                        <h2 id="sekcja-2">2. Jakie dane przetwarzamy?</h2>
+                        <p>Zbieramy wyłącznie dane niezbędne do prawidłowego świadczenia usług w Serwisie:</p>
+                        <ul>
+                            <li><strong>Dane konta:</strong> adres e-mail, nazwa użytkownika / imię, zaszyfrowane hasło, data rejestracji.</li>
+                            <li><strong>Dane w ogłoszeniach:</strong> tytuł oferty, kategoria, opis, proponowana cena, lokalizacja (miejscowość), zdjęcia załączone przez Użytkownika.</li>
+                            <li><strong>Dane komunikacji:</strong> wiadomości wymieniane z innymi Użytkownikami za pośrednictwem wbudowanego czatu platformy.</li>
+                            <li><strong>Dane techniczne i eksploatacyjne:</strong> adres IP, identyfikatory plików cookies, typ i wersja przeglądarki, system operacyjny, logi serwera i znaczniki czasu aktywności.</li>
+                        </ul>
+
+                        <h2 id="sekcja-3">3. Cele i podstawy prawne przetwarzania</h2>
+                        <div class="legal-table-wrapper">
+                            <table class="legal-table">
+                                <thead>
+                                    <tr>
+                                        <th>Cel przetwarzania</th>
+                                        <th>Podstawa prawna (RODO)</th>
+                                        <th>Okres przechowywania</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Rejestracja i prowadzenie Konta</strong> oraz dostęp do funkcji Serwisu</td>
+                                        <td>Art. 6 ust. 1 lit. b (wykonanie umowy o świadczenie usług)</td>
+                                        <td>Przez czas posiadania aktywnego Konta w Serwisie</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Publikacja ogłoszeń</strong> i obsługa wiadomości na czacie</td>
+                                        <td>Art. 6 ust. 1 lit. b (wykonanie umowy)</td>
+                                        <td>Do czasu usunięcia ogłoszenia / wygaśnięcia oferty</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Zapewnienie bezpieczeństwa</strong>, wykrywanie oszustw i nadużyć</td>
+                                        <td>Art. 6 ust. 1 lit. f (prawnie uzasadniony interes Administratora)</td>
+                                        <td>Do 3 lat od zdarzenia lub do zakończenia postępowania</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Rozpatrywanie reklamacji</strong> i obsługa zgłoszeń użytkowników</td>
+                                        <td>Art. 6 ust. 1 lit. c (obowiązek prawny) oraz lit. b</td>
+                                        <td>Przez okres przedawnienia ewentualnych roszczeń (3 lata)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Analityka i pliki cookies</strong> (poprawa ergonomii serwisu)</td>
+                                        <td>Art. 6 ust. 1 lit. a (dobrowolna zgoda Użytkownika)</td>
+                                        <td>Do momentu wycofania zgody lub usunięcia cookies</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h2 id="sekcja-4">4. Komu powierzamy lub udostępniamy Twoje dane?</h2>
+                        <p>
+                            Dostęp do Twoich danych osobowych mają wyłącznie upoważnieni pracownicy i współpracownicy Administratora.
+                            Twoje dane mogą być powierzane zaufanym podmiotom przetwarzającym:
+                        </p>
+                        <ul>
+                            <li>Dostawcom hostingu, chmury obliczeniowej i infrastruktury bazodanowej.</li>
+                            <li>Dostawcom usług wsparcia technicznego i utrzymania oprogramowania.</li>
+                            <li>Podmiotom świadczącym usługi doradztwa prawnego lub dochodzenia roszczeń – w razie konieczności obrony praw.</li>
+                            <li>Organom ścigania, sądom i organom administracji państwowej – wyłącznie na podstawie wyraźnego i prawomocnego żądania prawnego.</li>
+                        </ul>
+                        <p>
+                            Twoje dane osobowe <strong>nie są przekazywane poza Europejski Obszar Gospodarczy (EOG)</strong>, chyba że korzystasz z usług
+                            dostawcy globalnego spełniającego wymogi programu Data Privacy Framework (lub standardowych klauzul umownych UE).
+                        </p>
+
+                        <h2 id="sekcja-5">5. Twoje prawa na gruncie RODO</h2>
+                        <p>W związku z przetwarzaniem Twoich danych osobowych przysługują Ci następujące prawa:</p>
+                        <ol>
+                            <li><strong>Prawo dostępu do danych:</strong> masz prawo uzyskać potwierdzenie, czy przetwarzamy Twoje dane oraz otrzymać ich kopię.</li>
+                            <li><strong>Prawo do sprostowania:</strong> możesz poprawić błędne lub nieaktualne informacje w ustawieniach swojego profilu.</li>
+                            <li><strong>Prawo do usunięcia danych („prawo do bycia zapomnianym”):</strong> możesz zażądać usunięcia swoich danych, gdy nie ma już podstaw do ich przetwarzania.</li>
+                            <li><strong>Prawo do ograniczenia przetwarzania:</strong> możesz zażądać wstrzymania operacji na Twoich danych w sytuacjach określonych w art. 18 RODO.</li>
+                            <li><strong>Prawo do sprzeciwu:</strong> masz prawo sprzeciwić się przetwarzaniu danych opartego na naszym prawnie uzasadnionym interesie.</li>
+                            <li><strong>Prawo do przenoszenia danych:</strong> możesz otrzymać swoje dane w ustrukturyzowanym formacie (np. JSON / CSV).</li>
+                        </ol>
+
+                        <div class="legal-callout legal-callout-tip">
+                            <span class="legal-callout-icon">✉️</span>
+                            <div>
+                                <strong>Jak zrealizować swoje prawa?</strong>
+                                Wystarczy przesłać wiadomość na adres e-mail: <strong>prywatnosc@oddajdalej.pl</strong>.
+                                Odpowiemy na Twoje żądanie bez zbędnej zwłoki, nie później niż w ciągu 30 dni.
+                            </div>
+                        </div>
+
+                        <h2 id="sekcja-6">6. Bezpieczeństwo i poufność</h2>
+                        <p>
+                            Stosujemy zaawansowane środki techniczne i organizacyjne chroniące Twoje dane przed przypadkowym lub bezprawnym
+                            zniszczeniem, utratą, modyfikacją, nieuprawnionym ujawnieniem lub dostępem:
+                        </p>
+                        <ul>
+                            <li>Wszystkie połączenia z Serwisem są szyfrowane za pomocą bezpiecznego protokołu <strong>SSL / TLS</strong>.</li>
+                            <li>Hasła Użytkowników są przechowywane w postaci bezpiecznego jednokierunkowego hasha kryptograficznego.</li>
+                            <li>Bazy danych podlegają regularnym kopiom zapasowym i rygorystycznej kontroli uprawnień dostępowych.</li>
+                        </ul>
+
+                        <h2 id="sekcja-7">7. Profilowanie i zautomatyzowane decyzje</h2>
+                        <p>
+                            Twoje dane osobowe <strong>nie są wykorzystywane do zautomatyzowanego podejmowania decyzji</strong> wywołujących
+                            wobec Ciebie skutki prawne lub w podobny sposób istotnie na Ciebie wpływających (w tym nie stosujemy profilowania cenowego).
+                        </p>
+
+                        <h2 id="sekcja-8">8. Prawo do skargi do organu nadzorczego</h2>
+                        <p>
+                            Jeżeli uznasz, że przetwarzanie Twoich danych osobowych narusza przepisy RODO, masz prawo wnieść skargę do organu nadzorczego:
+                        </p>
+                        <div class="legal-highlight-box">
+                            <strong>Prezes Urzędu Ochrony Danych Osobowych (UODO)</strong><br />
+                            ul. Stawki 2, 00-193 Warszawa<br />
+                            Strona internetowa: <a href="https://uodo.gov.pl" target="_blank" rel="noopener noreferrer">uodo.gov.pl</a>
+                        </div>
+
+                        <div class="legal-print-footer">
+                            Dokument wygenerowany z serwisu ODDAJ DALEJ (oddajdalej.pl) · Wszelkie prawa zastrzeżone
+                        </div>
+                    </article>
+                </main>
+
+                <aside class="legal-sidebar">
+                    <div class="legal-sidebar-card">
+                        <div class="legal-sidebar-title">
+                            <span>📑</span> Spis treści polityki
+                        </div>
+                        <ul class="legal-toc-list">
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-1" ? "active" : "")" data-section="sekcja-1" @onclick='() => ScrollToSection("sekcja-1")'>1. Administrator danych</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-2" ? "active" : "")" data-section="sekcja-2" @onclick='() => ScrollToSection("sekcja-2")'>2. Zakres zbieranych danych</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-3" ? "active" : "")" data-section="sekcja-3" @onclick='() => ScrollToSection("sekcja-3")'>3. Cele i podstawy RODO</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-4" ? "active" : "")" data-section="sekcja-4" @onclick='() => ScrollToSection("sekcja-4")'>4. Odbiorcy danych</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-5" ? "active" : "")" data-section="sekcja-5" @onclick='() => ScrollToSection("sekcja-5")'>5. Twoje prawa</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-6" ? "active" : "")" data-section="sekcja-6" @onclick='() => ScrollToSection("sekcja-6")'>6. Bezpieczeństwo</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-7" ? "active" : "")" data-section="sekcja-7" @onclick='() => ScrollToSection("sekcja-7")'>7. Profilowanie</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-8" ? "active" : "")" data-section="sekcja-8" @onclick='() => ScrollToSection("sekcja-8")'>8. Skarga do UODO</button></li>
+                        </ul>
+                    </div>
+
+                    <div class="legal-sidebar-card">
+                        <div class="legal-sidebar-title">
+                            <span>🖨️</span> Pobierz dokument
+                        </div>
+                        <p style="font-size:0.86rem; color:var(--muted); margin-bottom:14px;">
+                            Zachowaj kopię polityki prywatności na swoim urządzeniu.
+                        </p>
+                        <button type="button" class="legal-btn-action" @onclick="PrintPage">
+                            🖨️ Drukuj / Zapisz PDF
+                        </button>
+                    </div>
+
+                    <div class="legal-sidebar-card" style="background:var(--brand-soft); border-color:rgba(9,113,113,0.25);">
+                        <div class="legal-sidebar-title" style="color:var(--brand-dark);">
+                            <span>🛡️</span> Inspektor Ochrony Danych
+                        </div>
+                        <p style="font-size:0.86rem; color:var(--brand-dark); margin-bottom:10px;">
+                            Masz pytanie odnośnie swoich danych osobowych?
+                        </p>
+                        <a href="mailto:prywatnosc@oddajdalej.pl" style="font-size:0.9rem; font-weight:700; color:var(--brand-dark); text-decoration:none;">
+                            ✉️ prywatnosc@oddajdalej.pl
+                        </a>
+                    </div>
+                </aside>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Pływający przycisk przewijania na samą górę -->
+    <button type="button" id="legalBackToTop" class="legal-back-to-top" title="Przewiń na górę strony" @onclick="ScrollToTop">
+        ↑
+    </button>
+
+    <SiteFooter />
+</div>
+
+@code {
+    private string activeSection = "";
+
+    private async Task ScrollToSection(string id)
+    {
+        activeSection = id;
+        await JS.InvokeVoidAsync("scrollToLegalSection", id);
+    }
+
+    private async Task ScrollToTop()
+    {
+        await JS.InvokeVoidAsync("scrollToTop");
+    }
+
+    private async Task PrintPage()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("initLegalScrollspy");
+        }
+    }
+}

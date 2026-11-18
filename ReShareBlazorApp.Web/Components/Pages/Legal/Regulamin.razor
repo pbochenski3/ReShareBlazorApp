@@ -1,0 +1,389 @@
+@page "/regulamin"
+@rendermode InteractiveServer
+@using ReShareBlazorApp.Web.Components.Elements
+@inject IJSRuntime JS
+
+<PageTitle>Regulamin – ODDAJ DALEJ</PageTitle>
+
+<div class="legal-page">
+    <header class="legal-hero">
+        <div class="home-container">
+            <span class="legal-hero-badge">Bezpieczeństwo i prawo</span>
+            <h1 class="legal-hero-title">Regulamin Serwisu ODDAJ DALEJ</h1>
+            <p class="legal-hero-subtitle">
+                Zasady korzystania z platformy, prawa i obowiązki Użytkowników, warunki wystawiania ogłoszeń
+                oraz bezpiecznego przekazywania rezerwacji, biletów i usług.
+            </p>
+            <div class="legal-hero-meta">
+                <span class="legal-hero-meta-item">📅 Obowiązuje od: 18 listopada 2026 r.</span>
+                <span class="legal-hero-meta-item">📜 Wersja dokumentu: 2.3</span>
+            </div>
+        </div>
+    </header>
+
+    <LegalNav ActiveRoute="/regulamin" CurrentTitle="Regulamin" />
+
+    <section class="legal-body">
+        <div class="home-container">
+            <div class="legal-grid">
+
+                <main class="legal-main">
+                    <!-- Nagłówek widoczny na wydruku / PDF -->
+                    <div class="legal-print-banner">
+                        <div class="legal-print-brand">
+                            <strong>ODDAJ DALEJ</strong>
+                            <span>Platforma wymiany i bezpiecznego przekazywania rezerwacji</span>
+                        </div>
+                        <div class="legal-print-doc-info">
+                            Regulamin Serwisu · Wersja 2.3<br />
+                            Obowiązuje od: 18 listopada 2026 r.
+                        </div>
+                    </div>
+
+                    <article class="legal-article">
+
+                        <div class="legal-callout legal-callout-tip">
+                            <span class="legal-callout-icon">💡</span>
+                            <div>
+                                <strong>Misja platformy ODDAJ DALEJ:</strong>
+                                Umożliwiamy bezpieczne odstępowanie, odsprzedaż po cenie nominalnej oraz darmowe przekazywanie
+                                niewykorzystanych rezerwacji, biletów, wyjazdów i terminów. Sprzeciwiamy się spekulacji i marnotrawstwu.
+                            </div>
+                        </div>
+
+                        <div class="legal-takeaways">
+                            <div class="legal-takeaway-card">
+                                <div class="legal-takeaway-header">
+                                    <span>⚖️</span> 100% Fair Play
+                                </div>
+                                <p>Ceny biletów nie mogą przekraczać wartości nominalnej z nadruku (art. 133 KW).</p>
+                            </div>
+                            <div class="legal-takeaway-card">
+                                <div class="legal-takeaway-header">
+                                    <span>🛡️</span> Bezpieczne kody
+                                </div>
+                                <p>Zawsze zasłaniaj kody QR i kreskowe na dodawanych zdjęciach i skanach.</p>
+                            </div>
+                            <div class="legal-takeaway-card">
+                                <div class="legal-takeaway-header">
+                                    <span>⏱️</span> 14 dni na zwrot
+                                </div>
+                                <p>Pełne prawo konsumenta do odstąpienia od umowy o świadczenie usług drogą elektroniczną.</p>
+                            </div>
+                        </div>
+
+                        <h2 id="sekcja-1">§ 1. Postanowienia ogólne i definicje</h2>
+                        <p>
+                            Niniejszy Regulamin określa zasady i warunki techniczne świadczenia usług drogą elektroniczną
+                            za pośrednictwem serwisu internetowego <strong>ODDAJ DALEJ</strong> (zwanego dalej „Serwisem”
+                            lub „Platformą”), dostępnego pod adresem internetowym Serwisu.
+                        </p>
+                        <p>Użyte w niniejszym Regulaminie pojęcia oznaczają:</p>
+                        <ul>
+                            <li><strong>Operator / Usługodawca</strong> – podmiot zarządzający Serwisem ODDAJ DALEJ z siedzibą w Polsce, kontakt: <em>kontakt@oddajdalej.pl</em>.</li>
+                            <li><strong>Użytkownik</strong> – każda osoba fizyczna posiadająca pełną zdolność do czynności prawnych (lub ograniczoną za zgodą przedstawiciela ustawowego), osoba prawna lub jednostka organizacyjna korzystająca z Serwisu.</li>
+                            <li><strong>Konto</strong> – przypisany do danego adresu e-mail zbiór zasobów i uprawnień w Serwisie, zabezpieczony hasłem.</li>
+                            <li><strong>Ogłoszenie</strong> – sporządzona przez Użytkownika oferta dotycząca sprzedaży (po cenie nie wyższej niż nominalna), nieodpłatnego przekazania („Oddam”) lub poszukiwania („Szukam”) biletów, rezerwacji, transportu bądź usług.</li>
+                            <li><strong>Transakcja</strong> – bezpośrednia umowa zawierana pomiędzy Użytkownikami na warunkach określonych w Ogłoszeniu i ustalonych na czacie wewnętrznym.</li>
+                            <li><strong>DSA (Digital Services Act)</strong> – Rozporządzenie Parlamentu Europejskiego i Rady (UE) 2022/2065 w sprawie jednolitego rynku usług cyfrowych.</li>
+                        </ul>
+
+                        <h2 id="sekcja-2">§ 2. Warunki techniczne i rejestracja konta</h2>
+                        <p>
+                            Do korzystania z Serwisu niezbędne jest urządzenie z dostępem do sieci Internet, zainstalowana aktualna przeglądarka internetowa
+                            (np. Chrome, Edge, Firefox, Safari) z włączoną obsługą JavaScript oraz aktywny adres poczty elektronicznej.
+                        </p>
+                        <p>
+                            Rejestracja Konta w Serwisie jest bezpłatna i dobrowolna. Przeglądanie ogłoszeń nie wymaga rejestracji, jednak publikacja ogłoszeń,
+                            kontakt z ogłoszeniodawcą za pośrednictwem czatu oraz zapisywanie ulubionych wymaga aktywnego Konta.
+                        </p>
+                        <p>
+                            Użytkownik zobowiązany jest do zachowania poufności hasła dostępu do swojego Konta. Zakazane jest udostępnianie Konta osobom trzecim
+                            lub korzystanie z Kont innych Użytkowników.
+                        </p>
+
+                        <h2 id="sekcja-3">§ 3. Rodzaje i zakres świadczonych usług</h2>
+                        <p>Operator świadczy za pośrednictwem Serwisu następujące usługi drogą elektroniczną:</p>
+                        <ol>
+                            <li>Udostępnianie wyszukiwarki i bazy ogłoszeń w kategoriach: Bilety, Rezerwacje, Wyjazdy i podróże, Transport, Usługi.</li>
+                            <li>Możliwość bezpłatnego zamieszczania ogłoszeń o charakterze sprzedaży, darowizny lub poszukiwania.</li>
+                            <li>Wewnętrzny system wiadomości (czat) pozwalający na bezpieczną komunikację pomiędzy zainteresowanymi stronami.</li>
+                            <li>System powiadomień oraz formularz zgłaszania nadużyć i naruszeń regulaminu.</li>
+                        </ol>
+
+                        <h2 id="sekcja-4">§ 4. Zasady publikacji ogłoszeń</h2>
+                        <p>
+                            Użytkownik publikujący Ogłoszenie oświadcza, że jest uprawniony do rozporządzania oferowanym przedmiotem, biletem
+                            lub rezerwacją oraz że oferta jest zgodna ze stanem faktycznym i prawnym.
+                        </p>
+                        <p>Każde Ogłoszenie musi zawierać:</p>
+                        <ul>
+                            <li>Rzetelny, niewprowadzający w błąd tytuł oraz dokładny opis przedmiotu oferty.</li>
+                            <li>Prawidłowo dobraną kategorię tematyczną oraz lokalizację (miejscowość).</li>
+                            <li>Jednoznaczną cenę brutto (lub oznaczenie oferty jako bezpłatnej).</li>
+                            <li>Datę ważności biletu / rezerwacji lub termin realizacji usługi.</li>
+                        </ul>
+
+                        <div class="legal-callout legal-callout-warn">
+                            <span class="legal-callout-icon">⚠️</span>
+                            <div>
+                                <strong>Ochrona danych na biletach i voucherach:</strong>
+                                Zamieszczając zdjęcia lub skany biletów, Użytkownik ma <u>bezwzględny obowiązek zasłonięcia</u> kodu kreskowego,
+                                kodu QR, numeru PESEL oraz unikalnego numeru seryjnego biletu. Ujawnienie tych danych może umożliwić
+                                nieuprawnione wykorzystanie biletu przez osoby trzecie!
+                            </div>
+                        </div>
+
+                        <h2 id="sekcja-5">§ 5. Bezwzględny zakaz spekulacji biletowej (Art. 133 KW)</h2>
+                        <p>
+                            Platforma ODDAJ DALEJ powstała w duchu <em>fair play</em> i <em>zero waste</em>. W trosce o zgodność z obowiązującym prawem
+                            oraz uczciwość wobec odbiorców, w Serwisie obowiązuje <strong>kategoryczny zakaz sprzedaży biletów wstępu z zyskiem</strong>.
+                        </p>
+                        <div class="legal-highlight-box">
+                            <strong>Kodeks wykroczeń – Art. 133 § 1:</strong><br />
+                            <em>„Kto nabywa w celu odprzedaży z zyskiem bilety wstępu na imprezy artystyczne, rozrywkowe lub sportowe albo kto takie bilety sprzedaje z zyskiem, podlega karze aresztu, ograniczenia wolności albo grzywny.”</em>
+                        </div>
+                        <p>
+                            Cena podana w Ogłoszeniu w kategorii „Bilety” nie może przewyższać nominalnej wartości wydrukowanej na bilecie
+                            (powiększonej co najwyżej o udokumentowaną oficjalną opłatę serwisową pierwotnego dystrybutora).
+                            Ogłoszenia naruszające ten punkt będą niezwłocznie usuwane, a konta wystawiających blokowane.
+                        </p>
+
+                        <h2 id="sekcja-6">§ 6. Transakcje i odpowiedzialność stron</h2>
+                        <p>
+                            Serwis ODDAJ DALEJ jest platformą ogłoszeniową i łączącą społeczność. Operator nie jest stroną umów sprzedaży, darowizny
+                            ani cesji rezerwacji zawieranych pomiędzy Użytkownikami, o ile nie zaznaczono wyraźnie inaczej.
+                        </p>
+                        <p>
+                            Użytkownicy we własnym zakresie uzgadniają sposób płatności, odbiór oraz formalności związane ze zmianą nazwiska
+                            na bilecie lub voucherze u właściwego organizatora, przewoźnika lub hotelu.
+                        </p>
+                        <p>
+                            Operator zaleca realizowanie transakcji z zachowaniem najwyższych standardów ostrożności: w miarę możliwości
+                            poprzez odbiór osobisty, oficjalną zmianę danych pasażera/uczestnika przez system organizatora lub zaufane metody płatności.
+                        </p>
+
+                        <h2 id="sekcja-7">§ 7. Przedmioty i oferty zabronione</h2>
+                        <p>Zabronione jest zamieszczanie Ogłoszeń, których przedmiotem są:</p>
+                        <ul>
+                            <li>Bilety imienne, których regulamin organizatora bezwzględnie wyklucza cesję lub zmianę uczestnika.</li>
+                            <li>Przedmioty pochodzące z przestępstwa (kradzież, paserstwo).</li>
+                            <li>Produkty podrobione, fałszywe wejściówki, generowane cyfrowo duplikaty biletów.</li>
+                            <li>Napoje alkoholowe, wyroby tytoniowe, e-papierosy, środki odurzające i leki na receptę.</li>
+                            <li>Konta bankowe, karty płatnicze, dane osobowe osób trzecich, kryptowaluty i instrumenty finansowe.</li>
+                            <li>Treści pornograficzne, erotyczne, nawołujące do nienawiści lub promujące przemoc.</li>
+                        </ul>
+
+                        <h2 id="sekcja-8">§ 8. Moderacja i procedura zgłaszania naruszeń (DSA)</h2>
+                        <p>
+                            Zgodnie z unijnym Aktem o usługach cyfrowych (DSA), Operator nie prowadzi ogólnego, uprzedniego monitorowania
+                            wszystkich treści przesyłanych przez Użytkowników, lecz stosuje procedurę <strong>Notice and Action</strong>
+                            (zgłoś i działaj).
+                        </p>
+                        <p>
+                            Każdy Użytkownik oraz osoba trzecia ma prawo zgłosić ofertę, którą uważa za bezprawną lub niezgodną z Regulaminem,
+                            korzystając z dedykowanego formularza <a href="/zglos-naduzycie">Zgłaszanie nadużyć</a> lub przesyłając wiadomość na adres: <a href="mailto:kontakt@oddajdalej.pl">kontakt@oddajdalej.pl</a>.
+                        </p>
+                        <p>
+                            W przypadku otrzymania wiarygodnej wiadomości o bezprawnym charakterze danych, Operator niezwłocznie uniemożliwi
+                            dostęp do takiego Ogłoszenia lub podejmie czynności wyjaśniające.
+                        </p>
+
+                        <h2 id="sekcja-9">§ 9. Reklamacje i pomoc techniczna</h2>
+                        <p>
+                            Użytkownik ma prawo złożyć reklamację dotyczącą nieprawidłowego funkcjonowania Serwisu drogą elektroniczną
+                            na adres: <strong>pomoc@oddajdalej.pl</strong> lub za pomocą formularza kontaktowego.
+                        </p>
+                        <p>
+                            Prawidłowo złożona reklamacja powinna zawierać adres e-mail przypisany do Konta oraz szczegółowy opis zaistniałego problemu.
+                            Operator rozpatruje reklamacje w terminie <strong>14 dni</strong> od dnia ich otrzymania i udziela odpowiedzi drogą mailową.
+                        </p>
+
+                        <h2 id="sekcja-10">§ 10. Odstąpienie od umowy i usunięcie konta</h2>
+                        <p>
+                            Użytkownik będący konsumentem ma prawo odstąpić od umowy o świadczenie usług drogą elektroniczną (prowadzenie Konta)
+                            w terminie 14 dni od dnia rejestracji bez podawania przyczyny i bez ponoszenia kosztów.
+                        </p>
+                        <p>
+                            Użytkownik może w każdej chwili, bez zachowania okresu wypowiedzenia, usunąć swoje Konto w ustawieniach Profilu
+                            lub przesyłając stosowne oświadczenie na adres e-mail Operatora.
+                        </p>
+
+                        <h2 id="sekcja-11">§ 11. Postanowienia końcowe</h2>
+                        <p>
+                            Prawem właściwym dla umów o świadczenie usług drogą elektroniczną w ramach Serwisu jest prawo polskie.
+                            W sprawach nieuregulowanych niniejszym Regulaminem zastosowanie mają przepisy Kodeksu cywilnego, Ustawy o prawach konsumenta
+                            oraz Ustawy o świadczeniu usług drogą elektroniczną.
+                        </p>
+                        <p>
+                            Operator zastrzega sobie prawo do zmiany Regulaminu z ważnych przyczyn (np. zmiana przepisów prawa, rozwój funkcjonalności).
+                            O zmianach Użytkownicy zostaną powiadomieni z co najmniej 14-dniowym wyprzedzeniem drogą elektroniczną lub w Serwisie.
+                        </p>
+
+                        <div class="legal-faq-section" id="faq">
+                            <h3 class="legal-faq-title">
+                                <span>❓</span> Często zadawane pytania (FAQ)
+                            </h3>
+                            <div class="legal-faq-list">
+                                <div class="legal-faq-item @(openFaqItems.Contains("faq-1") ? "open" : "")">
+                                    <button type="button" class="legal-faq-trigger" @onclick='() => ToggleFaq("faq-1")'>
+                                        <span>Czy korzystanie z ODDAJ DALEJ jest płatne?</span>
+                                        <span class="legal-faq-icon">▼</span>
+                                    </button>
+                                    @if (openFaqItems.Contains("faq-1"))
+                                    {
+                                        <div class="legal-faq-body">
+                                            Rejestracja konta, przeglądanie oraz publikowanie standardowych ogłoszeń w serwisie jest całkowicie bezpłatne.
+                                            Nie pobieramy ukrytych opłat ani prowizji od transakcji między użytkownikami.
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="legal-faq-item @(openFaqItems.Contains("faq-2") ? "open" : "")">
+                                    <button type="button" class="legal-faq-trigger" @onclick='() => ToggleFaq("faq-2")'>
+                                        <span>Czy mogę wystawić bilet drożej niż cena na nim wydrukowana?</span>
+                                        <span class="legal-faq-icon">▼</span>
+                                    </button>
+                                    @if (openFaqItems.Contains("faq-2"))
+                                    {
+                                        <div class="legal-faq-body">
+                                            <strong>Bezwzględnie nie.</strong> Zgodnie z art. 133 Kodeksu wykroczeń oraz Regulaminem Serwisu,
+                                            sprzedaż biletów z zyskiem jest nielegalna. Cena w ogłoszeniu nie może przekraczać wartości nominalnej.
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="legal-faq-item @(openFaqItems.Contains("faq-3") ? "open" : "")">
+                                    <button type="button" class="legal-faq-trigger" @onclick='() => ToggleFaq("faq-3")'>
+                                        <span>Co zrobić, jeśli organizator wymaga opłaty za cesję (zmianę nazwiska)?</span>
+                                        <span class="legal-faq-icon">▼</span>
+                                    </button>
+                                    @if (openFaqItems.Contains("faq-3"))
+                                    {
+                                        <div class="legal-faq-body">
+                                            Jeżeli oficjalny dystrybutor (np. Eventim, eBilet, linie lotnicze) pobiera opłatę za zmianę danych pasażera lub uczestnika,
+                                            sprzedający może doliczyć wyłącznie rzeczywisty, udokumentowany koszt tej opłaty, informując o tym w opisie oferty.
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="legal-faq-item @(openFaqItems.Contains("faq-4") ? "open" : "")">
+                                    <button type="button" class="legal-faq-trigger" @onclick='() => ToggleFaq("faq-4")'>
+                                        <span>Jak mogę bezpiecznie odebrać bilet elektroniczny (PDF / kod)?</span>
+                                        <span class="legal-faq-icon">▼</span>
+                                    </button>
+                                    @if (openFaqItems.Contains("faq-4"))
+                                    {
+                                        <div class="legal-faq-body">
+                                            Zalecamy oficjalne przepisanie biletu przez platformę organizatora lub odbiór osobisty połączony ze sprawdzeniem danych.
+                                            Nigdy nie klikaj w zewnętrzne linki płatności kurierskich wysyłane w wiadomościach prywatnych!
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="legal-print-footer">
+                            Dokument wygenerowany z serwisu ODDAJ DALEJ (oddajdalej.pl) · Wszelkie prawa zastrzeżone
+                        </div>
+                    </article>
+                </main>
+
+                <aside class="legal-sidebar">
+                    <div class="legal-sidebar-card">
+                        <div class="legal-sidebar-title">
+                            <span>📑</span> Spis treści regulaminu
+                        </div>
+                        <ul class="legal-toc-list">
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-1" ? "active" : "")" data-section="sekcja-1" @onclick='() => ScrollToSection("sekcja-1")'>§ 1. Postanowienia ogólne</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-2" ? "active" : "")" data-section="sekcja-2" @onclick='() => ScrollToSection("sekcja-2")'>§ 2. Warunki i rejestracja</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-3" ? "active" : "")" data-section="sekcja-3" @onclick='() => ScrollToSection("sekcja-3")'>§ 3. Zakres usług</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-4" ? "active" : "")" data-section="sekcja-4" @onclick='() => ScrollToSection("sekcja-4")'>§ 4. Publikacja ogłoszeń</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-5" ? "active" : "")" data-section="sekcja-5" @onclick='() => ScrollToSection("sekcja-5")'>§ 5. Zakaz spekulacji (KW)</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-6" ? "active" : "")" data-section="sekcja-6" @onclick='() => ScrollToSection("sekcja-6")'>§ 6. Transakcje i odpowiedzialność</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-7" ? "active" : "")" data-section="sekcja-7" @onclick='() => ScrollToSection("sekcja-7")'>§ 7. Oferty zabronione</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-8" ? "active" : "")" data-section="sekcja-8" @onclick='() => ScrollToSection("sekcja-8")'>§ 8. Moderacja (DSA)</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-9" ? "active" : "")" data-section="sekcja-9" @onclick='() => ScrollToSection("sekcja-9")'>§ 9. Reklamacje</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-10" ? "active" : "")" data-section="sekcja-10" @onclick='() => ScrollToSection("sekcja-10")'>§ 10. Usunięcie konta</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-11" ? "active" : "")" data-section="sekcja-11" @onclick='() => ScrollToSection("sekcja-11")'>§ 11. Postanowienia końcowe</button></li>
+                        </ul>
+                    </div>
+
+                    <div class="legal-sidebar-card">
+                        <div class="legal-sidebar-title">
+                            <span>🖨️</span> Działania i pomoc
+                        </div>
+                        <p style="font-size:0.86rem; color:var(--muted); margin-bottom:14px;">
+                            Możesz wydrukować ten regulamin lub zapisać kopię w formacie PDF na swoim urządzeniu.
+                        </p>
+                        <button type="button" class="legal-btn-action" @onclick="PrintPage">
+                            🖨️ Drukuj / Pobierz PDF
+                        </button>
+                        <div style="margin-top:12px;">
+                            <a href="/zglos-naduzycie" class="legal-btn-action" style="color:var(--promo); border-color:var(--promo);">
+                                🚨 Zgłoś nadużycie
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="legal-sidebar-card" style="background:var(--brand-soft); border-color:rgba(9,113,113,0.25);">
+                        <div class="legal-sidebar-title" style="color:var(--brand-dark);">
+                            <span>💬</span> Potrzebujesz wsparcia?
+                        </div>
+                        <p style="font-size:0.86rem; color:var(--brand-dark); margin-bottom:10px;">
+                            Nasz zespół chętnie odpowie na Twoje pytania prawne i techniczne.
+                        </p>
+                        <a href="mailto:kontakt@oddajdalej.pl" style="font-size:0.9rem; font-weight:700; color:var(--brand-dark); text-decoration:none;">
+                            ✉️ kontakt@oddajdalej.pl
+                        </a>
+                    </div>
+                </aside>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Pływający przycisk przewijania na samą górę -->
+    <button type="button" id="legalBackToTop" class="legal-back-to-top" title="Przewiń na górę strony" @onclick="ScrollToTop">
+        ↑
+    </button>
+
+    <SiteFooter />
+</div>
+
+@code {
+    private string activeSection = "";
+    private HashSet<string> openFaqItems = new() { "faq-1", "faq-2" };
+
+    private void ToggleFaq(string id)
+    {
+        if (openFaqItems.Contains(id))
+            openFaqItems.Remove(id);
+        else
+            openFaqItems.Add(id);
+    }
+
+    private async Task ScrollToSection(string id)
+    {
+        activeSection = id;
+        await JS.InvokeVoidAsync("scrollToLegalSection", id);
+    }
+
+    private async Task ScrollToTop()
+    {
+        await JS.InvokeVoidAsync("scrollToTop");
+    }
+
+    private async Task PrintPage()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("initLegalScrollspy");
+        }
+    }
+}

@@ -1,0 +1,322 @@
+@page "/polityka-cookies"
+@rendermode InteractiveServer
+@using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Components.Elements
+@inject NotificationService notify
+@inject IJSRuntime JS
+
+<PageTitle>Polityka cookies – ODDAJ DALEJ</PageTitle>
+
+<div class="legal-page">
+    <header class="legal-hero">
+        <div class="home-container">
+            <span class="legal-hero-badge">Bezpieczeństwo i prawo</span>
+            <h1 class="legal-hero-title">Polityka Plików Cookies</h1>
+            <p class="legal-hero-subtitle">
+                Dowiedz się, czym są pliki cookies, jak wykorzystujemy je w Serwisie ODDAJ DALEJ oraz jak w prosty sposób
+                możesz zarządzać swoimi preferencjami w ustawieniach przeglądarki.
+            </p>
+            <div class="legal-hero-meta">
+                <span class="legal-hero-meta-item">🍪 Zgodność z Prawem Telekomunikacyjnym</span>
+                <span class="legal-hero-meta-item">📅 Obowiązuje od: 18 listopada 2026 r.</span>
+            </div>
+        </div>
+    </header>
+
+    <LegalNav ActiveRoute="/polityka-cookies" CurrentTitle="Polityka cookies" />
+
+    <section class="legal-body">
+        <div class="home-container">
+            <div class="legal-grid">
+
+                <main class="legal-main">
+                    <!-- Nagłówek widoczny na wydruku / PDF -->
+                    <div class="legal-print-banner">
+                        <div class="legal-print-brand">
+                            <strong>ODDAJ DALEJ</strong>
+                            <span>Platforma wymiany i bezpiecznego przekazywania rezerwacji</span>
+                        </div>
+                        <div class="legal-print-doc-info">
+                            Polityka Plików Cookies<br />
+                            Obowiązuje od: 18 listopada 2026 r.
+                        </div>
+                    </div>
+
+                    <article class="legal-article">
+
+                        <div class="legal-callout legal-callout-tip">
+                            <span class="legal-callout-icon">💡</span>
+                            <div>
+                                <strong>Dlaczego stosujemy cookies?</strong>
+                                Ciasteczka pozwalają na bezpieczne logowanie, utrzymanie aktywnego połączenia aplikacji Blazor Server
+                                oraz zapamiętanie Twoich filtrów wyszukiwania (np. wybranego miasta). Nie używamy cookies do śledzenia Cię na zewnętrznych stronach.
+                            </div>
+                        </div>
+
+                        <!-- Interaktywny panel zarządzania preferencjami cookies -->
+                        <div class="cookie-manager-card">
+                            <div class="cookie-manager-header">
+                                <h3>⚙️ Twoje preferencje plików cookies w ODDAJ DALEJ</h3>
+                                <span style="font-size:0.85rem; color:var(--ok); font-weight:600;">● Wybór zapisywany lokalnie</span>
+                            </div>
+
+                            <div class="cookie-group-item">
+                                <div class="cookie-group-info">
+                                    <strong>🔒 Pliki niezbędne (Techniczne)</strong>
+                                    <p>Wymagane do działania sesji, logowania, połączenia Blazor SignalR w czasie rzeczywistym i zabezpieczeń CSRF.</p>
+                                </div>
+                                <label class="legal-switch">
+                                    <input type="checkbox" checked disabled />
+                                    <span class="legal-slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="cookie-group-item">
+                                <div class="cookie-group-info">
+                                    <strong>⚙️ Pliki funkcjonalne</strong>
+                                    <p>Pozwalają na zapamiętanie Twoich preferencji wyszukiwania (np. ostatnio wybranego miasta w filtrach).</p>
+                                </div>
+                                <label class="legal-switch">
+                                    <input type="checkbox" @bind="functionalCookies" />
+                                    <span class="legal-slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="cookie-group-item">
+                                <div class="cookie-group-info">
+                                    <strong>📊 Pliki analityczne i wydajnościowe</strong>
+                                    <p>Pomagają nam anonimowo badać, które kategorie ofert są najpopularniejsze i optymalizować działanie serwisu.</p>
+                                </div>
+                                <label class="legal-switch">
+                                    <input type="checkbox" @bind="analyticsCookies" />
+                                    <span class="legal-slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="cookie-manager-actions">
+                                <button type="button" class="home-btn home-btn-primary" @onclick="SavePreferences">
+                                    Zapisz wybrane preferencje
+                                </button>
+                                <button type="button" class="home-btn home-btn-outline" @onclick="AcceptAll">
+                                    Zaakceptuj wszystkie
+                                </button>
+                            </div>
+                        </div>
+
+                        <h2 id="sekcja-1">1. Czym są pliki cookies (ciasteczka)?</h2>
+                        <p>
+                            Pliki cookies (tzw. „ciasteczka”) to małe pliki tekstowe wysyłane przez serwer www i zapisywane na urządzeniu końcowym
+                            Użytkownika (komputerze, smartfonie, tablecie) podczas przeglądania stron internetowych.
+                        </p>
+                        <p>
+                            Cookies zazwyczaj zawierają nazwę strony internetowej, z której pochodzą, unikalny identyfikator sesji oraz czas ich przechowywania
+                            na urządzeniu. Informacje w nich zawarte mogą być odczytane wyłącznie przez serwer, który je utworzył.
+                        </p>
+
+                        <h2 id="sekcja-2">2. Rodzaje plików cookies stosowanych w ODDAJ DALEJ</h2>
+                        <p>W ramach Serwisu stosujemy dwa zasadnicze typy plików ze względu na czas ich życia:</p>
+                        <ul>
+                            <li><strong>Cookies sesyjne (session cookies):</strong> pliki tymczasowe, które są przechowywane na urządzeniu do momentu wylogowania ze strony lub zamknięcia przeglądarki internetowej.</li>
+                            <li><strong>Cookies stałe (persistent cookies):</strong> pliki, które pozostają na urządzeniu Użytkownika przez czas określony w parametrach pliku cookie lub do momentu ich ręcznego usunięcia przez Użytkownika.</li>
+                        </ul>
+
+                        <p>Ze względu na cel funkcjonalny wyróżniamy:</p>
+                        <ol>
+                            <li>
+                                <strong>Niezbędne (techniczne):</strong> bezwzględnie konieczne do prawidłowego działania Serwisu.
+                                Umożliwiają utrzymanie sesji zalogowanego użytkownika, obsługę połączenia interaktywnego Blazor Server oraz bezpieczeństwo przed atakami CSRF.
+                            </li>
+                            <li>
+                                <strong>Funkcjonalne:</strong> umożliwiają zapamiętanie wyborów dokonanych przez Użytkownika (np. wybór miasta w filtrach, preferencje sortowania ofert).
+                            </li>
+                            <li>
+                                <strong>Analityczne i optymalizacyjne:</strong> pomagają nam zrozumieć, w jaki sposób Użytkownicy korzystają z Serwisu, które kategorie cieszą się największą popularnością oraz jak zoptymalizować szybkość działania aplikacji. Dane te zbierane są w sposób zanonimizowany.
+                            </li>
+                        </ol>
+
+                        <h2 id="sekcja-3">3. Wykaz plików cookies wykorzystywanych w Serwisie</h2>
+                        <div class="legal-table-wrapper">
+                            <table class="legal-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nazwa pliku</th>
+                                        <th>Typ</th>
+                                        <th>Czas wygaśnięcia</th>
+                                        <th>Cel i opis działania</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>.AspNetCore.Antiforgery.*</code></td>
+                                        <td>Niezbędny</td>
+                                        <td>Sesja</td>
+                                        <td>Zabezpiecza formularze przed atakami typu Cross-Site Request Forgery (CSRF).</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>.AspNetCore.Cookies</code> / <code>AuthToken</code></td>
+                                        <td>Niezbędny</td>
+                                        <td>14 dni / Sesja</td>
+                                        <td>Utrzymuje stan bezpiecznego zalogowania Użytkownika w Serwisie.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>_blazor_circuit</code></td>
+                                        <td>Niezbędny</td>
+                                        <td>Sesja</td>
+                                        <td>Zarządza dwukierunkowym połączeniem w czasie rzeczywistym między przeglądarką a serwerem.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>reshare_pref_city</code></td>
+                                        <td>Funkcjonalny</td>
+                                        <td>30 dni</td>
+                                        <td>Zapamiętuje ostatnio wybraną lokalizację w wyszukiwarce ofert.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>reshare_cookie_consent</code></td>
+                                        <td>Niezbędny</td>
+                                        <td>365 dni</td>
+                                        <td>Zapisuje informację o zaakceptowaniu ustawień dotyczących plików cookies.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h2 id="sekcja-4">4. Zarządzanie plikami cookies w przeglądarce</h2>
+                        <p>
+                            W większości przeglądarek internetowych obsługa plików cookies jest domyślnie włączona.
+                            W każdej chwili możesz jednak zmienić ustawienia dotyczące cookies w swojej przeglądarce – zablokować ich automatyczne zapisywanie
+                            bądź żądać każdorazowego powiadomienia o przesłaniu ciasteczka.
+                        </p>
+                        <p>Szczegółowe instrukcje konfiguracji dla najpopularniejszych przeglądarek znajdziesz poniżej:</p>
+                        <ul>
+                            <li><strong>Google Chrome:</strong> Menu → Ustawienia → Prywatność i bezpieczeństwo → Pliki cookie i inne dane witryn.</li>
+                            <li><strong>Mozilla Firefox:</strong> Menu → Ustawienia → Prywatność i bezpieczeństwo → Ciasteczka i dane witryn.</li>
+                            <li><strong>Microsoft Edge:</strong> Menu → Ustawienia → Pliki cookie i uprawnienia witryny → Zarządzaj plikami cookie.</li>
+                            <li><strong>Apple Safari:</strong> Preferencje → Prywatność → Blokuj wszystkie cookie.</li>
+                            <li><strong>Opera:</strong> Ustawienia → Zaawansowane → Prywatność i bezpieczeństwo → Ciasteczka.</li>
+                        </ul>
+
+                        <div class="legal-callout legal-callout-warn">
+                            <span class="legal-callout-icon">⚠️</span>
+                            <div>
+                                <strong>Wpływ wyłączenia cookies na działanie Serwisu:</strong>
+                                Całkowite wyłączenie obsługi plików cookies w przeglądarce może uniemożliwić logowanie do Konta,
+                                dodawanie nowych ogłoszeń oraz korzystanie z czatu na żywo. Przeglądanie publicznie dostępnych ofert
+                                pozostanie nadal możliwe.
+                            </div>
+                        </div>
+
+                        <h2 id="sekcja-5">5. Zmiany w Polityce cookies</h2>
+                        <p>
+                            Zastrzegamy sobie prawo do wprowadzania zmian w niniejszej Polityce cookies w przypadku aktualizacji technologicznych
+                            lub zmian powszechnie obowiązujących przepisów prawa. Aktualna wersja polityki jest zawsze dostępna pod niniejszym adresem.
+                        </p>
+
+                        <div class="legal-print-footer">
+                            Dokument wygenerowany z serwisu ODDAJ DALEJ (oddajdalej.pl) · Wszelkie prawa zastrzeżone
+                        </div>
+                    </article>
+                </main>
+
+                <aside class="legal-sidebar">
+                    <div class="legal-sidebar-card">
+                        <div class="legal-sidebar-title">
+                            <span>📑</span> Spis treści
+                        </div>
+                        <ul class="legal-toc-list">
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-1" ? "active" : "")" data-section="sekcja-1" @onclick='() => ScrollToSection("sekcja-1")'>1. Czym są cookies?</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-2" ? "active" : "")" data-section="sekcja-2" @onclick='() => ScrollToSection("sekcja-2")'>2. Rodzaje ciasteczek</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-3" ? "active" : "")" data-section="sekcja-3" @onclick='() => ScrollToSection("sekcja-3")'>3. Wykaz plików cookies</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-4" ? "active" : "")" data-section="sekcja-4" @onclick='() => ScrollToSection("sekcja-4")'>4. Zarządzanie w przeglądarce</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-5" ? "active" : "")" data-section="sekcja-5" @onclick='() => ScrollToSection("sekcja-5")'>5. Zmiany w polityce</button></li>
+                        </ul>
+                    </div>
+
+                    <div class="legal-sidebar-card">
+                        <div class="legal-sidebar-title">
+                            <span>🖨️</span> Działania i pomoc
+                        </div>
+                        <p style="font-size:0.86rem; color:var(--muted); margin-bottom:14px;">
+                            Wydrukuj lub pobierz politykę cookies w formacie PDF.
+                        </p>
+                        <button type="button" class="legal-btn-action" @onclick="PrintPage">
+                            🖨️ Drukuj / Zapisz PDF
+                        </button>
+                        <div style="margin-top:12px;">
+                            <a href="/polityka-prywatnosci" class="legal-btn-action legal-btn-brand">
+                                🛡️ Polityka prywatności
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="legal-sidebar-card" style="background:var(--brand-soft); border-color:rgba(9,113,113,0.25);">
+                        <div class="legal-sidebar-title" style="color:var(--brand-dark);">
+                            <span>❓</span> Pytania o cookies?
+                        </div>
+                        <p style="font-size:0.86rem; color:var(--brand-dark); margin-bottom:10px;">
+                            Skontaktuj się z naszym administratorem technicznym:
+                        </p>
+                        <a href="mailto:kontakt@oddajdalej.pl" style="font-size:0.9rem; font-weight:700; color:var(--brand-dark); text-decoration:none;">
+                            ✉️ kontakt@oddajdalej.pl
+                        </a>
+                    </div>
+                </aside>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Pływający przycisk powrotu na górę -->
+    <button type="button" id="legalBackToTop" class="legal-back-to-top" title="Przewiń na górę strony" @onclick="ScrollToTop">
+        ↑
+    </button>
+
+    <SiteFooter />
+</div>
+
+@code {
+    private string activeSection = "";
+    private bool functionalCookies = true;
+    private bool analyticsCookies = true;
+
+    private async Task ScrollToSection(string id)
+    {
+        activeSection = id;
+        await JS.InvokeVoidAsync("scrollToLegalSection", id);
+    }
+
+    private async Task ScrollToTop()
+    {
+        await JS.InvokeVoidAsync("scrollToTop");
+    }
+
+    private void SavePreferences()
+    {
+        notify.AddNotification(
+            "Preferencje zapisane",
+            $"Zapisano Twoje ustawienia cookies (Funkcjonalne: {(functionalCookies ? "Włączone" : "Wyłączone")}, Analityczne: {(analyticsCookies ? "Włączone" : "Wyłączone")})."
+        );
+    }
+
+    private void AcceptAll()
+    {
+        functionalCookies = true;
+        analyticsCookies = true;
+        notify.AddNotification(
+            "Wszystkie cookies zaakceptowane",
+            "Dziękujemy! Wszystkie pliki cookies (niezbędne, funkcjonalne i analityczne) są aktywne."
+        );
+    }
+
+    private async Task PrintPage()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("initLegalScrollspy");
+        }
+    }
+}

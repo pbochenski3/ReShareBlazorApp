@@ -1,0 +1,42 @@
+<div class="legal-nav-wrapper">
+    <div class="home-container">
+        <div class="legal-breadcrumb">
+            <a href="/">Strona główna</a>
+            <span class="legal-breadcrumb-sep">/</span>
+            <span>Bezpieczeństwo i prawo</span>
+            <span class="legal-breadcrumb-sep">/</span>
+            <span class="legal-breadcrumb-current">@CurrentTitle</span>
+        </div>
+
+        <nav class="legal-nav-tabs" aria-label="Nawigacja Bezpieczeństwo i Prawo">
+            <a href="/regulamin" class="legal-nav-item @(ActiveRoute == "/regulamin" ? "active" : "")">
+                <span class="legal-nav-icon">⚖️</span>
+                <span>Regulamin</span>
+            </a>
+            <a href="/polityka-prywatnosci" class="legal-nav-item @(ActiveRoute == "/polityka-prywatnosci" ? "active" : "")">
+                <span class="legal-nav-icon">🛡️</span>
+                <span>Polityka prywatności</span>
+            </a>
+            <a href="/polityka-cookies" class="legal-nav-item @(ActiveRoute == "/polityka-cookies" ? "active" : "")">
+                <span class="legal-nav-icon">🍪</span>
+                <span>Polityka cookies</span>
+            </a>
+            <a href="/zglos-naduzycie" class="legal-nav-item @(ActiveRoute == "/zglos-naduzycie" ? "active" : "")">
+                <span class="legal-nav-icon">🚨</span>
+                <span>Zgłaszanie nadużyć</span>
+            </a>
+            <a href="/zasady-publikowania" class="legal-nav-item @(ActiveRoute == "/zasady-publikowania" ? "active" : "")">
+                <span class="legal-nav-icon">📋</span>
+                <span>Zasady publikowania</span>
+            </a>
+        </nav>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string ActiveRoute { get; set; } = "";
+
+    [Parameter]
+    public string CurrentTitle { get; set; } = "";
+}

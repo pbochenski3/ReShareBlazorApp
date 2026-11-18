@@ -1,0 +1,332 @@
+@page "/zasady-publikowania"
+@rendermode InteractiveServer
+@using ReShareBlazorApp.Web.Components.Elements
+@inject IJSRuntime JS
+
+<PageTitle>Zasady publikowania ogłoszeń – ODDAJ DALEJ</PageTitle>
+
+<div class="legal-page">
+    <header class="legal-hero">
+        <div class="home-container">
+            <span class="legal-hero-badge">Bezpieczeństwo i prawo</span>
+            <h1 class="legal-hero-title">Zasady Publikowania Ogłoszeń</h1>
+            <p class="legal-hero-subtitle">
+                Dowiedz się, jak prawidłowo i bezpiecznie wystawić ofertę w ODDAJ DALEJ.
+                Poznaj zasady wyceny, standardy ochrony kodów QR oraz listę dozwolonych i zabronionych przedmiotów.
+            </p>
+            <div class="legal-hero-meta">
+                <span class="legal-hero-meta-item">📋 Standardy Społeczności</span>
+                <span class="legal-hero-meta-item">📅 Obowiązuje od: 18 listopada 2026 r.</span>
+            </div>
+        </div>
+    </header>
+
+    <LegalNav ActiveRoute="/zasady-publikowania" CurrentTitle="Zasady publikowania ogłoszeń" />
+
+    <section class="legal-body">
+        <div class="home-container">
+            <div class="legal-grid">
+
+                <main class="legal-main">
+                    <!-- Nagłówek widoczny na wydruku / PDF -->
+                    <div class="legal-print-banner">
+                        <div class="legal-print-brand">
+                            <strong>ODDAJ DALEJ</strong>
+                            <span>Platforma wymiany i bezpiecznego przekazywania rezerwacji</span>
+                        </div>
+                        <div class="legal-print-doc-info">
+                            Zasady Publikowania Ogłoszeń i Standardy Społeczności<br />
+                            Obowiązuje od: 18 listopada 2026 r.
+                        </div>
+                    </div>
+
+                    <article class="legal-article">
+
+                        <div class="legal-callout legal-callout-tip">
+                            <span class="legal-callout-icon">✨</span>
+                            <div>
+                                <strong>Złota zasada ODDAJ DALEJ:</strong>
+                                Jeśli nie możesz skorzystać z zakupionego biletu, rezerwacji hotelowej lub wizyty u specjalisty –
+                                przekaż ofertę komuś innemu bez straty pieniędzy. Nie zarabiaj nieuczciwie na innych, nie marnuj rezerwacji!
+                            </div>
+                        </div>
+
+                        <h2 id="sekcja-1">1. Zasada FAIR PLAY i limity cenowe</h2>
+                        <p>
+                            W ODDAJ DALEJ promujemy uczciwość i transparentność. Każde ogłoszenie sprzedaży podlega następującym restrykcjom cenowym:
+                        </p>
+                        <ul>
+                            <li><strong>Maksymalna cena biletu:</strong> cena sprzedaży biletu wstępu (koncert, mecz, teatr, festiwal) nie może przewyższać <u>wartości nominalnej</u> wydrukowanej na bilecie.</li>
+                            <li><strong>Zakaz spekulacji (tzw. konikowanie):</strong> zabronione jest kupowanie biletów w celu ich późniejszego odsprzedania z zyskiem. Narusza to polskie prawo (art. 133 Kodeksu wykroczeń).</li>
+                            <li><strong>Opłaty dodatkowe:</strong> dopuszczalne jest doliczenie wyłącznie udokumentowanej oficjalnej opłaty za cesję/przebukowanie, jeśli wymaga jej organizator wydarzenia lub przewoźnik.</li>
+                            <li><strong>Uczciwe rabaty:</strong> zachęcamy do obniżania ceny ("Last minute"), szczególnie gdy termin wydarzenia lub rezerwacji zbliża się wielkimi krokami.</li>
+                        </ul>
+
+                        <div class="legal-callout legal-callout-danger">
+                            <span class="legal-callout-icon">⛔</span>
+                            <div>
+                                <strong>Zero tolerancji dla spekulacji:</strong>
+                                Ogłoszenia, w których cena przekracza wartość nominalną biletu, są natychmiast usuwane przez moderatorów,
+                                a konto sprzedającego zostaje zawieszone.
+                            </div>
+                        </div>
+
+                        <!-- Interaktywny Kalkulator FAIR PLAY -->
+                        <div class="legal-calc-card">
+                            <div class="legal-calc-title">
+                                <span>🧮</span> Kalkulator FAIR PLAY – Sprawdź zgodność ceny biletu
+                            </div>
+                            <p class="legal-calc-desc">
+                                Wpisz cenę z biletu oraz planowaną cenę sprzedaży, aby sprawdzić, czy Twoja oferta jest w 100% zgodna z prawem i regulaminem:
+                            </p>
+                            <div class="legal-calc-grid">
+                                <div class="legal-calc-field">
+                                    <label>Cena nominalna na bilecie (PLN)</label>
+                                    <input type="number" min="0" step="1" @bind="nominalPrice" @bind:event="oninput" placeholder="np. 150" />
+                                </div>
+                                <div class="legal-calc-field">
+                                    <label>Twoja proponowana cena (PLN)</label>
+                                    <input type="number" min="0" step="1" @bind="sellingPrice" @bind:event="oninput" placeholder="np. 120" />
+                                </div>
+                                <div class="legal-calc-field">
+                                    <label>Koszt cesji u organizatora (PLN - opcjonalnie)</label>
+                                    <input type="number" min="0" step="1" @bind="transferFee" @bind:event="oninput" placeholder="np. 0" />
+                                </div>
+                            </div>
+
+                            @if (nominalPrice > 0 && sellingPrice > 0)
+                            {
+                                var maxAllowed = nominalPrice + transferFee;
+                                @if (sellingPrice <= maxAllowed)
+                                {
+                                    <div class="legal-calc-result valid">
+                                        <span style="font-size:1.4rem;">✅</span>
+                                        <div>
+                                            <strong>Cena jest w 100% zgodna z zasadami FAIR PLAY!</strong><br />
+                                            @if (sellingPrice < maxAllowed)
+                                            {
+                                                <span>Kupujący zaoszczędzi @((maxAllowed - sellingPrice).ToString("F2")) zł w stosunku do ceny nominalnej. Dziękujemy za uczciwość!</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Sprzedajesz dokładnie po cenie nominalnej (z uwzględnieniem opłaty za zmianę danych). Oferta w pełni dopuszczalna.</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="legal-calc-result invalid">
+                                        <span style="font-size:1.4rem;">⛔</span>
+                                        <div>
+                                            <strong>Cena przekracza dozwolony limit o @((sellingPrice - maxAllowed).ToString("F2")) zł!</strong><br />
+                                            Odsprzedaż biletów wstępu z zyskiem narusza art. 133 Kodeksu wykroczeń. Zmniejsz cenę do maksymalnie @(maxAllowed.ToString("F2")) zł, aby ogłoszenie zostało zaakceptowane.
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+
+                        <h2 id="sekcja-2">2. Ochrona kodów kreskowych i kodów QR</h2>
+                        <p>
+                            Większość współczesnych biletów i voucherów elektronicznych (PDF / Apple Wallet / Google Wallet)
+                            zawiera unikalny kod kreskowy lub kod QR, który uprawnia do jednokrotnego wejścia na teren imprezy.
+                        </p>
+                        <div class="legal-callout legal-callout-warn">
+                            <span class="legal-callout-icon">🔒</span>
+                            <div>
+                                <strong>Zasada bezpiecznego zdjęcia:</strong>
+                                Jeśli dodajesz zdjęcie lub zrzut ekranu biletu do ogłoszenia, <strong>zawsze dokładnie zamaż (zasłoń)</strong>:
+                                <ul style="margin:6px 0 0; padding-left:20px;">
+                                    <li>Kod QR oraz kod kreskowy</li>
+                                    <li>Unikalny numer biletu / numer transakcji</li>
+                                    <li>Swoje dane wrażliwe (np. PESEL, adres zamieszkania)</li>
+                                </ul>
+                                Niezasłonięcie kodu umożliwia jego skopiowanie przez kogokolwiek w internecie i wejście na Twoim bilecie!
+                            </div>
+                        </div>
+
+                        <h2 id="sekcja-3">3. Wymagane elementy każdego ogłoszenia</h2>
+                        <p>Aby ogłoszenie zostało zaakceptowane i przyciągnęło odbiorców, musi zawierać:</p>
+                        <ol>
+                            <li><strong>Konkretny tytuł:</strong> zawierający nazwę wydarzenia, wykonawcy, hotelu lub usługi oraz datę (np. <em>„2x Bilet na Dawid Podsiadło – Warszawa Narodowy – 15.06”</em>).</li>
+                            <li><strong>Dokładną datę i godzinę:</strong> data wydarzenia lub termin ważności rezerwacji.</li>
+                            <li><strong>Miejscowość:</strong> lokalizację, w której odbywa się wydarzenie lub ma miejsce odbiór.</li>
+                            <li><strong>Rzetelny opis:</strong> rodzaj miejsca (np. sektor, rząd, miejsce siedzące / płyta), forma przekazania (bilet w PDF, bilet papierowy, aplikacja organizatora, cesja u przewoźnika).</li>
+                            <li><strong>Jasną cenę:</strong> całkowity koszt dla kupującego (w ogłoszeniach typu Sprzedaż) lub oznaczenie „Oddam za darmo”.</li>
+                        </ol>
+
+                        <h2 id="sekcja-4">4. Dozwolone typy ogłoszeń</h2>
+                        <p>W naszym serwisie możesz publikować 3 typy ofert:</p>
+                        <div class="legal-table-wrapper">
+                            <table class="legal-table">
+                                <thead>
+                                    <tr>
+                                        <th>Typ ogłoszenia</th>
+                                        <th>Przeznaczenie</th>
+                                        <th>Wymogi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Sprzedam</strong></td>
+                                        <td>Odsprzedaż biletu, noclegu lub terminu po cenie nominalnej lub niższej</td>
+                                        <td>Podanie dokładnej ceny w PLN, nie wyższej niż cena zakupu</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Oddam</strong></td>
+                                        <td>Całkowicie bezpłatne przekazanie biletu, rezerwacji lub usługi innej osobie</td>
+                                        <td>Cena ustalona na 0 PLN, zakaz żądania ukrytych zapłat</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Szukam</strong></td>
+                                        <td>Zapytanie o dostępność biletów lub rezerwacji od innych użytkowników</td>
+                                        <td>Wskazanie poszukiwanego terminu i uczciwego budżetu</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h2 id="sekcja-5">5. Bilety imienne i formalności cesji</h2>
+                        <p>
+                            Jeżeli bilet lub rezerwacja hotelowa jest wystawiona na konkretne nazwisko Użytkownika,
+                            obowiązkiem wystawiającego jest poinformowanie w opisie ogłoszenia:
+                        </p>
+                        <ul>
+                            <li>Czy organizator dopuszcza oficjalną zmianę danych uczestnika (cesję).</li>
+                            <li>Jaki jest koszt takiej zmiany oraz która ze stron go ponosi.</li>
+                            <li>W jakim terminie przed wydarzeniem należy dokonać formalności.</li>
+                        </ul>
+                        <p>
+                            Zakazane jest oferowanie biletów imiennych, jeśli regulamin organizatora kategorycznie zabrania wejścia innej osobie
+                            i przeprowadza rygorystyczną kontrolę dowodów tożsamości przy bramkach.
+                        </p>
+
+                        <h2 id="sekcja-6">6. Katalog ofert i przedmiotów bezwzględnie zabronionych</h2>
+                        <p>Na platformie ODDAJ DALEJ nie wolno zamieszczać ogłoszeń dotyczących:</p>
+                        <ul>
+                            <li>Biletów lub voucherów fikcyjnych, podrobionych lub już wykorzystanych.</li>
+                            <li>Ofert o charakterze pożyczek, inwestycji, kryptowalut lub programów partnerskich.</li>
+                            <li>Leków na receptę, suplementów diety, substancji psychotropowych, alkoholu i papierosów.</li>
+                            <li>Zwierząt domowych i egzotycznych.</li>
+                            <li>Przedmiotów naruszających patenty, prawa autorskie lub dobra osobiste osób trzecich.</li>
+                            <li>Treści o charakterze erotycznym lub jednoznacznie wulgarnym.</li>
+                        </ul>
+
+                        <h2 id="sekcja-7">7. Cykl życia ogłoszenia i automatyczne wygasanie</h2>
+                        <p>
+                            Dbamy o to, aby baza ofert była zawsze świeża i aktualna:
+                        </p>
+                        <ul>
+                            <li>Ogłoszenie wygasa automatycznie po upływie terminu ważności podanego przy publikacji.</li>
+                            <li>Użytkownik zobowiązany jest do niezwłocznego usunięcia ogłoszenia w przypadku sfinalizowania transakcji lub odstąpienia biletu.</li>
+                            <li>Zabronione jest wielokrotne powielanie tego samego ogłoszenia (duplikowanie ofert).</li>
+                        </ul>
+
+                        <h2 id="sekcja-8">8. Konsekwencje nieprzestrzegania zasad</h2>
+                        <p>
+                            W przypadku naruszenia niniejszych Zasad publikowania ogłoszeń, moderatorzy ODDAJ DALEJ mogą podjąć następujące kroki:
+                        </p>
+                        <ol>
+                            <li>Edycja ogłoszenia (usunięcie zabronionego fragmentu lub zakrycie kodu).</li>
+                            <li>Odrzucenie lub trwałe usunięcie ogłoszenia z Serwisu.</li>
+                            <li>Wysłanie oficjalnego upomnienia do Użytkownika.</li>
+                            <li>Tymczasowe zablokowanie możliwości dodawania ogłoszeń.</li>
+                            <li>Całkowite usunięcie Konta Użytkownika i przekazanie sprawy odpowiednim organom (w przypadku oszustw).</li>
+                        </ol>
+
+                        <div class="legal-print-footer">
+                            Dokument wygenerowany z serwisu ODDAJ DALEJ (oddajdalej.pl) · Wszelkie prawa zastrzeżone
+                        </div>
+                    </article>
+                </main>
+
+                <aside class="legal-sidebar">
+                    <div class="legal-sidebar-card">
+                        <div class="legal-sidebar-title">
+                            <span>📑</span> Spis zasad
+                        </div>
+                        <ul class="legal-toc-list">
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-1" ? "active" : "")" data-section="sekcja-1" @onclick='() => ScrollToSection("sekcja-1")'>1. Zasada FAIR PLAY i ceny</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-2" ? "active" : "")" data-section="sekcja-2" @onclick='() => ScrollToSection("sekcja-2")'>2. Ochrona kodów QR</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-3" ? "active" : "")" data-section="sekcja-3" @onclick='() => ScrollToSection("sekcja-3")'>3. Wymagane dane</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-4" ? "active" : "")" data-section="sekcja-4" @onclick='() => ScrollToSection("sekcja-4")'>4. Dozwolone typy ofert</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-5" ? "active" : "")" data-section="sekcja-5" @onclick='() => ScrollToSection("sekcja-5")'>5. Bilety imienne i cesje</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-6" ? "active" : "")" data-section="sekcja-6" @onclick='() => ScrollToSection("sekcja-6")'>6. Oferty zabronione</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-7" ? "active" : "")" data-section="sekcja-7" @onclick='() => ScrollToSection("sekcja-7")'>7. Cykl życia i wygasanie</button></li>
+                            <li><button type="button" class="legal-toc-link @(activeSection == "sekcja-8" ? "active" : "")" data-section="sekcja-8" @onclick='() => ScrollToSection("sekcja-8")'>8. Konsekwencje naruszeń</button></li>
+                        </ul>
+                    </div>
+
+                    <div class="legal-sidebar-card">
+                        <div class="legal-sidebar-title">
+                            <span>🚀</span> Chcesz dodać ogłoszenie?
+                        </div>
+                        <p style="font-size:0.86rem; color:var(--muted); margin-bottom:14px;">
+                            Pamiętaj o zasadach powyżej i wystaw ofertę w kilka chwil:
+                        </p>
+                        <a href="/add-product" class="legal-btn-action legal-btn-brand">
+                            ➕ Dodaj nowe ogłoszenie
+                        </a>
+                        <div style="margin-top:10px;">
+                            <button type="button" class="legal-btn-action" @onclick="PrintPage">
+                                🖨️ Zapisz zasady (PDF)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="legal-sidebar-card" style="background:var(--brand-soft); border-color:rgba(9,113,113,0.25);">
+                        <div class="legal-sidebar-title" style="color:var(--brand-dark);">
+                            <span>🚨</span> Widzisz podejrzaną ofertę?
+                        </div>
+                        <p style="font-size:0.86rem; color:var(--brand-dark); margin-bottom:10px;">
+                            Pomóż nam usuwać nieuczciwe oferty i koników:
+                        </p>
+                        <a href="/zglos-naduzycie" class="legal-btn-action" style="background:#fff; color:var(--promo); border-color:var(--promo);">
+                            🚨 Zgłoś nadużycie
+                        </a>
+                    </div>
+                </aside>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Pływający przycisk powrotu na górę -->
+    <button type="button" id="legalBackToTop" class="legal-back-to-top" title="Przewiń na górę strony" @onclick="ScrollToTop">
+        ↑
+    </button>
+
+    <SiteFooter />
+</div>
+
+@code {
+    private string activeSection = "";
+    private decimal nominalPrice = 150;
+    private decimal sellingPrice = 120;
+    private decimal transferFee = 0;
+
+    private async Task ScrollToSection(string id)
+    {
+        activeSection = id;
+        await JS.InvokeVoidAsync("scrollToLegalSection", id);
+    }
+
+    private async Task ScrollToTop()
+    {
+        await JS.InvokeVoidAsync("scrollToTop");
+    }
+
+    private async Task PrintPage()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("initLegalScrollspy");
+        }
+    }
+}
