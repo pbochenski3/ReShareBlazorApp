@@ -9,12 +9,55 @@ namespace ReShareBlazorApp.Api.Services
 {
     public class ProductService : IProductService
     {
+        public const int MaxImagesPerProduct = 5;
+        public const int MaxImageSizeBytes = 3 * 1024 * 1024;
+
         private readonly IProductRepository _productRepository;
-        public ProductService(IProductRepository productRepository)
+        private readonly IImageStorage _imageStorage;
+        public ProductService(IProductRepository productRepository, IImageStorage imageStorage)
         {
             _productRepository = productRepository;
+            _imageStorage = imageStorage;
         }
         public async Task<bool> AddProductAsync(ProductDTO product)
+        {
+            // najpierw zapisujemy pliki na dysku, potem rekordy w bazie
+            var images = new List<ProductImage>();
+            var savedFiles = new List<string>();
+            try
+            {
+                foreach (var (image, index) in (product.Images ?? new()).Select((image, index) => (image, index)))
+                {
+                    var contentType = DetectContentType(image.Data);
+                    if (contentType == null)
+                    {
+                        DeleteFiles(savedFiles);
+                        return false;
+                    }
+
+                    var storedFileName = await _imageStorage.SaveAsync(image.Data, GetExtension(contentType));
+                    savedFiles.Add(storedFileName);
+                    images.Add(new ProductImage
+                    {
+                        FileName = TrimFileName(image.FileName),
+                        ContentType = contentType,
+                        StoredFileName = storedFileName,
+                        SortOrder = index
+                    });
+                }
+
+                var added = await AddProductToDatabaseAsync(product, images);
+                if (!added)
+                    DeleteFiles(savedFiles);
+                return added;
+            }
+            catch
+            {
+                DeleteFiles(savedFiles);
+                throw;
+            }
+        }
+        private async Task<bool> AddProductToDatabaseAsync(ProductDTO product, List<ProductImage> images)
         {
             var productModel = new Product
             {
@@ -26,7 +69,8 @@ namespace ReShareBlazorApp.Api.Services
                 Category = product.Category,
                 Type = product.Type,
                 City = product.City,
-                UserId = product.UserId
+                UserId = product.UserId,
+                Images = images
             };
             var result = await _productRepository.AddProductAsync(productModel);
             return result;
@@ -36,6 +80,8 @@ namespace ReShareBlazorApp.Api.Services
             ProductCategory? category = null)
         {
             var listOfProducts = await _productRepository.GetProducts(number, category);
+            var imageIds = await _productRepository
+                .GetImageIdsAsync(listOfProducts.Select(p => p.Id));
             var productsDtoList = listOfProducts.
                 Select(p => new ProductDTO
                 {
@@ -49,6 +95,7 @@ namespace ReShareBlazorApp.Api.Services
                     City = p.City,
                     Type = p.Type,
                     UserId = p.UserId,
+                    ImageIds = imageIds.GetValueOrDefault(p.Id) ?? new List<int>()
                 })
                 .ToList();
             return productsDtoList;
@@ -56,8 +103,10 @@ namespace ReShareBlazorApp.Api.Services
         public async Task<ProductDTO> GetProductById(int id)
         {
             var product = await _productRepository.GetProductById(id);
+            var imageIds = await _productRepository.GetImageIdsAsync(new[] { id });
             return new ProductDTO
             {
+                ImageIds = imageIds.GetValueOrDefault(id) ?? new List<int>(),
                 Name = product.Name,
                 Description = product.Description,
                 Price = product.Price,
@@ -73,6 +122,80 @@ namespace ReShareBlazorApp.Api.Services
         {
             query = query.Trim();
             return await _productRepository.GetLocationsAsync(query);
+        }
+        public async Task<ProductImageDTO?> GetImageAsync(int imageId)
+        {
+            var image = await _productRepository.GetImageAsync(imageId);
+            if (image == null)
+                return null;
+
+            var data = await _imageStorage.ReadAsync(image.StoredFileName);
+            if (data == null)
+                return null;
+
+            return new ProductImageDTO
+            {
+                Id = image.Id,
+                FileName = image.FileName,
+                ContentType = image.ContentType,
+                Data = data
+            };
+        }
+        /// <summary>Zwraca komunikat błędu albo null, gdy zdjęcia są poprawne.</summary>
+        public string? ValidateImages(IReadOnlyList<ProductImageDTO>? images)
+        {
+            if (images == null || images.Count == 0)
+                return null;
+
+            if (images.Count > MaxImagesPerProduct)
+                return $"Możesz dodać maksymalnie {MaxImagesPerProduct} zdjęć.";
+
+            foreach (var image in images)
+            {
+                if (image.Data == null || image.Data.Length == 0)
+                    return "Jedno ze zdjęć jest puste.";
+
+                if (image.Data.Length > MaxImageSizeBytes)
+                    return $"Zdjęcie jest za duże (maksymalnie {MaxImageSizeBytes / 1024 / 1024} MB).";
+
+                if (DetectContentType(image.Data) == null)
+                    return "Dozwolone formaty zdjęć to JPG, PNG i WEBP.";
+            }
+            return null;
+        }
+        private void DeleteFiles(IEnumerable<string> storedFileNames)
+        {
+            foreach (var storedFileName in storedFileNames)
+                _imageStorage.Delete(storedFileName);
+        }
+        private static string GetExtension(string contentType) => contentType switch
+        {
+            "image/png" => ".png",
+            "image/webp" => ".webp",
+            _ => ".jpg"
+        };
+        private static string TrimFileName(string? fileName)
+        {
+            var name = Path.GetFileName(fileName ?? "");
+            return name.Length > 255 ? name[..255] : name;
+        }
+        // Rozpoznanie formatu po nagłówku pliku (JPEG / PNG / WEBP).
+        private static string? DetectContentType(byte[] data)
+        {
+            if (data == null || data.Length < 12)
+                return null;
+
+            if (data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF)
+                return "image/jpeg";
+
+            if (data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47)
+                return "image/png";
+
+            if (data[0] == 'R' && data[1] == 'I' && data[2] == 'F' && data[3] == 'F' &&
+                data[8] == 'W' && data[9] == 'E' && data[10] == 'B' && data[11] == 'P')
+                return "image/webp";
+
+            return null;
         }
     }
 }

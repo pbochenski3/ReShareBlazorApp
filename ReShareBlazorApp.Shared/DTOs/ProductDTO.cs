@@ -23,5 +23,11 @@ namespace ReShareBlazorApp.Shared.DTOs
         public ProductCategory Category { get; set; }
         public string AddedBy { get; set; } = "";
         public int UserId { get; set; }
+
+        /// <summary>Zdjęcia przesyłane przy dodawaniu ogłoszenia (tylko żądanie).</summary>
+        public List<ProductImageDTO> Images { get; set; } = new();
+
+        /// <summary>Identyfikatory zdjęć zapisanych w bazie (tylko odpowiedź), pierwsze = główne.</summary>
+        public List<int> ImageIds { get; set; } = new();
     }
 }

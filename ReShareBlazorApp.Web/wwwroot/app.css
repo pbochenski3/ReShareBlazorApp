@@ -3095,3 +3095,165 @@ input[type="search"] {
     }
 
 
+/* ===== Zdjęcia ogłoszenia: formularz ===== */
+.product-upload {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    border: 2px dashed #b9c4cc;
+    border-radius: 8px;
+    background: #f8fafb;
+    color: #39845b;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+    .product-upload:hover {
+        border-color: #39845b;
+        background: #f0f7f3;
+    }
+
+    .product-upload.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+.product-upload-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.product-image-hint {
+    margin-top: 6px;
+    color: #777;
+    font-size: 12px;
+}
+
+.product-image-error {
+    margin-top: 6px;
+    color: #dc3545;
+    font-size: 12px;
+}
+
+.product-images {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.product-image-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #d5d9df;
+    background: #f1f3f5;
+}
+
+    .product-image-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+.product-image-main {
+    position: absolute;
+    left: 4px;
+    bottom: 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(57, 132, 91, 0.92);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.product-image-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+    .product-image-remove:hover {
+        background: #dc3545;
+    }
+
+.product-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ===== Zdjęcia ogłoszenia: szczegóły ===== */
+.details-gallery {
+    margin-bottom: 25px;
+}
+
+.details-gallery-main {
+    aspect-ratio: 4 / 3;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #f1f3f5;
+}
+
+    .details-gallery-main img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+    }
+
+.details-gallery-thumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.details-gallery-thumb {
+    width: 72px;
+    height: 72px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f1f3f5;
+    cursor: pointer;
+    opacity: 0.75;
+    transition: opacity 0.2s, border-color 0.2s;
+}
+
+    .details-gallery-thumb:hover {
+        opacity: 1;
+    }
+
+    .details-gallery-thumb.active {
+        border-color: #39845b;
+        opacity: 1;
+    }
+
+    .details-gallery-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }

@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Zdjecia ogloszen zapisywane na dysku
+**/Uploads/

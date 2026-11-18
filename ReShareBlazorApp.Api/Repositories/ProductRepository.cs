@@ -71,6 +71,32 @@ namespace ReShareBlazorApp.Api.Repositories
                 throw;
             }
         }
+        // Pobiera tylko identyfikatory zdjęć (bez zawartości binarnej),
+        // żeby listy ogłoszeń nie ładowały obrazków do pamięci.
+        public async Task<Dictionary<int, List<int>>> GetImageIdsAsync(IEnumerable<int> productIds)
+        {
+            var ids = productIds.ToList();
+            if (ids.Count == 0)
+                return new Dictionary<int, List<int>>();
+
+            var rows = await _context.ProductImages
+                .AsNoTracking()
+                .Where(i => ids.Contains(i.ProductId))
+                .OrderBy(i => i.SortOrder)
+                .ThenBy(i => i.Id)
+                .Select(i => new { i.ProductId, i.Id })
+                .ToListAsync();
+
+            return rows
+                .GroupBy(r => r.ProductId)
+                .ToDictionary(g => g.Key, g => g.Select(r => r.Id).ToList());
+        }
+        public async Task<ProductImage?> GetImageAsync(int imageId)
+        {
+            return await _context.ProductImages
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == imageId);
+        }
         public async Task<List<LocationDTO>> GetLocationsAsync(string query)
         {
             var locations = await _context.Locations

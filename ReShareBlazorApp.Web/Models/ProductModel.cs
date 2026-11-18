@@ -27,5 +27,7 @@ namespace ReShareBlazorApp.Web.Models
         public ProductCategory Category { get; set; }
 
         public int UserId { get; set; }
+
+        public List<ProductImageModel> Images { get; set; } = new();
     }
 }

@@ -132,7 +132,8 @@
                                  Location="@product.City"
                                  Term="@(product.ExpiresAt.ToString("HH:mm") ?? "Brak terminu")"
                                  Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")"
-                                 Link=@product.ProductId/>
+                                 Link=@product.ProductId
+                                 ImageUrl="@(product.ImageIds.Count > 0 ? "/images/" + product.ImageIds[0] : null)"/>
                 }
 
             </div>
