@@ -1,82 +1,78 @@
 @page "/user/{Username}"
-@using System.Security.Claims
-@using Microsoft.AspNetCore.Components.Authorization
-@using ReShareBlazorApp.Web.ApiServices
-@using ReShareBlazorApp.Web.Components.Elements
-@inject UserApiService userApi
+@using ReShareBlazorApp.Shared.DTOs
+@inject NavigationManager Navigation
 
-@if(exist)
-{
-<section class="home-section">
-    <div class="home-container">
-
-        <!-- Karta profilu -->
-        <div class="profile-card">
-            <span class="avatar avatar-lg">TY</span>
-
-            <div class="profile-info">
-                    <h2>@Username</h2>
-                        <p class="profile-email">XXX</p>
-                <p class="home-card-verified">✔ E-mail zweryfikowany</p>
-                <p class="profile-rating">★ 4,8 <span>(12 opinii)</span></p>
+<div class="container py-4" style="max-width: 1200px;">
+    
+    <!-- Główna karta profilu użytkownika -->
+    <div class="card shadow-sm border-0 p-4 mb-4 rounded-4 bg-white">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-4">
+                <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold fs-2 shadow-sm" 
+                     style="width: 80px; height: 80px; background-color: #0f766e;">
+                    @GetInitials(Username)
+                </div>
+                <div>
+                    <h2 class="fw-bold mb-1 text-dark">@Username</h2>
+                    <p class="text-muted mb-1">XXX</p>
+                    <p class="small mb-2 fw-semibold" style="color: #0f766e;">✔ E-mail zweryfikowany</p>
+                </div>
             </div>
-
-            <a class="home-btn home-btn-outline" href="/ustawienia">Edytuj profil</a>
-        </div>
-
-        <!-- Statystyki -->
-        <div class="profile-stats">
-            <div class="profile-stat"><strong>5</strong><span>Ogłoszenia</span></div>
-            <div class="profile-stat"><strong>2</strong><span>Poszukiwania</span></div>
-            <div class="profile-stat"><strong>9</strong><span>Transakcje</span></div>
-            <div class="profile-stat"><strong>14</strong><span>Ulubione</span></div>
-        </div>
-
-        <!-- Zakładki -->
-        <div class="profile-tabs" role="tablist">
-            <button class="profile-tab active" type="button" role="tab">Moje ogłoszenia</button>
-            <button class="profile-tab" type="button" role="tab">Moje poszukiwania</button>
-            <button class="profile-tab" type="button" role="tab">Ulubione</button>
-            <button class="profile-tab" type="button" role="tab">Transakcje</button>
-            <button class="profile-tab" type="button" role="tab">Opinie</button>
-        </div>
-
-        <!-- Moje ogłoszenia -->
-        @* <div class="home-cards">
-            <ListingCard Title="2 bilety na koncert – Kraków" Category="Bilety i rezerwacje" Type="Sprzedam"
-                         Price="240 zł" Location="Kraków" Term="12.12.2026" Published="08.11.2026" />
-            <ListingCard Title="Wózek dziecięcy do oddania" Category="Rodzina i dzieci" Type="Oddam"
-                         Price="Bezpłatnie" Location="Łódź" Term="od zaraz" Published="07.11.2026" />
-        </div> *@
-
-        <!-- Opinie -->
-        <h2 class="home-section-title profile-subtitle">Opinie o Tobie</h2>
-        <div class="profile-reviews">
-            <article class="profile-review">
-                <p class="profile-rating">★★★★★ <span>Anna K.</span></p>
-                <p>Szybki kontakt, wszystko zgodnie z opisem. Polecam.</p>
-            </article>
-            <article class="profile-review">
-                <p class="profile-rating">★★★★☆ <span>Marek N.</span></p>
-                <p>Sprawna wymiana, drobne opóźnienie w odpowiedzi.</p>
-            </article>
+            <button class="btn rounded-pill px-4 py-2 fw-semibold" style="border: 2px solid #0f766e; color: #0f766e; background: transparent;">
+                Edytuj profil
+            </button>
         </div>
     </div>
-</section>
-}
-else
-{
-    <h4>Nie znaleziono użytkownika!</h4>
-}
 
+    <!-- Liczniki / Statystyki -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card p-3 border-0 shadow-sm rounded-4 bg-white">
+                <h3 class="fw-bold text-dark mb-0">5</h3>
+                <span class="text-muted small">Ogłoszenia</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 border-0 shadow-sm rounded-4 bg-white">
+                <h3 class="fw-bold text-dark mb-0">2</h3>
+                <span class="text-muted small">Poszukiwania</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 border-0 shadow-sm rounded-4 bg-white">
+                <h3 class="fw-bold text-dark mb-0">9</h3>
+                <span class="text-muted small">Transakcje</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 border-0 shadow-sm rounded-4 bg-white">
+                <h3 class="fw-bold text-dark mb-0">14</h3>
+                <span class="text-muted small">Ulubione</span>
+            </div>
+        </div>
+    </div>
 
-@code
-{
+    <!-- Zakładki nawigacyjne -->
+    <div class="d-flex gap-2 mb-4 overflow-auto pb-2">
+        <button class="btn rounded-pill px-4 py-2 fw-semibold text-white" style="background-color: #0f766e; border: none;">Moje ogłoszenia</button>
+        <button class="btn btn-light text-secondary rounded-pill px-4 py-2 bg-white shadow-sm">Moje poszukiwania</button>
+        <button class="btn btn-light text-secondary rounded-pill px-4 py-2 bg-white shadow-sm">Ulubione</button>
+        <button class="btn btn-light text-secondary rounded-pill px-4 py-2 bg-white shadow-sm">Transakcje</button>
+    </div>
+
+    <div class="card border-0 shadow-sm p-5 rounded-4 text-center text-muted bg-white">
+        <h4>Panel użytkownika</h4>
+        <p class="mb-0">Wybierz zakładkę powyżej.</p>
+    </div>
+</div>
+
+@code {
     [Parameter]
-    public string Username { get; set; } = string.Empty;
-    private bool exist;
-    protected override async Task OnParametersSetAsync()
+    public string Username { get; set; } = "Admin12345";
+
+    private string GetInitials(string name)
     {
-        exist = await userApi.CheckIfUserExistsAsync(Username);
+        if (string.IsNullOrEmpty(name)) return "U";
+        return name.Substring(0, Math.Min(2, name.Length)).ToUpper();
     }
-}
+}   
