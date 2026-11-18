@@ -1,4 +1,6 @@
 @page "/user/{Username}"
+@using ReShareBlazorApp.Shared.DTOs
+@inject NavigationManager Navigation
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReShareBlazorApp.Shared.DTOs
@@ -7,6 +9,27 @@
 @inject UserApiService userApi
 @inject AuthenticationStateProvider AuthStateProvider
 
+<div class="container py-4" style="max-width: 1200px;">
+    
+    <!-- Główna karta profilu użytkownika -->
+    <div class="card shadow-sm border-0 p-4 mb-4 rounded-4 bg-white">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-4">
+                <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold fs-2 shadow-sm" 
+                     style="width: 80px; height: 80px; background-color: #0f766e;">
+                    @GetInitials(Username)
+                </div>
+                <div>
+                    <h2 class="fw-bold mb-1 text-dark">@Username</h2>
+                    <p class="text-muted mb-1">XXX</p>
+                    <p class="small mb-2 fw-semibold" style="color: #0f766e;">✔ E-mail zweryfikowany</p>
+                </div>
+            </div>
+            <button class="btn rounded-pill px-4 py-2 fw-semibold" style="border: 2px solid #0f766e; color: #0f766e; background: transparent;">
+                Edytuj profil
+            </button>
+        </div>
+    </div>
 @if (exist)
 {
     <section class="home-section">
@@ -23,6 +46,33 @@
                     <span class="avatar avatar-lg">@Initials</span>
                 }
 
+    <!-- Liczniki / Statystyki -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card p-3 border-0 shadow-sm rounded-4 bg-white">
+                <h3 class="fw-bold text-dark mb-0">5</h3>
+                <span class="text-muted small">Ogłoszenia</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 border-0 shadow-sm rounded-4 bg-white">
+                <h3 class="fw-bold text-dark mb-0">2</h3>
+                <span class="text-muted small">Poszukiwania</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 border-0 shadow-sm rounded-4 bg-white">
+                <h3 class="fw-bold text-dark mb-0">9</h3>
+                <span class="text-muted small">Transakcje</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 border-0 shadow-sm rounded-4 bg-white">
+                <h3 class="fw-bold text-dark mb-0">14</h3>
+                <span class="text-muted small">Ulubione</span>
+            </div>
+        </div>
+    </div>
                 <div class="profile-info">
                     <h2>@Username</h2>
                     @if (!string.IsNullOrEmpty(profile?.City))
@@ -51,6 +101,13 @@
                 <div class="profile-stat"><strong>14</strong><span>Ulubione</span></div>
             </div>
 
+    <!-- Zakładki nawigacyjne -->
+    <div class="d-flex gap-2 mb-4 overflow-auto pb-2">
+        <button class="btn rounded-pill px-4 py-2 fw-semibold text-white" style="background-color: #0f766e; border: none;">Moje ogłoszenia</button>
+        <button class="btn btn-light text-secondary rounded-pill px-4 py-2 bg-white shadow-sm">Moje poszukiwania</button>
+        <button class="btn btn-light text-secondary rounded-pill px-4 py-2 bg-white shadow-sm">Ulubione</button>
+        <button class="btn btn-light text-secondary rounded-pill px-4 py-2 bg-white shadow-sm">Transakcje</button>
+    </div>
             <!-- Zakładki -->
             <div class="profile-tabs" role="tablist">
                 <button class="profile-tab active" type="button" role="tab">Moje ogłoszenia</button>
@@ -60,6 +117,11 @@
                 <button class="profile-tab" type="button" role="tab">Opinie</button>
             </div>
 
+    <div class="card border-0 shadow-sm p-5 rounded-4 text-center text-muted bg-white">
+        <h4>Panel użytkownika</h4>
+        <p class="mb-0">Wybierz zakładkę powyżej.</p>
+    </div>
+</div>
             <!-- Moje ogłoszenia -->
             @* <div class="home-cards">
             <ListingCard Title="2 bilety na koncert – Kraków" Category="Bilety i rezerwacje" Type="Sprzedam"
@@ -89,9 +151,11 @@ else
 }
 
 
-@code
-{
+@code {
     [Parameter]
+    public string Username { get; set; } = "Admin12345";
+
+    private string GetInitials(string name)
     public string Username { get; set; } = string.Empty;
     private bool exist;
     private UserProfileDTO? profile;
@@ -101,10 +165,12 @@ else
     private bool isOwner;
     protected override async Task OnParametersSetAsync()
     {
+        if (string.IsNullOrEmpty(name)) return "U";
+        return name.Substring(0, Math.Min(2, name.Length)).ToUpper();
         profile = await userApi.GetProfileAsync(Username);
         exist = profile != null;
         avatarUrl = userApi.GetAvatarUrl(profile?.AvatarUrl);
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
         isOwner = string.Equals(state.User.FindFirst(ClaimTypes.Name)?.Value, Username, StringComparison.OrdinalIgnoreCase);
     }
-}
+}   

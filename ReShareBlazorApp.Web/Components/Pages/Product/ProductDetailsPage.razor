@@ -1,10 +1,14 @@
 ﻿@page "/details/{ProductId:int}"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Shared.Enums
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Models
 @inject ProductApiService productApi
+@inject ReviewApiService ReviewApiService
+@inject AuthenticationStateProvider AuthStateProvider
 @inject ReportApiService reportApi
 @inject NotificationService notify
 
@@ -104,6 +108,92 @@
                                 <strong>@Product.ExpiresAt.ToString("dd.MM.yyyy HH:mm")</strong>
                             </div>
                         </div>
+                    </section>
+
+                    <!-- SEKCJA OPINII DO OGŁOSZENIA -->
+                    <section class="details-section mt-5 pt-4 border-top">
+                        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                            <div>
+                                <h3 class="fw-bold text-dark m-0">Opinie o ogłoszeniu</h3>
+                                <div class="text-warning fw-bold mt-1">
+                                    <span>★</span> 
+                                    <span>@AverageRating.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)</span>
+                                    <span class="text-muted fw-normal ms-1">(@TotalReviews opinii)</span>
+                                </div>
+                            </div>
+
+                            <!-- BLOKADA DLA WŁAŚCICIELA OGŁOSZENIA -->
+                            @if (IsOwner)
+                            {
+                                <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill">
+                                    To Twoje ogłoszenie – nie możesz go oceniać
+                                </span>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm rounded-pill px-4 py-2 fw-semibold shadow-sm text-white" @onclick="ToggleForm" style="background-color: #0f766e;">
+                                    @(showAddForm ? "Anuluj" : "+ Dodaj opinię")
+                                </button>
+                            }
+                        </div>
+
+                        <!-- Formularz dodawania opinii (dostępny tylko gdy !IsOwner) -->
+                        @if (showAddForm && !IsOwner)
+                        {
+                            <div class="card border-0 shadow-sm p-4 mb-4 rounded-4 bg-white" style="border-left: 4px solid #0f766e !important;">
+                                <h5 class="fw-bold mb-3 text-dark">Wystaw opinię do tego ogłoszenia</h5>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold text-muted">Twoje imię / nazwa:</label>
+                                    <input type="text" class="form-control rounded-3" @bind="newAuthor" placeholder="np. Anna K." />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold text-muted">Ocena (gwiazdki):</label>
+                                    <select class="form-select rounded-3" @bind="newRating">
+                                        <option value="5">★★★★★ (5/5)</option>
+                                        <option value="4">★★★★☆ (4/5)</option>
+                                        <option value="3">★★★☆☆ (3/5)</option>
+                                        <option value="2">★★☆☆☆ (2/5)</option>
+                                        <option value="1">★☆☆☆☆ (1/5)</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold text-muted">Treść opinii / komentarz:</label>
+                                    <textarea class="form-control rounded-3" rows="3" @bind="newComment" placeholder="Napisz kilka słów o przedmiocie lub transakcji..."></textarea>
+                                </div>
+                                <button class="btn px-4 rounded-pill fw-semibold text-white" @onclick="SubmitReview" style="background-color: #0f766e;">Zapisz opinię</button>
+                            </div>
+                        }
+
+                        <!-- Lista opinii -->
+                        @if (reviews == null)
+                        {
+                            <div class="text-muted py-3">Ładowanie opinii...</div>
+                        }
+                        else if (!reviews.Any())
+                        {
+                            <div class="card border-0 shadow-sm p-4 rounded-4 text-center text-muted bg-white">
+                                Brak opinii dla tego ogłoszenia. @(IsOwner ? "" : "Bądź pierwszy i oceń ten przedmiot!")
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="row g-4">
+                                @foreach (var review in reviews)
+                                {
+                                    <div class="col-md-6">
+                                        <div class="card border-0 shadow-sm p-4 rounded-4 h-100 bg-white">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <div class="text-warning fs-6" style="letter-spacing: 2px;">
+                                                    @((MarkupString)GetStarsHtml(review.Rating))
+                                                </div>
+                                                <span class="fw-bold text-dark">@review.AuthorName</span>
+                                            </div>
+                                            <p class="text-secondary mb-0" style="font-size: 0.95rem; line-height: 1.5;">@review.Comment</p>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
                     </section>
 
                 </main>
@@ -225,8 +315,34 @@
     public int ProductId { get; set; }
 
     public ProductDTO? Product { get; set; }
-
     public bool IsLoading { get; set; } = true;
+
+    private string? currentUserName;
+
+    // Sprawdzenie, czy zalogowany użytkownik jest autorem tego ogłoszenia
+    private bool IsOwner
+    {
+        get
+        {
+            if (Product == null) return false;
+
+            // Porównujemy po nazwie użytkownika / wystawiającego (bezpieczne dla string vs int)
+            bool matchByName = !string.IsNullOrEmpty(currentUserName) &&
+                               !string.IsNullOrEmpty(Product.AddedBy) &&
+                               string.Equals(currentUserName, Product.AddedBy, StringComparison.OrdinalIgnoreCase);
+
+            return matchByName;
+        }
+    }
+
+    private List<ReviewDTO>? reviews;
+    private bool showAddForm = false;
+    private string newAuthor = "";
+    private int newRating = 5;
+    private string newComment = "";
+
+    private double AverageRating => (reviews != null && reviews.Any()) ? reviews.Average(r => (double)r.Rating) : 0.0;
+    private int TotalReviews => reviews != null ? reviews.Count : 0;
 
     private int selectedImageIndex;
 
@@ -243,10 +359,70 @@
         isReporting = false;
         reportModel = new ReportModel();
 
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            currentUserName = user.Identity.Name;
+            
+            if (string.IsNullOrWhiteSpace(newAuthor) && !string.IsNullOrWhiteSpace(currentUserName))
+            {
+                newAuthor = currentUserName;
+            }
+        }
+
         Product = await productApi.GetProductByIdAsync(ProductId);
+        if (Product != null)
+        {
+            await LoadReviews();
+        }
 
         IsLoading = false;
     }
+
+    private async Task LoadReviews()
+    {
+        reviews = await ReviewApiService.GetReviewsForProductAsync(ProductId);
+    }
+
+    private void ToggleForm()
+    {
+        if (IsOwner) return;
+        showAddForm = !showAddForm;
+    }
+
+    private async Task SubmitReview()
+    {
+        if (IsOwner || string.IsNullOrWhiteSpace(newComment)) return;
+
+        var request = new CreateReviewRequest
+        {
+            ProductId = ProductId,
+            AuthorName = string.IsNullOrWhiteSpace(newAuthor) ? "Anonim" : newAuthor,
+            Rating = newRating,
+            Comment = newComment
+        };
+
+        var success = await ReviewApiService.AddReviewAsync(request);
+        if (success)
+        {
+            newComment = "";
+            newRating = 5;
+            showAddForm = false;
+            await LoadReviews();
+        }
+    }
+
+    private string GetStarsHtml(int rating)
+    {
+        string stars = "";
+        for (int i = 1; i <= 5; i++)
+        {
+            stars += i <= rating ? "★" : "☆";
+        }
+        return stars;
+    }
+}
 
     private async Task SendReport()
     {
