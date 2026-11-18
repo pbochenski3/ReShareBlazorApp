@@ -1,17 +1,19 @@
 ﻿@page "/add-product"
+@page "/edit-product/{ProductId:int}"
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 @using ReShareBlazorApp.Api.Date.Enums
 @using ReShareBlazorApp.Shared.Enums
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Models
+@using ReShareBlazorApp.Shared.DTOs
 @inject IJSRuntime JS
 @inject IHttpClientFactory HttpClientFactory
 @inject ProductApiService productService
 @inject NotificationService notify
 @if(isSelected)
 {
-<EditForm Model="@productModel" OnValidSubmit="AddProduct">
+<EditForm Model="@productModel" OnValidSubmit="SaveProduct">
     <DataAnnotationsValidator />
     <ValidationSummary />
     <div class="product-page">
@@ -22,18 +24,18 @@
                 <div class="product-header">
                     @if (productModel.Type == ProductType.Sell)
                     {
-                        <h2>Dodaj produkt</h2>
-                        <p>Udostępnij produkt, który chcesz sprzedać.</p>
+                        <h2>@(IsEditMode ? "Edytuj produkt" : "Dodaj produkt")</h2>
+                        <p>@(IsEditMode ? "Zaktualizuj dane swojego ogłoszenia." : "Udostępnij produkt, który chcesz sprzedać.")</p>
                     }
                     else if (productModel.Type == ProductType.GiveAway)
                     {
-                        <h2>Oddaj produkt</h2>
-                        <p>Udostępnij produkt, który chcesz oddać za darmo.</p>
+                        <h2>@(IsEditMode ? "Edytuj ogłoszenie" : "Oddaj produkt")</h2>
+                        <p>@(IsEditMode ? "Zaktualizuj dane swojego ogłoszenia." : "Udostępnij produkt, który chcesz oddać za darmo.")</p>
                     }
                     else if (productModel.Type == ProductType.LookingFor)
                     {
-                        <h2>Szukam produktu</h2>
-                        <p>Opublikuj ogłoszenie i znajdź produkt, którego szukasz.</p>
+                        <h2>@(IsEditMode ? "Edytuj ogłoszenie" : "Szukam produktu")</h2>
+                        <p>@(IsEditMode ? "Zaktualizuj dane swojego ogłoszenia." : "Opublikuj ogłoszenie i znajdź produkt, którego szukasz.")</p>
                     }
                 </div>
 
@@ -91,6 +93,11 @@
                 <ValidationMessage For="@(() => productModel.Category)" />
             </div>
 
+            <button type="submit" class="product-submit">
+                @(IsEditMode ? "Zapisz zmiany" : "Dodaj produkt")
+            </button>
+        </div>
+    </div>
             <div class="product-field">
                 <label>Zdjęcia (opcjonalnie, maks. @MaxImages)</label>
 
@@ -186,7 +193,33 @@ else
 @code {
     [Parameter]
     public bool isSelected { get; set; }
+    [Parameter]
+    public int? ProductId { get; set; }
+
     public ProductModel productModel { get; set; } = new();
+
+    private bool IsEditMode => ProductId.HasValue;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!ProductId.HasValue)
+            return;
+
+        var product = await productService.GetProductByIdAsync(ProductId.Value);
+        productModel = new ProductModel
+        {
+            Name = product.Name,
+            Description = product.Description,
+            Price = product.Price,
+            ExpiresAt = product.ExpiresAt,
+            Category = product.Category,
+            City = product.City,
+            Type = product.Type,
+            UserId = product.UserId
+        };
+        isSelected = true;
+    }
+
 
     private const int MaxImages = 5;
     private const long MaxOriginalFileSize = 10 * 1024 * 1024; // plik wybrany przez użytkownika
@@ -199,7 +232,7 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && !IsEditMode)
         {
             try
             {
@@ -217,6 +250,24 @@ else
                 notify.AddNotification("Lokalizacja", "Nie udało się pobrać lokalizacji.");
             }
         }
+    }
+    public async Task SaveProduct()
+    {
+        if (IsEditMode)
+        {
+            var result = await productService.UpdateProductAsync(ProductId!.Value, productModel);
+            notify.AddNotification("Ogłoszenie", result);
+
+            if (result == "Ogłoszenie zostało zaktualizowane!")
+                Navigation.NavigateTo($"/details/{ProductId.Value}");
+
+            return;
+        }
+
+        var addResult = await productService.AddProductAsync(productModel);
+        notify.AddNotification("Ogłoszenie", addResult);
+        productModel = new ProductModel();
+        isSelected = false;
     }
     public async Task AddProduct()
     {

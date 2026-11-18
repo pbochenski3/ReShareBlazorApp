@@ -60,6 +60,59 @@ namespace ReShareBlazorApp.Web.ApiServices
             }
             return (true, "Produkt dodany pomyślnie!");
         }
+
+        public async Task<string> UpdateProductAsync(int productId, ProductModel productModel)
+        {
+            var authState = await _authStateProvider.GetAuthenticationStateAsync();
+            var token = authState.User.FindFirst("access_token")?.Value;
+            if (string.IsNullOrEmpty(token))
+                return "Brak tokenu uwierzytelniającego!";
+
+            var product = new ProductUpdateDTO
+            {
+                Name = productModel.Name,
+                Description = productModel.Description,
+                Price = productModel.Price,
+                ExpiresAt = productModel.ExpiresAt,
+                Category = productModel.Category,
+                City = productModel.City,
+                Type = productModel.Type
+            };
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Put,
+                $"api/product/{productId}");
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+            request.Content = JsonContent.Create(product);
+
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+                return "Nie udało się edytować ogłoszenia!";
+
+            return "Ogłoszenie zostało zaktualizowane!";
+        }
+
+        public async Task<string> DeleteProductAsync(int productId)
+        {
+            var authState = await _authStateProvider.GetAuthenticationStateAsync();
+            var token = authState.User.FindFirst("access_token")?.Value;
+            if (string.IsNullOrEmpty(token))
+                return "Brak tokenu uwierzytelniającego!";
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Delete,
+                $"api/product/{productId}");
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+                return "Nie udało się usunąć ogłoszenia!";
+
+            return "Ogłoszenie zostało usunięte!";
+        }
+
         public async Task<List<ProductDTO>> GetProductsAsync
             (int number = 5,
             ProductCategory? category = null)
