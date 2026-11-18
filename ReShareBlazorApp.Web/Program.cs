@@ -21,6 +21,8 @@ builder.Services.AddScoped<AuthApiService>();
 builder.Services.AddScoped<ProductApiService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<UserApiService>();
+builder.Services.AddScoped<ReportApiService>();
+builder.Services.AddScoped<ContactApiService>();
 builder.Services.AddScoped<AdminApiService>();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
