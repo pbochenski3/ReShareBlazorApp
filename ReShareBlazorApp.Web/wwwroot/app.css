@@ -3616,3 +3616,42 @@ input[type="search"] {
 :where([data-theme="dark"]) .sell .type-icon {
     background: rgba(255, 255, 255, .08);
 }
+/* ==========================================================
+   MOTYW CIEMNY – poprawka białych ramek (dopisz na końcu app.css)
+   ========================================================== */
+
+/* ---- Pola wyszukiwania w banerze (strona główna) ---- */
+:where([data-theme="dark"]) :is(.home-field input, .home-field select) {
+    background-color: var(--field);
+    color: var(--ink);
+}
+
+/* ---- Formularz logowania ---- */
+:where([data-theme="dark"]) .login-container > form {
+    background-color: var(--surface);
+}
+
+:where([data-theme="dark"]) .login-label input {
+    background-color: var(--field);
+    color: var(--ink);
+}
+
+/* ---- Karty na stronie szczegółów ogłoszenia ---- */
+:where([data-theme="dark"]) :is(.details-main, .details-price-card) {
+    background-color: var(--surface);
+}
+
+/* ---- Białe przyciski w banerze: ciemny tekst, żeby był widoczny ---- */
+:where([data-theme="dark"]) .home-btn-light {
+    color: #1b1f24;
+}
+
+:where([data-theme="dark"]) .home-chip:hover {
+    color: #1b1f24;
+}
+
+/* ---- Okno "Ponowne łączenie z serwerem" (Blazor) ---- */
+html[data-theme="dark"] #components-reconnect-modal {
+    background-color: var(--surface);
+    color: var(--ink);
+}
