@@ -21,6 +21,7 @@ builder.Services.AddScoped<AuthApiService>();
 builder.Services.AddScoped<ProductApiService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<UserApiService>();
+builder.Services.AddScoped<ContactApiService>();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

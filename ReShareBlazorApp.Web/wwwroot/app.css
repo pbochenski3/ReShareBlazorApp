@@ -3094,4 +3094,111 @@ input[type="search"] {
         color: #000;
     }
 
+/* ---------- 15. Podstrony informacyjne (O platformie) ---------- */
+.info-page {
+    min-height: 75vh;
+    padding: 50px 0 80px;
+    background: #ffffff;
+}
 
+.info-container {
+    width: min(850px, calc(100% - 48px));
+    margin: 0 auto;
+}
+
+.info-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+    .info-content h2 {
+        font-size: clamp(1.8rem, 3.5vw, 2.3rem);
+        color: var(--ink);
+        margin: 0 0 10px;
+    }
+
+    .info-content h3 {
+        font-size: 1.35rem;
+        color: var(--ink);
+        margin: 28px 0 12px;
+    }
+
+    .info-content p {
+        color: var(--muted);
+        font-size: 1.05rem;
+        line-height: 1.75;
+        margin: 0;
+    }
+
+.info-list {
+    list-style-type: disc;
+    padding-left: 24px;
+    margin: 0;
+    display: grid;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 1.05rem;
+    line-height: 1.6;
+}
+
+    .info-list li strong {
+        color: var(--ink);
+    }
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 28px;
+    align-items: start;
+}
+
+.info-contact-box {
+    display: grid;
+    gap: 16px;
+    background: #fff;
+    padding: 32px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+}
+
+.info-details-list {
+    display: grid;
+    gap: 12px;
+    color: var(--ink);
+    margin-top: 10px;
+}
+
+    .info-details-list p {
+        margin: 0;
+        color: var(--ink);
+    }
+
+.info-cards-grid {
+    display: grid;
+    gap: 18px;
+    margin: 16px 0 32px;
+}
+
+.info-card-item {
+    background: #fff;
+    padding: 22px 26px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+}
+
+    .info-card-item strong {
+        display: block;
+        font-size: 1.08rem;
+        color: var(--brand);
+        margin-bottom: 6px;
+    }
+
+    .info-card-item p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.55;
+    }

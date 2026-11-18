@@ -1,0 +1,87 @@
+﻿@page "/kontakt"
+@rendermode InteractiveServer
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@inject ContactApiService contactApi
+@inject NotificationService notify
+
+<PageTitle>Kontakt – ODDAJ DALEJ</PageTitle>
+
+<PageHeader Title="Kontakt"
+            Subtitle="Masz pytania, sugestie lub potrzebujesz pomocy? Jesteśmy do Twojej dyspozycji." />
+
+<section class="home-section">
+    <div class="home-container">
+        <div class="info-grid">
+            
+            <div class="info-content">
+                <h2>Napisz do nas</h2>
+                <p>
+                    Nasz zespół chętnie odpowie na każde pytanie dotyczące działania serwisu, 
+                    problemów z kontem czy propozycji rozwoju platformy.
+                </p>
+
+                <div class="info-details-list">
+                    <p><strong>📧 E-mail:</strong> kontakt@oddajdalej.pl</p>
+                    <p><strong>⏰ Godziny wsparcia:</strong> Pon – Pt: 9:00 – 17:00</p>
+                    <p><strong>📍 Lokalizacja:</strong> Polska (Projekt Społecznościowy)</p>
+                </div>
+            </div>
+
+            <div class="info-contact-box">
+                <h3>Szybka wiadomość</h3>
+                
+                <EditForm Model="@contactModel" OnValidSubmit="HandleSubmit" class="auth-form">
+                    <DataAnnotationsValidator />
+
+                    <label class="home-field">
+                        <span>Twoje imię</span>
+                        <InputText @bind-Value="contactModel.Name" placeholder="np. Jan Kowalski" />
+                        <ValidationMessage For="@(() => contactModel.Name)" />
+                    </label>
+
+                    <label class="home-field">
+                        <span>Adres e-mail</span>
+                        <InputText @bind-Value="contactModel.Email" placeholder="nazwa@domena.pl" />
+                        <ValidationMessage For="@(() => contactModel.Email)" />
+                    </label>
+
+                    <label class="home-field">
+                        <span>Treść wiadomości</span>
+                        <InputTextArea @bind-Value="contactModel.Message" rows="4" placeholder="Wpisz swoją wiadomość..." />
+                        <ValidationMessage For="@(() => contactModel.Message)" />
+                    </label>
+
+                    <button type="submit" class="home-btn home-btn-primary" disabled="@isSending">
+                        @(isSending ? "Wysyłanie..." : "Wyślij wiadomość")
+                    </button>
+                </EditForm>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+@code {
+    private ContactRequest contactModel = new();
+    private bool isSending = false;
+
+    private async Task HandleSubmit()
+    {
+        isSending = true;
+
+        var success = await contactApi.SendContactMessageAsync(contactModel);
+
+        if (success)
+        {
+            notify.AddNotification("Kontakt", "Wiadomość została wysłana! Odpowiemy najszybciej jak to możliwe.");
+            contactModel = new ContactRequest();
+        }
+        else
+        {
+            notify.AddNotification("Błąd", "Nie udało się wysłać wiadomości. Spróbuj ponownie później.");
+        }
+
+        isSending = false;
+    }
+}
