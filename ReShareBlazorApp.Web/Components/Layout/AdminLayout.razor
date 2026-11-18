@@ -1,0 +1,19 @@
+@inherits LayoutComponentBase
+
+<div class="admin-shell">
+    <aside class="admin-sidebar">
+        <div class="admin-brand">ODDAJ DALEJ <span>admin</span></div>
+
+        <nav class="admin-nav">
+            <NavLink class="admin-link" ActiveClass="active" href="/admin" Match="NavLinkMatch.All">Dashboard</NavLink>
+            <NavLink class="admin-link" ActiveClass="active" href="/admin/users">Użytkownicy</NavLink>
+            <NavLink class="admin-link" ActiveClass="active" href="/admin/products">Ogłoszenia</NavLink>
+        </nav>
+
+        <a class="admin-link admin-back" href="/">← Wróć do serwisu</a>
+    </aside>
+
+    <main class="admin-main">
+        @Body
+    </main>
+</div>

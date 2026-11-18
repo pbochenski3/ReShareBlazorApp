@@ -1,0 +1,109 @@
+@page "/admin/users"
+@layout AdminLayout
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@attribute [Authorize(Roles = "Admin")]
+@inject AdminApiService adminApi
+@inject AuthenticationStateProvider authStateProvider
+
+<h1 class="admin-title">Użytkownicy</h1>
+
+<input class="admin-search"
+       placeholder="Szukaj po nazwie lub e-mailu..."
+       @bind="search"
+       @bind:event="oninput" />
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="admin-alert">@message</div>
+}
+
+@if (users is null)
+{
+    <p class="admin-muted">Ładowanie...</p>
+}
+else
+{
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Nazwa</th>
+                    <th>E-mail</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Filtered)
+                {
+                    <tr>
+                        <td>@user.Id</td>
+                        <td>
+                            @user.UserName
+                            @if (user.Id == currentUserId)
+                            {
+                                <span class="admin-badge admin-badge-info">to Ty</span>
+                            }
+                        </td>
+                        <td>@user.Email</td>
+                        <td>
+                            @if (user.IsActive)
+                            {
+                                <span class="admin-badge admin-badge-ok">aktywny</span>
+                            }
+                            else
+                            {
+                                <span class="admin-badge admin-badge-bad">zablokowany</span>
+                            }
+                        </td>
+                        <td class="admin-actions">
+                            @if (user.Id != currentUserId)
+                            {
+                                <button class="admin-btn @(user.IsActive ? "admin-btn-danger" : "")"
+                                        @onclick="() => ToggleActive(user)">
+                                    @(user.IsActive ? "Zablokuj" : "Odblokuj")
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<AdminUserDTO>? users;
+    private string search = "";
+    private string? message;
+    private int currentUserId;
+
+    private IEnumerable<AdminUserDTO> Filtered =>
+        users!.Where(u =>
+            string.IsNullOrWhiteSpace(search)
+            || u.UserName.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || u.Email.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authStateProvider.GetAuthenticationStateAsync();
+        int.TryParse(authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out currentUserId);
+
+        users = await adminApi.GetUsersAsync();
+    }
+
+    private async Task ToggleActive(AdminUserDTO user)
+    {
+        message = null;
+        var ok = await adminApi.SetUserActiveAsync(user.Id, !user.IsActive);
+        if (ok)
+            user.IsActive = !user.IsActive;
+        else
+            message = "Nie udało się zmienić statusu użytkownika.";
+    }
+}

@@ -59,6 +59,11 @@ namespace ReShareBlazorApp.Api.Services
                 new Claim(ClaimTypes.Name,user.UserName ?? ""),
                 new Claim(ClaimTypes.Email,user.Email ?? ""),
             };
+            var userRoles = await _userManager.GetRolesAsync(user);
+            foreach(var role in userRoles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
             var key = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!)
                 );

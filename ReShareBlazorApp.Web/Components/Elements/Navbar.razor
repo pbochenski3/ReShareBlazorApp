@@ -47,7 +47,15 @@
                     </li>
                 </Authorized>
             </AuthorizeView>
-      
+
+            <AuthorizeView Roles="Admin">
+                <li class="main-navbar-item">
+                    <NavLink class="main-navbar-link" ActiveClass="active" href="/admin">
+                        Panel admina
+                    </NavLink>
+                </li>
+            </AuthorizeView>
+
             <AuthorizeView>
                 <NotAuthorized>
                     <li class="main-navbar-item">
