@@ -17,5 +17,6 @@ namespace ReShareBlazorApp.Web.ApiServices
                 ($"api/user?username={Uri.EscapeDataString(username)}");
             return result;
         }
+
     }
 }
