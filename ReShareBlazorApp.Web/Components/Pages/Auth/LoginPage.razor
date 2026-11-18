@@ -1,0 +1,37 @@
+﻿@page "/login"
+@using ReShareBlazorApp.Web.Models
+@rendermode InteractiveServer
+@inject NavigationManager nav
+<div class="login-container">
+    @if(Error == "1")
+  
+    {
+        <div class="login-error">Nieprawidłowy login lub hasło.</div>
+    }
+    <form method="post" action="/auth/login">
+        <AntiforgeryToken />
+        <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+        <h2 class="login-title">Zaloguj się</h2>
+        <div class="login-card">
+            <div class="login-label">
+                <label>E-mail</label>
+                <input name="Email" type="email" placeholder="Wpisz e-mail!" required />
+            </div>
+            <div class="login-label">
+                <label>Hasło</label>
+                <input name="Password" type="password" placeholder="Wpisz hasło!" required />
+            </div>
+        </div>
+        <button class="login-button" type="submit">Zaloguj się</button>
+    </form>
+    <button class="login-secondary" @onclick='() => nav.NavigateTo("/register")'>Nie masz konta? Zarejestruj się!</button>
+</div>
+
+        @code {
+        public LoginModel LoginModel { get; set; } = new();
+        [SupplyParameterFromQuery(Name = "returnUrl")]
+        public string? ReturnUrl { get; set; }
+        [SupplyParameterFromQuery(Name = "error")]
+        public string? Error { get; set; }
+    }
+

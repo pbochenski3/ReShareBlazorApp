@@ -1,0 +1,11 @@
+﻿@inject NavigationManager Navigation
+
+@code {
+    // Niezalogowany wszedł na chronioną stronę (np. /profil) -> idzie do logowania,
+    // a po zalogowaniu wraca na tę samą stronę.
+    protected override void OnInitialized()
+    {
+        var back = "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(back)}", forceLoad: true);
+    }
+}

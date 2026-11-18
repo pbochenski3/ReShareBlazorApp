@@ -1,0 +1,88 @@
+﻿@page "/ogloszenie/{Id:int}"
+@using ReShareBlazorApp.Shared.Categories
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Components.Elements
+@using ReShareBlazorApp.Web.Components.Pages.NavBar
+@inject ProductApiService productApi
+@inject FavoriteApiService favoriteApi
+
+<PageTitle>@(Product?.Name ?? "Ogłoszenie") – ODDAJ DALEJ</PageTitle>
+
+@if (Product is null)
+{
+    <PageHeader Title="Nie znaleziono ogłoszenia" Subtitle="Ogłoszenie nie istnieje albo zostało usunięte." />
+    <section class="home-section">
+        <div class="home-container">
+            <a class="home-btn home-btn-primary" href="/odkrywaj">Wróć do ogłoszeń</a>
+        </div>
+    </section>
+}
+else
+{
+    <PageHeader Title="@Product.Name" Subtitle="@ListingCategories.NameOf(Product.Category)" />
+
+    <section class="home-section">
+        <div class="home-container">
+            <p><a class="home-link" href="/odkrywaj?kategoria=@CategorySlug">← Wróć do listy</a></p>
+
+            <div class="ad-layout">
+                <article class="ad-main">
+                    <p class="ad-price">@ListingFormat.Price(Product.Price)</p>
+
+                    <h2 class="ad-heading">Opis</h2>
+                    <p class="ad-description">@(string.IsNullOrWhiteSpace(Product.Description) ? "Brak opisu." : Product.Description)</p>
+
+                    <h2 class="ad-heading">Szczegóły</h2>
+                    <dl class="ad-details">
+                        <dt>Kategoria</dt>
+                        <dd>@ListingCategories.NameOf(Product.Category)</dd>
+                        <dt>Cena</dt>
+                        <dd>@ListingFormat.Price(Product.Price)</dd>
+                        <dt>Dodano</dt>
+                        <dd>@Product.AddedAt.ToString("dd.MM.yyyy HH:mm")</dd>
+                        <dt>Ważne do</dt>
+                        <dd>@Product.ExpiresAt.ToString("dd.MM.yyyy HH:mm")</dd>
+                        <dt>Numer ogłoszenia</dt>
+                        <dd>#@Product.Id</dd>
+                    </dl>
+                </article>
+
+                <aside class="ad-seller">
+                    <FavoriteButton ProductId="Product.Id" IsFavorite="IsFavorite" Variant="full" />
+
+                    <h2 class="ad-heading">Wystawił</h2>
+                    <p class="ad-seller-name">@(string.IsNullOrWhiteSpace(Product.SellerName) ? "Użytkownik" : Product.SellerName)</p>
+                    @if (!string.IsNullOrWhiteSpace(Product.SellerEmail))
+                    {
+                        <p class="ad-seller-email">@Product.SellerEmail</p>
+                        <a class="home-btn home-btn-primary page-full" href="mailto:@Product.SellerEmail?subject=@Uri.EscapeDataString("Ogłoszenie: " + Product.Name)">Napisz e-mail</a>
+                    }
+                    @if (Product.SellerSince != default)
+                    {
+                        <p class="ad-seller-since">Na portalu od @Product.SellerSince.ToString("dd.MM.yyyy")</p>
+                    }
+                </aside>
+            </div>
+        </div>
+    </section>
+}
+
+<SiteFooter />
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private ProductDetailsDTO? Product { get; set; }
+    private bool IsFavorite { get; set; }
+
+    private string CategorySlug =>
+        Product is null ? "" : ListingCategories.All.FirstOrDefault(c => c.Categories.Contains(Product.Category))?.Slug ?? "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Product = await productApi.GetProductByIdAsync(Id);
+        var favoriteIds = await favoriteApi.GetFavoriteIdsAsync();
+        IsFavorite = favoriteIds.Contains(Id);
+    }
+}

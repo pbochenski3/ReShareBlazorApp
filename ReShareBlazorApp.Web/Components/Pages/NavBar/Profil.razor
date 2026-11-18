@@ -1,0 +1,135 @@
+@page "/profil"
+@attribute [Authorize]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ReShareBlazorApp.Shared.Categories
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Components.Elements
+@inject ProductApiService productApi
+@inject FavoriteApiService favoriteApi
+
+<PageTitle>Mój profil – ODDAJ DALEJ</PageTitle>
+
+<PageHeader Title="Mój profil" Subtitle="Twoje dane, ogłoszenia i ulubione w jednym miejscu." />
+
+<section class="home-section">
+    <div class="home-container">
+
+        @if (user is not null)
+        {
+            <div class="profile-card">
+                <span class="avatar avatar-lg">@Initials(user)</span>
+
+                <div class="profile-info">
+                    <h2>@DisplayName(user)</h2>
+                    <p class="profile-email">@user.FindFirst(ClaimTypes.Email)?.Value</p>
+                </div>
+
+                <a class="home-btn home-btn-primary" href="/add-product">+ Dodaj ogłoszenie</a>
+            </div>
+        }
+
+        <!-- Statystyki (prawdziwe liczby z bazy) -->
+        <div class="profile-stats">
+            <div class="profile-stat"><strong>@MyProducts.Count</strong><span>Ogłoszenia</span></div>
+            <div class="profile-stat"><strong>@Favorites.Count</strong><span>Ulubione</span></div>
+        </div>
+
+        <!-- Zakładki (zwykłe linki, ?tab=ulubione) -->
+        <div class="profile-tabs" role="tablist">
+            <a class="profile-tab @(ShowFavorites ? "" : "active")" href="/profil" role="tab">Moje ogłoszenia</a>
+            <a class="profile-tab @(ShowFavorites ? "active" : "")" href="/profil?tab=ulubione" role="tab">Ulubione</a>
+        </div>
+
+        @if (!ShowFavorites)
+        {
+            @if (MyProducts.Count == 0)
+            {
+                <p class="page-count">Nie masz jeszcze żadnych ogłoszeń. <a class="home-link" href="/add-product">Dodaj pierwsze!</a></p>
+            }
+            else
+            {
+                <div class="home-cards">
+                    @foreach (var product in MyProducts)
+                    {
+                        <ListingCard Title="@product.Name"
+                                     Description="@product.Description"
+                                     Link="@($"/ogloszenie/{product.Id}")"
+                                     Category="@ListingCategories.NameOf(product.Category)"
+                                     Type="@(product.Price <= 0 ? "Oddam" : "Sprzedam")"
+                                     Price="@ListingFormat.Price(product.Price)"
+                                     Location="Kraków"
+                                     Term="@product.ExpiresAt.ToString("dd.MM.yyyy")"
+                                     Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")" />
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            @if (Favorites.Count == 0)
+            {
+                <p class="page-count">Nie masz jeszcze ulubionych. Kliknij ☆ na ogłoszeniu, aby je tu zapisać. <a class="home-link" href="/odkrywaj">Przeglądaj ogłoszenia</a></p>
+            }
+            else
+            {
+                <div class="home-cards" data-remove-on-unfav>
+                    @foreach (var product in Favorites)
+                    {
+                        <ListingCard Title="@product.Name"
+                                     Description="@product.Description"
+                                     Link="@($"/ogloszenie/{product.Id}")"
+                                     ProductId="product.Id"
+                                     IsFavorite="true"
+                                     Category="@ListingCategories.NameOf(product.Category)"
+                                     Type="@(product.Price <= 0 ? "Oddam" : "Sprzedam")"
+                                     Price="@ListingFormat.Price(product.Price)"
+                                     Location="Kraków"
+                                     Term="@product.ExpiresAt.ToString("dd.MM.yyyy")"
+                                     Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")" />
+                    }
+                </div>
+            }
+        }
+    </div>
+</section>
+
+<SiteFooter />
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+    [SupplyParameterFromQuery(Name = "tab")] public string? Tab { get; set; }
+
+    private ClaimsPrincipal? user;
+    private List<ProductDTO> MyProducts { get; set; } = new();
+    private List<ProductDTO> Favorites { get; set; } = new();
+
+    private bool ShowFavorites => string.Equals(Tab, "ulubione", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null)
+            user = (await AuthState).User;           // dane zalogowanego użytkownika z cookie
+
+        MyProducts = await productApi.GetMyProductsAsync();
+        Favorites = await favoriteApi.GetFavoritesAsync();
+    }
+
+    private static string DisplayName(ClaimsPrincipal user) =>
+        user.FindFirst(ClaimTypes.Name)?.Value
+        ?? user.FindFirst("unique_name")?.Value
+        ?? user.FindFirst("name")?.Value
+        ?? user.FindFirst(ClaimTypes.Email)?.Value?.Split('@')[0]
+        ?? "Użytkownik";
+
+    private static string Initials(ClaimsPrincipal user)
+    {
+        var parts = DisplayName(user).Split(new[] { ' ', '.', '_', '-' }, StringSplitOptions.RemoveEmptyEntries);
+        var letters = parts.Length >= 2
+            ? $"{parts[0][0]}{parts[1][0]}"
+            : (parts.Length == 1 ? parts[0][..Math.Min(2, parts[0].Length)] : "?");
+        return letters.ToUpperInvariant();
+    }
+}

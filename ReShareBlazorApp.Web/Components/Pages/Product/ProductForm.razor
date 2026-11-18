@@ -1,0 +1,111 @@
+﻿@page "/add-product"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@rendermode InteractiveServer
+@using ReShareBlazorApp.Api.Date.Enums
+@using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Models
+@inject ProductApiService productService
+
+<EditForm Model="@productModel" OnValidSubmit="AddProduct">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="product-page">
+        <div class="product-form">
+            <div class="product-header">
+                <h2>Dodaj produkt</h2>
+                <p>Udostępnij produkt, którego już nie potrzebujesz.</p>
+            </div>
+
+            <div class="product-field">
+                <label>Nazwa produktu</label>
+                <InputText @bind-Value="productModel.Name"
+                           class="product-input"
+                           placeholder="Wpisz nazwę produktu" />
+                <ValidationMessage For="@(() => productModel.Name)" />
+            </div>
+
+            <div class="product-field">
+                <label>Cena</label>
+                <InputNumber @bind-Value="productModel.Price"
+                             class="product-input"
+                             placeholder="Wpisz cenę produktu" />
+                <ValidationMessage For="@(() => productModel.Price)" />
+            </div>
+
+            <div class="product-field">
+                <label>Opis</label>
+                <InputTextArea @bind-Value="productModel.Description"
+                               class="product-input"
+                               placeholder="Opisz produkt" />
+                <ValidationMessage For="@(() => productModel.Description)" />
+            </div>
+
+            <div class="product-field">
+                <label>Data ważności</label>
+                <InputDate @bind-Value="productModel.ExpiresAt"
+                           class="product-input" />
+                <ValidationMessage For="@(() => productModel.ExpiresAt)" />
+            </div>
+
+            <div class="product-field">
+                <label>Kategoria produktu</label>
+                <InputSelect @bind-Value="productModel.Category"
+                             class="product-input">
+                    <option value="">Wybierz kategorię</option>
+                    @foreach (var category in Enum.GetValues<ProductCategory>())
+                    {
+                        <option value="@category">@GetCategoryName(category)</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => productModel.Category)" />
+            </div>
+
+            <button type="submit" class="product-submit">
+                Dodaj produkt
+            </button>
+
+            @if (!string.IsNullOrEmpty(message))
+            {
+                <p class="product-message">
+                    @message
+                    @if (added)
+                    {
+                        <a class="home-link" href="/odkrywaj">Zobacz ogłoszenia</a>
+                    }
+                </p>
+            }
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    public ProductModel productModel { get; set; } = NewModel();
+    private string? message;   // komunikat po próbie dodania
+    private bool added;        // czy dodanie się udało
+
+    // domyślnie ogłoszenie ważne 30 dni, żeby nie trzeba było za każdym razem wybierać daty
+    private static ProductModel NewModel() => new() { ExpiresAt = DateTime.Today.AddDays(30) };
+
+        public async Task AddProduct()
+    {
+        message = await productService.AddProductAsync(productModel);
+        added = message.StartsWith("Produkt dodany");
+        if (added)
+            productModel = NewModel(); // czyścimy formularz po sukcesie
+    }
+    private string GetCategoryName(ProductCategory category)
+    {
+        return category switch
+        {
+            ProductCategory.Tickets => "Bilety",
+            ProductCategory.Reservations => "Rezerwacje",
+            ProductCategory.Trips => "Wyjazdy i podróże",
+            ProductCategory.Transports => "transport",
+            ProductCategory.Services => "usługi",
+       
+            _ => category.ToString()
+        };
+    }
+}

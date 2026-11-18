@@ -1,0 +1,16 @@
+@using ReShareBlazorApp.Shared.Categories
+<section class="home-section home-section-alt">
+    <div class="home-container">
+        <h2 class="home-section-title">Kategorie</h2>
+
+        <div class="home-categories">
+            @foreach (var cat in ListingCategories.All)
+            {
+                <a class="home-category" href="/odkrywaj?kategoria=@cat.Slug">
+                    <strong>@cat.Name</strong>
+                    <span>@cat.Description</span>
+                </a>
+            }
+        </div>
+    </div>
+</section>

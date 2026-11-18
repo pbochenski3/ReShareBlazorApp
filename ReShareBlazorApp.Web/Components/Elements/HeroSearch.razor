@@ -1,0 +1,82 @@
+@using ReShareBlazorApp.Shared.Categories
+<section class="home-hero">
+    <div class="home-container">
+        <h1 class="home-hero-title">Oddaj dalej to, czego już nie potrzebujesz</h1>
+        <p class="home-hero-lead">Bilety, miejsca w aucie, noclegi, sprzęt i wolne terminy. Znajdź je albo wystaw własne ogłoszenie.</p>
+
+        <form class="home-search" method="get" action="/odkrywaj" role="search">
+            <div class="home-search-row">
+                <label class="home-field home-field-wide">
+                    <span>Czego szukasz?</span>
+                    <input type="search" name="q" placeholder="np. bilety na koncert" />
+                </label>
+
+                <label class="home-field">
+                    <span>Kategoria</span>
+                    <select name="kategoria">
+                        <option value="">Wszystkie</option>
+                        @foreach (var cat in ListingCategories.All)
+                        {
+                            <option value="@cat.Slug">@cat.Name</option>
+                        }
+                    </select>
+                </label>
+
+                <label class="home-field">
+                    <span>Typ ogłoszenia</span>
+                    <select name="typ">
+                        <option value="">Wszystkie</option>
+                        <option>Sprzedam</option>
+                        <option>Oddam</option>
+                        <option>Mam wolne miejsce</option>
+                        <option>Szukam</option>
+                        <option>Oferuję wolny termin</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="home-search-row">
+                <label class="home-field home-field-wide">
+                    <span>Lokalizacja</span>
+                    <input type="text" name="lokalizacja" placeholder="Miejscowość, kod pocztowy lub region" />
+                </label>
+
+                <label class="home-field">
+                    <span>Promień</span>
+                    <select name="promien">
+                        <option value="5">5 km</option>
+                        <option value="10">10 km</option>
+                        <option value="25">25 km</option>
+                        <option value="50">50 km</option>
+                        <option value="100">100 km</option>
+                    </select>
+                </label>
+
+                <label class="home-field">
+                    <span>Od</span>
+                    <input type="date" name="od" />
+                </label>
+
+                <label class="home-field">
+                    <span>Do</span>
+                    <input type="date" name="do" />
+                </label>
+            </div>
+
+            <div class="home-search-row">
+                <label class="home-field">
+                    <span>Cena od (zł)</span>
+                    <input type="number" name="cenaMin" min="0" placeholder="0" />
+                </label>
+
+                <label class="home-field">
+                    <span>Cena do (zł)</span>
+                    <input type="number" name="cenaMax" min="0" placeholder="1000" />
+                </label>
+
+                <button class="home-btn home-btn-primary home-search-submit" type="submit">SZUKAJ</button>
+            </div>
+        </form>
+
+    </div>
+</section>

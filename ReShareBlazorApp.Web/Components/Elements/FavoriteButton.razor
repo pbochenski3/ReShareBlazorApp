@@ -1,0 +1,52 @@
+@inject NavigationManager Nav
+
+@* Gwiazdka = formularz POST do /favorites/toggle. JavaScript (favorites.js) przełącza ją bez przeładowania strony. *@
+<form method="post" action="/favorites/toggle" class="fav-form">
+    <AntiforgeryToken />
+    <input type="hidden" name="productId" value="@ProductId" />
+    <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+    @if (Variant == "full")
+    {
+        <button type="submit"
+                class="home-btn home-btn-outline page-full fav-star @(IsFavorite ? "is-fav" : "")"
+                aria-pressed="@(IsFavorite ? "true" : "false")"
+                data-text-on="W ulubionych – kliknij, aby usunąć"
+                data-text-off="Dodaj do ulubionych">
+            <svg class="fav-star-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="@StarPath" /></svg>
+            <span class="fav-label">@(IsFavorite ? "W ulubionych – kliknij, aby usunąć" : "Dodaj do ulubionych")</span>
+        </button>
+    }
+    else
+    {
+        <button type="submit"
+                class="home-card-fav fav-star @(IsFavorite ? "is-fav" : "")"
+                aria-pressed="@(IsFavorite ? "true" : "false")"
+                aria-label="@(IsFavorite ? "Usuń z ulubionych" : "Dodaj do ulubionych")"
+                title="@(IsFavorite ? "Usuń z ulubionych" : "Dodaj do ulubionych")"
+                data-title-on="Usuń z ulubionych"
+                data-title-off="Dodaj do ulubionych">
+            <svg class="fav-star-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="@StarPath" /></svg>
+        </button>
+    }
+</form>
+
+@code {
+    [Parameter] public int ProductId { get; set; }
+    [Parameter] public bool IsFavorite { get; set; }
+    [Parameter] public string Variant { get; set; } = "card"; // "card" = mała gwiazdka, "full" = duży przycisk
+
+    // zaokrąglona gwiazdka (rysowana linią z zaokrąglonymi końcami)
+    private const string StarPath = "M12 3.2l2.7 5.5 6 .9-4.4 4.2 1 6-5.3-2.8-5.3 2.8 1-6-4.4-4.2 6-.9z";
+
+    // adres bieżącej strony (bez #fragmentu), żeby po kliknięciu wrócić w to samo miejsce
+    private string ReturnUrl
+    {
+        get
+        {
+            var relative = "/" + Nav.ToBaseRelativePath(Nav.Uri);
+            var hash = relative.IndexOf('#');
+            return hash >= 0 ? relative[..hash] : relative;
+        }
+    }
+}

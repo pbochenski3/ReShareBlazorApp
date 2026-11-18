@@ -1,0 +1,187 @@
+@page "/odkrywaj"
+@page "/kategorie/{Slug}"
+@using ReShareBlazorApp.Api.Date.Enums
+@using ReShareBlazorApp.Shared.Categories
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Components.Elements
+@inject ProductApiService productApi
+@inject FavoriteApiService favoriteApi
+
+<PageTitle>@(SelectedCategory?.Name ?? "Odkrywaj") – ODDAJ DALEJ</PageTitle>
+
+<PageHeader Title="@(SelectedCategory?.Name ?? "Odkrywaj")" Subtitle="@(SelectedCategory?.Description ?? "Przeglądaj ogłoszenia dodane przez innych użytkowników.")" />
+
+
+<section class="home-section">
+    <div class="home-container page-layout">
+
+        <aside class="page-filters">
+            <form method="get" action="/odkrywaj">
+                <h2 class="page-filters-title">Filtry</h2>
+                <input type="hidden" name="sort" value="@SortKey" />
+
+                <label class="home-field">
+                    <span>Czego szukasz?</span>
+                    <input type="search" name="q" value="@Q" placeholder="np. rower" />
+                </label>
+
+                <label class="home-field">
+                    <span>Kategoria</span>
+                    <select name="kategoria">
+                        <option value="" selected="@(SelectedCategory is null)">Wszystkie</option>
+                        @foreach (var cat in ListingCategories.All)
+                        {
+                            <option value="@cat.Slug" selected="@(SelectedCategory?.Slug == cat.Slug)">@cat.Name</option>
+                        }
+                    </select>
+                </label>
+
+                <fieldset class="page-fieldset">
+                    <legend>Typ ogłoszenia</legend>
+                    <label><input type="checkbox" name="typ" value="sprzedam" /> Sprzedam</label>
+                    <label><input type="checkbox" name="typ" value="oddam" /> Oddam</label>
+                    <label><input type="checkbox" name="typ" value="wolne-miejsce" /> Mam wolne miejsce</label>
+                    <label><input type="checkbox" name="typ" value="wolny-termin" /> Wolny termin</label>
+                    <label><input type="checkbox" name="typ" value="wymienie" /> Wymienię</label>
+                </fieldset>
+
+                <label class="home-field">
+                    <span>Lokalizacja</span>
+                    <input type="text" name="lokalizacja" placeholder="Miejscowość lub kod" />
+                </label>
+
+                <label class="home-field">
+                    <span>Promień</span>
+                    <select name="promien">
+                        <option value="5">5 km</option>
+                        <option value="10">10 km</option>
+                        <option value="25">25 km</option>
+                        <option value="50">50 km</option>
+                        <option value="100">100 km</option>
+                    </select>
+                </label>
+
+                <div class="page-price-row">
+                    <label class="home-field">
+                        <span>Cena od</span>
+                        <input type="number" name="cenaMin" min="0" />
+                    </label>
+                    <label class="home-field">
+                        <span>Cena do</span>
+                        <input type="number" name="cenaMax" min="0" />
+                    </label>
+                </div>
+
+                <button class="home-btn home-btn-primary page-full" type="submit">Pokaż wyniki</button>
+            </form>
+        </aside>
+
+        <div class="page-results">
+            <nav class="page-chips" aria-label="Kategorie">
+                <a class="page-chip @(SelectedCategory is null ? "active" : "")" href="/odkrywaj?sort=@SortKey">Wszystkie</a>
+                @foreach (var cat in ListingCategories.All)
+                {
+                    <a class="page-chip @(SelectedCategory?.Slug == cat.Slug ? "active" : "")"
+                       href="/odkrywaj?kategoria=@cat.Slug&amp;sort=@SortKey">@cat.Name</a>
+                }
+            </nav>
+
+            <div class="home-section-head page-results-head">
+                <p class="page-count">@CountText</p>
+
+                <form method="get" action="/odkrywaj" class="page-sort">
+                    <input type="hidden" name="kategoria" value="@SelectedCategory?.Slug" />
+                    <input type="hidden" name="q" value="@Q" />
+                    <label>
+                        <span>Sortuj:</span>
+                        <select name="sort" onchange="this.form.submit()">
+                            <option value="najnowsze" selected="@(Sort == ProductSort.Newest)">Najnowsze</option>
+                            <option value="cena-rosnaco" selected="@(Sort == ProductSort.PriceAsc)">Cena rosnąco</option>
+                            <option value="cena-malejaco" selected="@(Sort == ProductSort.PriceDesc)">Cena malejąco</option>
+                            <option value="najblizej" disabled>Najbliżej mnie (wkrótce)</option>
+                        </select>
+                    </label>
+                    <noscript><button class="home-btn home-btn-outline" type="submit">Sortuj</button></noscript>
+                </form>
+            </div>
+
+            @if (Products.Count == 0)
+            {
+                <p class="page-count">Brak ogłoszeń w tej kategorii.</p>
+            }
+            else
+            {
+                <div class="home-cards">
+                    @foreach (var product in Products)
+                    {
+                        <ListingCard Title="@product.Name"
+                             Description="@product.Description"
+                             Link="@($"/ogloszenie/{product.Id}")"
+                             ProductId="product.Id"
+                             IsFavorite="FavoriteIds.Contains(product.Id)"
+                                     Category="@ListingCategories.NameOf(product.Category)"
+                                     Type="@(product.Price <= 0 ? "Oddam" : "Sprzedam")"
+                                     Price="@ListingFormat.Price(product.Price)"
+                                     Location="Kraków"
+                                     Term="@product.ExpiresAt.ToString("dd.MM.yyyy HH:mm")"
+                                     Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")" />
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<SiteFooter />
+
+@code {
+    [Parameter] public string? Slug { get; set; }
+    [SupplyParameterFromQuery(Name = "kategoria")] public string? CategoryQuery { get; set; }
+    private string? CategorySlug => Slug ?? CategoryQuery;
+    [SupplyParameterFromQuery(Name = "sort")] public string? SortParam { get; set; }
+    [SupplyParameterFromQuery(Name = "q")] public string? Q { get; set; }
+
+    private List<ProductDTO> Products { get; set; } = new();
+    private HashSet<int> FavoriteIds { get; set; } = new(); // numery ogłoszeń z ulubionych
+    private CategoryGroup? SelectedCategory => ListingCategories.FindBySlug(CategorySlug);
+
+    private ProductSort Sort => SortParam switch
+    {
+        "cena-rosnaco" => ProductSort.PriceAsc,
+        "cena-malejaco" => ProductSort.PriceDesc,
+        _ => ProductSort.Newest,
+    };
+
+    private string SortKey => Sort switch
+    {
+        ProductSort.PriceAsc => "cena-rosnaco",
+        ProductSort.PriceDesc => "cena-malejaco",
+        _ => "najnowsze",
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Products = await productApi.GetProductsAsync(100, SelectedCategory?.Categories, Sort);
+        if (!string.IsNullOrWhiteSpace(Q))   // proste wyszukiwanie po nazwie i opisie
+        {
+            Products = Products
+                .Where(p => p.Name.Contains(Q, StringComparison.OrdinalIgnoreCase)
+                         || p.Description.Contains(Q, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        FavoriteIds = await favoriteApi.GetFavoriteIdsAsync();
+    }
+
+    private string CountText
+    {
+        get
+        {
+            var n = Products.Count;
+            var word = n == 1 ? "ogłoszenie"
+                : (n % 10 is >= 2 and <= 4 && n % 100 is < 12 or > 14) ? "ogłoszenia"
+                : "ogłoszeń";
+            return $"Znaleziono {n} {word}";
+        }
+    }
+}

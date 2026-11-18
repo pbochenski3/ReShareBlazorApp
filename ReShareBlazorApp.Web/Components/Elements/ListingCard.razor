@@ -1,0 +1,59 @@
+<article class="home-card" id="@(ProductId is int cardId ? $"listing-{cardId}" : null)">
+    <div class="home-card-image @TypeClass">
+        @if (!string.IsNullOrEmpty(ImageUrl))
+        {
+            <img src="@ImageUrl" alt="@Title" loading="lazy" />
+        }
+        <span class="home-card-type">@Type</span>
+        @if (ProductId is int productId)
+        {
+            <FavoriteButton ProductId="productId" IsFavorite="IsFavorite" />
+        }
+    </div>
+
+    <div class="home-card-body">
+        <p class="home-card-category">@Category</p>
+        <h3 class="home-card-title">@Title</h3>
+        <p class="home-card-price">@Price</p>
+        @if (!string.IsNullOrWhiteSpace(Description))
+        {
+            <p class="home-card-description">@Description</p>
+        }
+
+        <ul class="home-card-meta">
+            <li>@Location</li>
+            <li>Termin: @Term</li>
+            <li>Dodano: @Published</li>
+        </ul>
+
+
+        <a class="home-btn home-btn-outline" href="@Link">Zobacz szczegóły</a>
+    </div>
+</article>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Category { get; set; } = "";
+    [Parameter] public string Type { get; set; } = "";
+    [Parameter] public string Description { get; set; } = "";
+    [Parameter] public bool Verified { get; set; }
+    [Parameter] public string Price { get; set; } = "Bezpłatnie";
+    [Parameter] public string Location { get; set; } = "";
+    [Parameter] public string Term { get; set; } = "";
+    [Parameter] public string Published { get; set; } = "";
+    [Parameter] public string Link { get; set; } = "#";
+    [Parameter] public string? ImageUrl { get; set; }
+    [Parameter] public int? ProductId { get; set; }      // gdy podany -> na karcie pojawia się serduszko
+    [Parameter] public bool IsFavorite { get; set; }     // czy to ogłoszenie jest już w ulubionych
+
+    // Każdy typ ogłoszenia dostaje swój kolor (klasy są w site.css)
+    private string TypeClass => Type switch
+    {
+        "Sprzedam" => "type-sell",
+        "Oddam" => "type-give",
+        "Mam wolne miejsce" => "type-seat",
+        "Mam wolny termin" => "type-slot",
+        "Szukam" => "type-seek",
+        _ => "type-other"
+    };
+}

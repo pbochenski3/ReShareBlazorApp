@@ -1,0 +1,25 @@
+﻿@using ReShareBlazorApp.Web.ApiServices
+@inject NotificationService notify
+@implements IDisposable
+
+@if (notify.CurrentNotification != null)
+{
+    <div class="notification-popup">
+        <h3>@notify.CurrentNotification.Title</h3>
+        <p>@notify.CurrentNotification.Message</p>
+    </div>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        notify.OnNotificationChanged += HandleChange;
+    }
+
+    private void HandleChange() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        notify.OnNotificationChanged -= HandleChange;
+    }
+}

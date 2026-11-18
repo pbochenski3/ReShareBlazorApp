@@ -1,0 +1,50 @@
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Shared.Categories
+@using ReShareBlazorApp.Web.ApiServices
+@inject ProductApiService productApi
+@inject FavoriteApiService favoriteApi
+<section class="home-section">
+    <div class="home-container">
+        <div class="home-section-head">
+            <h2 class="home-section-title">Najnowsze okazje</h2>
+
+            <div class="home-view-switch" role="group" aria-label="Widok ogłoszeń">
+                <button class="home-view-btn active" type="button">Kafelki</button>
+                <button class="home-view-btn" type="button">Lista</button>
+                <button class="home-view-btn" type="button">Mapa</button>
+            </div>
+        </div>
+
+        <div class="home-cards">
+            @foreach (var product in ProductsList)
+            {
+                <ListingCard Title="@product.Name"
+                             Description="@product.Description"
+                             Link="@($"/ogloszenie/{product.Id}")"
+                             ProductId="product.Id"
+                             IsFavorite="FavoriteIds.Contains(product.Id)"
+                             Category="@ListingCategories.NameOf(product.Category)"
+                             Type="@(product.Price <= 0 ? "Oddam" : "Sprzedam")"
+                             Price="@ListingFormat.Price(product.Price)"
+                             Location="Kraków"
+                             Term="@product.ExpiresAt.ToString("dd.MM.yyyy HH:mm")"
+                             Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")"
+                             />
+            }
+        </div>
+
+        <div class="home-section-footer">
+            <a class="home-btn home-btn-outline" href="/odkrywaj">Zobacz wszystkie oferty</a>
+        </div>
+    </div>
+</section>
+@code
+{
+    public List<ProductDTO> ProductsList { get; set; } = new();
+    private HashSet<int> FavoriteIds { get; set; } = new();
+    protected override async Task OnInitializedAsync()
+    {
+        ProductsList = await productApi.GetProductsAsync();
+        FavoriteIds = await favoriteApi.GetFavoriteIdsAsync();
+    }
+}
