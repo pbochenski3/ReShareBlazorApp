@@ -2394,6 +2394,122 @@ input[type="search"] {
         transform: translateY(0);
     }
 }
+/* ---------- 15. Weryfikacja e-mail ---------- */
+.verify-card {
+    text-align: center;
+    gap: 10px;
+}
+
+    .verify-card h2 {
+        margin-bottom: 4px;
+    }
+
+    .verify-card p {
+        margin: 4px 0;
+        color: var(--muted);
+    }
+
+.verify-icon {
+    font-size: 3rem;
+    margin-bottom: 8px;
+}
+
+.verify-email {
+    font-weight: 600;
+    color: var(--brand) !important;
+    font-size: 1.05rem;
+}
+
+.verify-code-wrapper {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.verify-code-digit {
+    width: 48px;
+    height: 56px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: #fff;
+    font-family: var(--font);
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--ink);
+    transition: border-color .2s, box-shadow .2s;
+}
+
+    .verify-code-digit:focus {
+        outline: none;
+        border-color: var(--brand);
+        box-shadow: var(--focus-ring);
+    }
+
+.verify-resend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: .9rem;
+    color: var(--muted);
+}
+
+.verify-resend-btn {
+    background: none;
+    border: none;
+    color: var(--brand);
+    font-family: var(--font);
+    font-weight: 600;
+    font-size: .9rem;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+}
+
+    .verify-resend-btn:hover {
+        color: var(--brand-dark);
+    }
+
+    .verify-resend-btn:disabled {
+        color: var(--muted);
+        cursor: not-allowed;
+    }
+
+/* Komunikaty weryfikacji */
+.register-msg {
+    margin: 0 0 8px;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    text-align: left;
+}
+
+.register-msg-success {
+    background: var(--brand-soft);
+    color: var(--brand-dark);
+}
+
+.register-msg-error {
+    background: #fef3f2;
+    color: #b42318;
+    border: 1px solid #fecdca;
+}
+
+@media (max-width: 520px) {
+    .verify-code-digit {
+        width: 40px;
+        height: 48px;
+        font-size: 1.3rem;
+    }
+
+    .verify-code-wrapper {
+        gap: 6px;
+    }
+}
+
 /*CategoryPage*/
 
 .category-page {

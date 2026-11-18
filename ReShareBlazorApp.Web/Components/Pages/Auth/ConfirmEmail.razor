@@ -1,0 +1,85 @@
+@page "/confirm-email"
+@inject AuthApiService authApi
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+@using ReShareBlazorApp.Web.ApiServices
+@using Microsoft.AspNetCore.WebUtilities
+
+<div class="register-container">
+    <div class="register-card verify-card">
+        @if (isLoading)
+        {
+            <div class="verify-icon">⏳</div>
+            <h2>Potwierdzanie e-maila...</h2>
+            <p>Proszę czekać, trwa weryfikacja Twojego adresu e-mail.</p>
+        }
+        else if (isSuccess)
+        {
+            <div class="verify-icon">✅</div>
+            <h2>E-mail potwierdzony!</h2>
+            <p class="register-msg register-msg-success">@Message</p>
+            <p>Za chwilę zostaniesz przekierowany na stronę logowania...</p>
+            <a href="/login" class="register-button" style="text-decoration:none; display:block; text-align:center;">
+                Przejdź do logowania
+            </a>
+        }
+        else
+        {
+            <div class="verify-icon">❌</div>
+            <h2>Błąd potwierdzenia</h2>
+            <p class="register-msg register-msg-error">@Message</p>
+            <a href="/register" class="register-button" style="text-decoration:none; display:block; text-align:center;">
+                Spróbuj ponownie
+            </a>
+        }
+    </div>
+</div>
+
+@code {
+    private string Message = "";
+    private bool isLoading = true;
+    private bool isSuccess = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("email", out var email) &&
+            query.TryGetValue("token", out var token))
+        {
+            try
+            {
+                var result = await authApi.ConfirmEmailByLinkAsync(email!, token!);
+                if (result != null)
+                {
+                    Message = result.Message;
+                    isSuccess = result.Message.Contains("pomyślnie");
+                }
+                else
+                {
+                    Message = "Wystąpił błąd podczas potwierdzania e-maila.";
+                }
+            }
+            catch
+            {
+                Message = "Wystąpił błąd połączenia z serwerem.";
+            }
+        }
+        else
+        {
+            Message = "Brakuje wymaganych parametrów w linku.";
+        }
+
+        isLoading = false;
+        StateHasChanged();
+
+        if (isSuccess)
+        {
+            await Task.Delay(3000);
+            Nav.NavigateTo("/login");
+        }
+    }
+}

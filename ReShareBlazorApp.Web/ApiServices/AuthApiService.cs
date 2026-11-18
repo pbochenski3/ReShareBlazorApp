@@ -10,6 +10,7 @@ namespace ReShareBlazorApp.Web.ApiServices
         {
             _httpClient = httpClient;
         }
+
         public async Task<LoginResponse?> LoginAsync(LoginModel model)
         {
             var request = new LoginRequest
@@ -25,6 +26,7 @@ namespace ReShareBlazorApp.Web.ApiServices
                 return null;
             return await response.Content.ReadFromJsonAsync<LoginResponse>();
         }
+
         public async Task<RegisterResponse?> RegisterAsync(RegisterModel model)
         {
             var request = new RegisterRequest
@@ -39,6 +41,41 @@ namespace ReShareBlazorApp.Web.ApiServices
                 request
                 );
 
+            return await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        }
+
+        public async Task<RegisterResponse?> VerifyEmailAsync(string email, string code)
+        {
+            var request = new VerifyEmailRequest
+            {
+                Email = email,
+                Code = code
+            };
+            var response = await _httpClient.PostAsJsonAsync(
+                "api/auth/verify-email",
+                request
+                );
+            return await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        }
+
+        public async Task<RegisterResponse?> ConfirmEmailByLinkAsync(string email, string token)
+        {
+            var response = await _httpClient.GetAsync(
+                $"api/auth/confirm-email?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}"
+                );
+            return await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        }
+
+        public async Task<RegisterResponse?> ResendCodeAsync(string email)
+        {
+            var request = new ResendCodeRequest
+            {
+                Email = email
+            };
+            var response = await _httpClient.PostAsJsonAsync(
+                "api/auth/resend-code",
+                request
+                );
             return await response.Content.ReadFromJsonAsync<RegisterResponse>();
         }
     }

@@ -10,6 +10,7 @@ namespace ReShareBlazorApp.Api.Date
         public DbSet<User> Users { get; set; }
         public DbSet<Product> Products { get; set; }
         public DbSet<Location> Locations { get; set; }
+        public DbSet<PendingRegistration> PendingRegistrations { get; set; }
 
         public ReshareDbContext(DbContextOptions<ReshareDbContext> options)
             : base(options)

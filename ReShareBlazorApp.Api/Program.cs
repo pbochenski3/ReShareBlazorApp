@@ -55,6 +55,7 @@ builder.Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 //Repositories
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();

@@ -1,70 +1,269 @@
 ﻿@page "/register"
 @inject AuthApiService authApi
+@inject NavigationManager Nav
 @rendermode InteractiveServer
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Models
-<EditForm Model="@registerModel" OnValidSubmit="Register" FormName="register">
-    <DataAnnotationsValidator />
+@using ReShareBlazorApp.Shared.DTOs
+
+@if (!showVerification)
+{
+    <!-- KROK 1: Formularz rejestracji -->
+    <EditForm Model="@registerModel" OnValidSubmit="Register" FormName="register">
+        <DataAnnotationsValidator />
+        <div class="register-container">
+            <div class="register-card">
+                @if (!string.IsNullOrEmpty(Message))
+                {
+                    <p class="@MessageCssClass">@Message</p>
+                }
+                <h2>Utwórz konto</h2>
+                <p>Wypełnij formularz, aby się zarejestrować.</p>
+                <div class="register-field">
+                    <label>Nazwa użytkownika</label>
+                    <InputText @bind-Value="registerModel.Username"
+                               class="register-input"
+                               placeholder="Wpisz nazwę użytkownika" />
+                    <ValidationMessage For="@(() => registerModel.Username)" />
+                </div>
+                <div class="register-field">
+                    <label>E-mail</label>
+                    <InputText @bind-Value="registerModel.Email"
+                               class="register-input"
+                               placeholder="Wpisz e-mail" />
+                    <ValidationMessage For="@(() => registerModel.Email)" />
+                </div>
+                <div class="register-field">
+                    <label>Hasło</label>
+                    <InputText @bind-Value="registerModel.Password"
+                               class="register-input"
+                               placeholder="Wpisz hasło"
+                               type="password" />
+                    <ValidationMessage For="@(() => registerModel.Password)" />
+                </div>
+                <div class="register-field">
+                    <label>Potwierdź</label>
+                    <InputText @bind-Value="registerModel.ConfirmPassword"
+                               class="register-input"
+                               type="password"
+                               placeholder="Potwierdź hasło." />
+                    <ValidationMessage For="@(() => registerModel.ConfirmPassword)" />
+                </div>
+                <div class="register-terms">
+                    <InputCheckbox @bind-Value="registerModel.AcceptTerms" />
+                    <label>Akceptuję regulamin.</label>
+                </div>
+                <ValidationMessage For="@(() => registerModel.AcceptTerms)" />
+                <button type="submit" class="register-button" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span>Wysyłanie...</span>
+                    }
+                    else
+                    {
+                        <span>Zarejestruj się</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </EditForm>
+}
+else
+{
+    <!-- KROK 2: Weryfikacja kodu e-mail -->
     <div class="register-container">
-        <div class="register-card">
-            <p>@Message</p>
-            <h2>Utwórz konto</h2>
-            <p>Wypełnij formularz, aby się zarejestrowac.</p>
-            <div class="register-field">
-                <label>Nazwa użytkownika</label>
-                <InputText @bind-Value="registerModel.Username"
-                           class="register-input"
-                           placeholder="Wpisz nazwę użytkownika" />
-                <ValidationMessage For="@(() => registerModel.Username)" />
-            </div>
-            <div class="register-field">
-                <label>E-mail</label>
-                <InputText @bind-Value="registerModel.Email"
-                           class="register-input"
-                           placeholder="Wpisz e-mail" />
-                <ValidationMessage For="@(() => registerModel.Email)" />
-            </div>
-            <div class="register-field">
+        <div class="register-card verify-card">
+            @if (!string.IsNullOrEmpty(Message))
+            {
+                <p class="@MessageCssClass">@Message</p>
+            }
 
-                <label>Hasło</label>
-                <InputText @bind-Value="registerModel.Password"
-                           class="register-input"
-                           placeholder="Wpisz hasło"
-                           type="password" />
-                <ValidationMessage For="@(() => registerModel.Password)" />
-            </div>
-            <div class="register-field">
+            <div class="verify-icon">✉️</div>
+            <h2>Potwierdź swój e-mail</h2>
+            <p>Wysłaliśmy kod weryfikacyjny na adres:</p>
+            <p class="verify-email">@pendingEmail</p>
+            <p>Wpisz 6-cyfrowy kod z wiadomości e-mail lub kliknij link w mailu.</p>
 
-                <label>Potwierdź</label>
-                <InputText @bind-Value="registerModel.ConfirmPassword"
-                           class="register-input"
-                           type="password"
-                           placeholder="Potwierdź hasło." />
-                <ValidationMessage For="@(() => registerModel.ConfirmPassword)" />
+            <div class="verify-code-wrapper">
+                @for (int i = 0; i < 6; i++)
+                {
+                    var index = i;
+                    <input type="text"
+                           maxlength="1"
+                           class="verify-code-digit"
+                           value="@GetDigit(index)"
+                           @oninput="(e) => OnDigitInput(index, e)"
+                           @onkeydown="(e) => OnDigitKeyDown(index, e)"
+                           id="@($"digit-{index}")" />
+                }
             </div>
-            <div class="register-terms">
-                <InputCheckbox @bind-Value="registerModel.AcceptTerms"/>
-                <label>Akceptuje regulamin.</label>
-            </div>
-            <ValidationMessage For="@(() => registerModel.AcceptTerms)" />
-            <button type="submit" class="register-button">
-                Zarejestruj się
+
+            <button class="register-button" @onclick="VerifyCode" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span>Weryfikacja...</span>
+                }
+                else
+                {
+                    <span>Potwierdź kod</span>
+                }
             </button>
+
+            <div class="verify-resend">
+                <span>Nie dostałeś kodu?</span>
+                <button class="verify-resend-btn" @onclick="ResendCode" disabled="@isLoading">
+                    Wyślij ponownie
+                </button>
+            </div>
         </div>
     </div>
-</EditForm>
+}
 
 @code {
     private RegisterModel registerModel = new RegisterModel();
-    public string Message { get; set; }
-    private async Task Register()
+    public string Message { get; set; } = "";
+    public string MessageCssClass => Message.Contains("pomyślnie") || Message.Contains("Wysłaliśmy") || Message.Contains("Nowy kod")
+        ? "register-msg register-msg-success"
+        : "register-msg register-msg-error";
+
+    private bool showVerification = false;
+    private string pendingEmail = "";
+    private string[] digits = new string[6] { "", "", "", "", "", "" };
+    private bool isLoading = false;
+
+    private string GetDigit(int index) => digits[index];
+
+    private async Task OnDigitInput(int index, ChangeEventArgs e)
     {
-        var result = await authApi.RegisterAsync(registerModel);
-        if(result == null)
+        var value = e.Value?.ToString() ?? "";
+
+        // Obsługa wklejania całego kodu
+        if (value.Length > 1)
         {
+            var cleaned = new string(value.Where(char.IsDigit).ToArray());
+            for (int i = 0; i < 6; i++)
+            {
+                digits[i] = i < cleaned.Length ? cleaned[i].ToString() : "";
+            }
+            StateHasChanged();
             return;
         }
-        Message = result.Message;
+
+        if (value.Length == 1 && char.IsDigit(value[0]))
+        {
+            digits[index] = value;
+            if (index < 5)
+            {
+                // Przesuń focus na następne pole (via JS interop nie jest konieczne w tym podejściu)
+            }
+        }
+        else
+        {
+            digits[index] = "";
+        }
         StateHasChanged();
+    }
+
+    private void OnDigitKeyDown(int index, KeyboardEventArgs e)
+    {
+        if (e.Key == "Backspace" && string.IsNullOrEmpty(digits[index]) && index > 0)
+        {
+            digits[index - 1] = "";
+            StateHasChanged();
+        }
+    }
+
+    private async Task Register()
+    {
+        isLoading = true;
+        Message = "";
+        StateHasChanged();
+
+        try
+        {
+            var result = await authApi.RegisterAsync(registerModel);
+            if (result == null)
+            {
+                Message = "Wystąpił błąd podczas rejestracji.";
+                return;
+            }
+
+            Message = result.Message;
+
+            if (result.RequiresEmailConfirmation)
+            {
+                pendingEmail = result.Email ?? registerModel.Email;
+                showVerification = true;
+            }
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task VerifyCode()
+    {
+        var code = string.Join("", digits);
+        if (code.Length != 6 || !code.All(char.IsDigit))
+        {
+            Message = "Wpisz pełny 6-cyfrowy kod.";
+            StateHasChanged();
+            return;
+        }
+
+        isLoading = true;
+        Message = "";
+        StateHasChanged();
+
+        try
+        {
+            var result = await authApi.VerifyEmailAsync(pendingEmail, code);
+            if (result == null)
+            {
+                Message = "Wystąpił błąd podczas weryfikacji.";
+                return;
+            }
+
+            Message = result.Message;
+            StateHasChanged();
+
+            if (result.Message.Contains("pomyślnie"))
+            {
+                await Task.Delay(2000);
+                Nav.NavigateTo("/login");
+            }
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ResendCode()
+    {
+        isLoading = true;
+        Message = "";
+        StateHasChanged();
+
+        try
+        {
+            var result = await authApi.ResendCodeAsync(pendingEmail);
+            if (result != null)
+            {
+                Message = result.Message;
+            }
+            else
+            {
+                Message = "Nie udało się wysłać nowego kodu.";
+            }
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
     }
 }
