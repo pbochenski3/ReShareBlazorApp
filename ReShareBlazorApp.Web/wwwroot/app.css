@@ -2365,6 +2365,7 @@ input[type="search"] {
         padding: 28px 22px;
     }
 }
+
 .login-error {
     display: flex;
     align-items: center;
@@ -2539,7 +2540,7 @@ input[type="search"] {
     position: fixed;
     top: 25px;
     right: auto;
-    left:25px;
+    left: 25px;
     z-index: 9999;
     width: min(380px, calc(100vw - 30px));
     padding: 20px 22px;
@@ -3079,6 +3080,7 @@ input[type="search"] {
         font-size: 12px;
     }
 }
+
 .product-back {
     background: transparent;
     border: none;
@@ -3095,3 +3097,79 @@ input[type="search"] {
     }
 
 
+
+/* Edycja profilu */
+.edit-profile-info {
+    margin: 0 0 8px;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    background: #eefaf1;
+    color: var(--ok);
+    font-size: .9rem;
+}
+
+textarea.register-input {
+    resize: vertical;
+    min-height: 96px;
+}
+
+/* Zdjęcie profilowe */
+.avatar-upload {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 14px;
+}
+
+.avatar-upload-preview {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border);
+}
+
+.avatar-upload-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+    .avatar-upload-actions small {
+        color: var(--muted);
+    }
+
+.avatar-upload-btn {
+    cursor: pointer;
+}
+
+.avatar-upload-remove {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--promo);
+    font-family: var(--font);
+    font-size: .85rem;
+    cursor: pointer;
+}
+
+.avatar-upload-error {
+    color: var(--promo) !important;
+}
+
+.avatar-upload-hint {
+    color: var(--muted);
+    font-size: .8rem;
+}
+
+/* Opis profilu: zawijanie długich tekstów i zachowanie nowych linii */
+.profile-info {
+    min-width: 0;
+}
+
+.profile-bio {
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}

@@ -7,6 +7,7 @@ using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Api.Repositories;
 using ReShareBlazorApp.Api.Services;
+using Microsoft.Extensions.FileProviders;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -80,6 +81,14 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+// Zdjęcia profilowe: pliki z folderu Avatars dostępne pod /avatars/...
+var avatarsPath = Path.Combine(app.Environment.ContentRootPath, "Avatars");
+Directory.CreateDirectory(avatarsPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(avatarsPath),
+    RequestPath = "/avatars"
+});
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

@@ -6,5 +6,6 @@ namespace ReShareBlazorApp.Api.Interfaces.Repositories
     {
         Task<bool> CheckIfUserExistAsync(string username);
         Task<User> GetUserByIdAsync(int userId);
+        Task<User?> GetUserByUserNameAsync(string username);
     }
 }

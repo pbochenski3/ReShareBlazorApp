@@ -1,68 +1,87 @@
 @page "/user/{Username}"
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+@using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Components.Elements
 @inject UserApiService userApi
+@inject AuthenticationStateProvider AuthStateProvider
 
-@if(exist)
+@if (exist)
 {
-<section class="home-section">
-    <div class="home-container">
+    <section class="home-section">
+        <div class="home-container">
 
-        <!-- Karta profilu -->
-        <div class="profile-card">
-            <span class="avatar avatar-lg">TY</span>
+            <!-- Karta profilu -->
+            <div class="profile-card">
+                @if (avatarUrl is not null)
+                {
+                    <img class="avatar-upload-preview" src="@avatarUrl" alt="Zdjęcie profilowe" />
+                }
+                else
+                {
+                    <span class="avatar avatar-lg">@Initials</span>
+                }
 
-            <div class="profile-info">
+                <div class="profile-info">
                     <h2>@Username</h2>
-                        <p class="profile-email">XXX</p>
-                <p class="home-card-verified">✔ E-mail zweryfikowany</p>
-                <p class="profile-rating">★ 4,8 <span>(12 opinii)</span></p>
+                    @if (!string.IsNullOrEmpty(profile?.City))
+                    {
+                        <p class="profile-email">Lokalizacja: @profile.City</p>
+                    }
+                    @if (!string.IsNullOrEmpty(profile?.Bio))
+                    {
+                        <p class="profile-bio">@profile.Bio</p>
+                    }
+                    <p class="home-card-verified">✔ E-mail zweryfikowany</p>
+                    <p class="profile-rating">★ 4,8 <span>(12 opinii)</span></p>
+                </div>
+
+                @if (isOwner)
+                {
+                    <a class="home-btn home-btn-outline" href="/ustawienia">Edytuj profil</a>
+                }
             </div>
 
-            <a class="home-btn home-btn-outline" href="/ustawienia">Edytuj profil</a>
-        </div>
+            <!-- Statystyki -->
+            <div class="profile-stats">
+                <div class="profile-stat"><strong>5</strong><span>Ogłoszenia</span></div>
+                <div class="profile-stat"><strong>2</strong><span>Poszukiwania</span></div>
+                <div class="profile-stat"><strong>9</strong><span>Transakcje</span></div>
+                <div class="profile-stat"><strong>14</strong><span>Ulubione</span></div>
+            </div>
 
-        <!-- Statystyki -->
-        <div class="profile-stats">
-            <div class="profile-stat"><strong>5</strong><span>Ogłoszenia</span></div>
-            <div class="profile-stat"><strong>2</strong><span>Poszukiwania</span></div>
-            <div class="profile-stat"><strong>9</strong><span>Transakcje</span></div>
-            <div class="profile-stat"><strong>14</strong><span>Ulubione</span></div>
-        </div>
+            <!-- Zakładki -->
+            <div class="profile-tabs" role="tablist">
+                <button class="profile-tab active" type="button" role="tab">Moje ogłoszenia</button>
+                <button class="profile-tab" type="button" role="tab">Moje poszukiwania</button>
+                <button class="profile-tab" type="button" role="tab">Ulubione</button>
+                <button class="profile-tab" type="button" role="tab">Transakcje</button>
+                <button class="profile-tab" type="button" role="tab">Opinie</button>
+            </div>
 
-        <!-- Zakładki -->
-        <div class="profile-tabs" role="tablist">
-            <button class="profile-tab active" type="button" role="tab">Moje ogłoszenia</button>
-            <button class="profile-tab" type="button" role="tab">Moje poszukiwania</button>
-            <button class="profile-tab" type="button" role="tab">Ulubione</button>
-            <button class="profile-tab" type="button" role="tab">Transakcje</button>
-            <button class="profile-tab" type="button" role="tab">Opinie</button>
-        </div>
-
-        <!-- Moje ogłoszenia -->
-        @* <div class="home-cards">
+            <!-- Moje ogłoszenia -->
+            @* <div class="home-cards">
             <ListingCard Title="2 bilety na koncert – Kraków" Category="Bilety i rezerwacje" Type="Sprzedam"
                          Price="240 zł" Location="Kraków" Term="12.12.2026" Published="08.11.2026" />
             <ListingCard Title="Wózek dziecięcy do oddania" Category="Rodzina i dzieci" Type="Oddam"
                          Price="Bezpłatnie" Location="Łódź" Term="od zaraz" Published="07.11.2026" />
         </div> *@
 
-        <!-- Opinie -->
-        <h2 class="home-section-title profile-subtitle">Opinie o Tobie</h2>
-        <div class="profile-reviews">
-            <article class="profile-review">
-                <p class="profile-rating">★★★★★ <span>Anna K.</span></p>
-                <p>Szybki kontakt, wszystko zgodnie z opisem. Polecam.</p>
-            </article>
-            <article class="profile-review">
-                <p class="profile-rating">★★★★☆ <span>Marek N.</span></p>
-                <p>Sprawna wymiana, drobne opóźnienie w odpowiedzi.</p>
-            </article>
+            <!-- Opinie -->
+            <h2 class="home-section-title profile-subtitle">Opinie o Tobie</h2>
+            <div class="profile-reviews">
+                <article class="profile-review">
+                    <p class="profile-rating">★★★★★ <span>Anna K.</span></p>
+                    <p>Szybki kontakt, wszystko zgodnie z opisem. Polecam.</p>
+                </article>
+                <article class="profile-review">
+                    <p class="profile-rating">★★★★☆ <span>Marek N.</span></p>
+                    <p>Sprawna wymiana, drobne opóźnienie w odpowiedzi.</p>
+                </article>
+            </div>
         </div>
-    </div>
-</section>
+    </section>
 }
 else
 {
@@ -75,8 +94,17 @@ else
     [Parameter]
     public string Username { get; set; } = string.Empty;
     private bool exist;
+    private UserProfileDTO? profile;
+    private string? avatarUrl;
+    private string Initials => string.IsNullOrWhiteSpace(Username)
+        ? "?" : Username[..Math.Min(2, Username.Length)].ToUpper();
+    private bool isOwner;
     protected override async Task OnParametersSetAsync()
     {
-        exist = await userApi.CheckIfUserExistsAsync(Username);
+        profile = await userApi.GetProfileAsync(Username);
+        exist = profile != null;
+        avatarUrl = userApi.GetAvatarUrl(profile?.AvatarUrl);
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        isOwner = string.Equals(state.User.FindFirst(ClaimTypes.Name)?.Value, Username, StringComparison.OrdinalIgnoreCase);
     }
 }
