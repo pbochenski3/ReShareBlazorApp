@@ -3,7 +3,6 @@ using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Api.Interfaces.Services;
-using ReShareBlazorApp.Migrations;
 using ReShareBlazorApp.Shared.DTOs;
 
 namespace ReShareBlazorApp.Api.Services
@@ -59,6 +58,8 @@ namespace ReShareBlazorApp.Api.Services
             var product = await _productRepository.GetProductById(id);
             return new ProductDTO
             {
+                ProductId = product.Id,
+                UserId = product.UserId,
                 Name = product.Name,
                 Description = product.Description,
                 Price = product.Price,

@@ -1,0 +1,213 @@
+@page "/reports"
+@attribute [Authorize]
+
+@using Microsoft.AspNetCore.Authorization
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Shared.Enums
+@using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Components.Pages.NavBar
+
+@inject ReportApiService reportApi
+@inject NotificationService notify
+@inject IJSRuntime JS
+
+<PageTitle>Zgłoszenia – ODDAJ DALEJ</PageTitle>
+
+<PageHeader Title="Zgłoszenia"
+            Subtitle="Ogłoszenia zgłoszone przez użytkowników." />
+
+<section class="home-section">
+    <div class="home-container">
+
+        @if (isLoading)
+        {
+            <p>Ładowanie zgłoszeń...</p>
+        }
+        else if (loadFailed)
+        {
+            <div class="reports-empty">
+                <h3>Nie udało się pobrać zgłoszeń</h3>
+                <p>Spróbuj odświeżyć stronę lub zalogować się ponownie.</p>
+            </div>
+        }
+        else if (!reports.Any())
+        {
+            <div class="reports-empty">
+                <h3>Brak zgłoszeń</h3>
+                <p>Nikt jeszcze nie zgłosił żadnego ogłoszenia.</p>
+            </div>
+        }
+        else
+        {
+            <p class="page-count">Liczba zgłoszeń: @reports.Count</p>
+
+            <div class="reports-list">
+                @foreach (var report in reports)
+                {
+                    var isOpen = expandedReportId == report.ReportId;
+
+                    <article class="report-item @(isOpen ? "open" : "")">
+
+                        <button type="button"
+                                class="report-head"
+                                aria-expanded="@(isOpen ? "true" : "false")"
+                                @onclick="() => ToggleReport(report.ReportId)">
+                            <span class="report-badge">@GetCategoryName(report.Category)</span>
+
+                            <span class="report-head-text">
+                                <strong>@report.ProductName</strong>
+                                <small>
+                                    Zgłosił: @report.ReportedBy ·
+                                    @report.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                                </small>
+                            </span>
+
+                            <span class="report-arrow">@(isOpen ? "▲" : "▼")</span>
+                        </button>
+
+                        @if (isOpen)
+                        {
+                            <div class="report-body">
+
+                                <div class="report-info-grid">
+                                    <div>
+                                        <span class="report-label">Zgłaszający</span>
+                                        <strong>@report.ReportedBy</strong>
+                                    </div>
+                                    <div>
+                                        <span class="report-label">Data zgłoszenia</span>
+                                        <strong>@report.CreatedAt.ToString("dd.MM.yyyy HH:mm")</strong>
+                                    </div>
+                                    <div>
+                                        <span class="report-label">Kategoria zgłoszenia</span>
+                                        <strong>@GetCategoryName(report.Category)</strong>
+                                    </div>
+                                    <div>
+                                        <span class="report-label">Autor ogłoszenia</span>
+                                        <strong>@(string.IsNullOrWhiteSpace(report.ProductAddedBy) ? "-" : report.ProductAddedBy)</strong>
+                                    </div>
+                                </div>
+
+                                <span class="report-label">Treść zgłoszenia</span>
+                                <p class="report-description">@report.Description</p>
+
+                                <div class="report-actions">
+                                    <a class="home-btn home-btn-outline"
+                                       href="@($"/details/{report.ProductId}")"
+                                       target="_blank"
+                                       rel="noopener">
+                                        Zobacz ogłoszenie
+                                    </a>
+
+                                    <button type="button"
+                                            class="home-btn home-btn-outline"
+                                            disabled="@isBusy"
+                                            @onclick="() => DismissReport(report)">
+                                        Usuń zgłoszenie (ogłoszenie zostaje)
+                                    </button>
+
+                                    <button type="button"
+                                            class="home-btn home-btn-danger"
+                                            disabled="@isBusy"
+                                            @onclick="() => DeleteProduct(report)">
+                                        Usuń ogłoszenie
+                                    </button>
+                                </div>
+
+                            </div>
+                        }
+                    </article>
+                }
+            </div>
+        }
+
+    </div>
+</section>
+
+@code {
+    private List<ReportDTO> reports = new();
+    private bool isLoading = true;
+    private bool loadFailed;
+    private bool isBusy;
+    private int? expandedReportId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReports();
+    }
+
+    private async Task LoadReports()
+    {
+        var result = await reportApi.GetReportsAsync();
+        loadFailed = result == null;
+        reports = result ?? new List<ReportDTO>();
+        isLoading = false;
+    }
+
+    private void ToggleReport(int reportId)
+    {
+        expandedReportId = expandedReportId == reportId ? null : reportId;
+    }
+
+    private async Task DismissReport(ReportDTO report)
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            "Usunąć to zgłoszenie? Ogłoszenie zostanie na stronie.");
+        if (!confirmed)
+            return;
+
+        isBusy = true;
+        var result = await reportApi.DeleteReportAsync(report.ReportId);
+        isBusy = false;
+
+        if (result)
+        {
+            notify.AddNotification("Zgłoszenie", "Zgłoszenie zostało usunięte.");
+            expandedReportId = null;
+            await LoadReports();
+        }
+        else
+        {
+            notify.AddNotification("Zgłoszenie", "Nie udało się usunąć zgłoszenia.");
+        }
+    }
+
+    private async Task DeleteProduct(ReportDTO report)
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Na pewno usunąć ogłoszenie „{report.ProductName}”? Zostaną też usunięte wszystkie zgłoszenia tego ogłoszenia.");
+        if (!confirmed)
+            return;
+
+        isBusy = true;
+        var result = await reportApi.DeleteReportedProductAsync(report.ReportId);
+        isBusy = false;
+
+        if (result)
+        {
+            notify.AddNotification("Ogłoszenie", "Ogłoszenie zostało usunięte.");
+            expandedReportId = null;
+            await LoadReports();
+        }
+        else
+        {
+            notify.AddNotification("Ogłoszenie", "Nie udało się usunąć ogłoszenia.");
+        }
+    }
+
+    private string GetCategoryName(ReportCategory category)
+    {
+        return category switch
+        {
+            ReportCategory.Spam => "Spam lub reklama",
+            ReportCategory.Fraud => "Oszustwo",
+            ReportCategory.Inappropriate => "Nieodpowiednia treść",
+            ReportCategory.Prohibited => "Zabroniony przedmiot lub usługa",
+            ReportCategory.Duplicate => "Duplikat ogłoszenia",
+            ReportCategory.Other => "Inne",
+            _ => category.ToString()
+        };
+    }
+}
