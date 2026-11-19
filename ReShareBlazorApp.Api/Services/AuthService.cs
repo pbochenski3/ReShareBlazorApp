@@ -2,6 +2,7 @@
 using Microsoft.IdentityModel.Tokens;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -13,10 +14,12 @@ namespace ReShareBlazorApp.Api.Services
     {
         private readonly UserManager<User> _userManager;
         private readonly IConfiguration _configuration;
-        public AuthService(UserManager<User> userManager, IConfiguration configuration)
+        private readonly IActivityLogger _activityLogger;
+        public AuthService(UserManager<User> userManager, IConfiguration configuration, IActivityLogger activityLogger)
         {
             _userManager = userManager;
             _configuration = configuration;
+            _activityLogger = activityLogger;
         }
         public async Task<RegisterResponse?> RegisterAsync(RegisterRequest request)
         {
@@ -33,6 +36,8 @@ namespace ReShareBlazorApp.Api.Services
             {
                 return null;
             }
+            await _activityLogger.LogAsync(user.Id, user.UserName, ActivityActions.UserRegistered,
+                "Utworzono konto", "User", user.Id);
             return new RegisterResponse
             {
                 Message = "Konto zostało pomyślnie utworzone."
@@ -60,7 +65,7 @@ namespace ReShareBlazorApp.Api.Services
                 new Claim(ClaimTypes.Email,user.Email ?? ""),
             };
             var userRoles = await _userManager.GetRolesAsync(user);
-            foreach(var role in userRoles)
+            foreach (var role in userRoles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }

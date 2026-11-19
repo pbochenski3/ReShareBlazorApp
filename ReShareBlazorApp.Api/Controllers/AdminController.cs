@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
+using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Security.Claims;
 
@@ -11,10 +13,12 @@ using System.Security.Claims;
 public class AdminController : ControllerBase
 {
     private readonly ReshareDbContext _context;
+    private readonly IActivityLogger _activityLogger;
 
-    public AdminController(ReshareDbContext context)
+    public AdminController(ReshareDbContext context, IActivityLogger activityLogger)
     {
         _context = context;
+        _activityLogger = activityLogger;
     }
 
     [HttpGet("users")]
@@ -56,6 +60,11 @@ public class AdminController : ControllerBase
 
         user.IsActive = value;
         await _context.SaveChangesAsync();
+
+        await _activityLogger.LogAsync(User,
+            value ? ActivityActions.AdminUserUnblocked : ActivityActions.AdminUserBlocked,
+            $"{(value ? "Odblokowano" : "Zablokowano")} użytkownika {user.UserName} (id: {id})",
+            "User", id);
         return Ok();
     }
 
@@ -88,8 +97,61 @@ public class AdminController : ControllerBase
         var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
         if (product == null) return NotFound();
 
+        var productName = product.Name;
         _context.Products.Remove(product);
         await _context.SaveChangesAsync();
+
+        await _activityLogger.LogAsync(User, ActivityActions.AdminProductDeleted,
+            $"Usunięto ogłoszenie „{productName}” (id: {id})", "Product", id);
         return NoContent();
+    }
+
+    // GET api/admin/logs?user=jan&action=ProductAdded&page=1&pageSize=25
+    [HttpGet("logs")]
+    public async Task<ActionResult<ActivityLogPageDTO>> GetLogs(
+        [FromQuery] string? user = null,
+        [FromQuery(Name = "action")] string? actionCode = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _context.ActivityLogs.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(user))
+        {
+            var term = user.Trim();
+            query = query.Where(l => l.UserName.Contains(term));
+        }
+        if (!string.IsNullOrWhiteSpace(actionCode))
+            query = query.Where(l => l.Action == actionCode);
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(l => l.CreatedAt)
+            .ThenByDescending(l => l.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(l => new ActivityLogDTO
+            {
+                Id = l.Id,
+                UserId = l.UserId,
+                UserName = l.UserName,
+                Action = l.Action,
+                Description = l.Description,
+                TargetType = l.TargetType,
+                TargetId = l.TargetId,
+                CreatedAt = l.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(new ActivityLogPageDTO
+        {
+            Items = items,
+            TotalCount = total,
+            Page = page,
+            PageSize = pageSize
+        });
     }
 }

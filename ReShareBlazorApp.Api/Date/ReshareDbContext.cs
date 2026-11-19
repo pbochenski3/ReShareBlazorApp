@@ -15,6 +15,7 @@ namespace ReShareBlazorApp.Api.Date
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Report> Reports { get; set; }
         public DbSet<RecentlyViewedProduct> RecentlyViewedProducts { get; set; }
+        public DbSet<ActivityLog> ActivityLogs { get; set; }
 
         public ReshareDbContext(DbContextOptions<ReshareDbContext> options)
             : base(options)
@@ -24,6 +25,15 @@ namespace ReShareBlazorApp.Api.Date
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            builder.Entity<ActivityLog>(entity =>
+            {
+                entity.Property(x => x.CreatedAt).HasColumnType("datetime2");
+                // Szukanie po użytkowniku i sortowanie po dacie.
+                entity.HasIndex(x => x.UserName);
+                entity.HasIndex(x => x.UserId);
+                entity.HasIndex(x => x.CreatedAt);
+            });
 
             builder.Entity<UserFollow>()
                 .HasKey(f => new { f.FollowerId, f.FollowingId });

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Security.Claims;
 
@@ -13,9 +14,11 @@ namespace ReShareBlazorApp.Api.Controllers
     public class ProductController : ControllerBase
     {
         private readonly IProductService _productService;
-        public ProductController(IProductService productService)
+        private readonly IActivityLogger _activityLogger;
+        public ProductController(IProductService productService, IActivityLogger activityLogger)
         {
             _productService = productService;
+            _activityLogger = activityLogger;
         }
         [Authorize]
         [HttpPost("addProduct")]
@@ -33,6 +36,8 @@ namespace ReShareBlazorApp.Api.Controllers
             {
                 return BadRequest();
             }
+            await _activityLogger.LogAsync(User, ActivityActions.ProductAdded,
+                $"Dodano ogłoszenie „{product.Name}”", "Product");
             return Ok();
         }
 
@@ -48,6 +53,9 @@ namespace ReShareBlazorApp.Api.Controllers
             if (!result)
                 return NotFound();
 
+            await _activityLogger.LogAsync(User, ActivityActions.ProductUpdated,
+                $"Zmieniono ogłoszenie „{product.Name}” (id: {id})", "Product", id);
+
             return NoContent();
         }
 
@@ -62,6 +70,9 @@ namespace ReShareBlazorApp.Api.Controllers
             var result = await _productService.DeleteProductAsync(id, currentUserId);
             if (!result)
                 return NotFound();
+
+            await _activityLogger.LogAsync(User, ActivityActions.ProductDeleted,
+                $"Usunięto ogłoszenie (id: {id})", "Product", id);
 
             return NoContent();
         }

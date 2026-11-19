@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
+using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 
 namespace ReShareBlazorApp.Api.Controllers
@@ -11,9 +13,12 @@ namespace ReShareBlazorApp.Api.Controllers
     {
         private readonly ReshareDbContext _context;
 
-        public ReviewController(ReshareDbContext context)
+        private readonly IActivityLogger _activityLogger;
+
+        public ReviewController(ReshareDbContext context, IActivityLogger activityLogger)
         {
             _context = context;
+            _activityLogger = activityLogger;
         }
 
         [HttpGet("product/{productId:int}")]
@@ -61,6 +66,12 @@ namespace ReShareBlazorApp.Api.Controllers
 
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
+
+            var description = $"Dodano opinię ({review.Rating}/5) do ogłoszenia (id: {review.ProductId})";
+            if (User.Identity?.IsAuthenticated == true)
+                await _activityLogger.LogAsync(User, ActivityActions.ReviewAdded, description, "Product", review.ProductId);
+            else
+                await _activityLogger.LogAsync((int?)null, review.AuthorName, ActivityActions.ReviewAdded, description, "Product", review.ProductId);
 
             return Ok(new { message = "Opinia została dodana pomyślnie." });
         }

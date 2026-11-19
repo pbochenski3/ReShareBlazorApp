@@ -1,0 +1,177 @@
+﻿@page "/admin/logs"
+@layout AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using ReShareBlazorApp.Shared
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@attribute [Authorize(Roles = "Admin")]
+@implements IDisposable
+@inject AdminApiService adminApi
+
+<PageTitle>Logi – panel admina</PageTitle>
+
+<h1 class="admin-title">Logi</h1>
+
+<div class="admin-filters">
+    <input class="admin-search"
+           placeholder="Szukaj po nazwie użytkownika..."
+           @bind="UserSearch"
+           @bind:event="oninput" />
+
+    <select class="admin-select" value="@actionFilter" @onchange="OnActionChanged">
+        <option value="">Wszystkie akcje</option>
+        @foreach (var actionCode in ActivityActions.All)
+        {
+            <option value="@actionCode">@ActivityActions.Label(actionCode)</option>
+        }
+    </select>
+
+    <button class="admin-btn" @onclick="ReloadAsync">Odśwież</button>
+</div>
+
+@if (loading && result is null)
+{
+    <p class="admin-muted">Ładowanie...</p>
+}
+else if (failed)
+{
+    <div class="admin-alert">Nie udało się pobrać logów.</div>
+}
+else if (result is null || result.Items.Count == 0)
+{
+    <p class="admin-muted">Brak logów dla wybranych filtrów.</p>
+}
+else
+{
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Użytkownik</th>
+                    <th>Akcja</th>
+                    <th>Opis</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var log in result.Items)
+                {
+                    <tr>
+                        <td>@log.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
+                        <td>@log.UserName</td>
+                        <td><span class="admin-badge @BadgeClass(log.Action)">@ActivityActions.Label(log.Action)</span></td>
+                        <td class="admin-log-desc">@log.Description</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="admin-pager">
+        <span class="admin-muted">
+            Wyniki @(((result.Page - 1) * result.PageSize) + 1)–@(((result.Page - 1) * result.PageSize) + result.Items.Count)
+            z @result.TotalCount
+        </span>
+        <div>
+            <button class="admin-btn" disabled="@(currentPage <= 1)" @onclick="PrevPage">← Poprzednia</button>
+            <span class="admin-muted">Strona @currentPage z @TotalPages</span>
+            <button class="admin-btn" disabled="@(currentPage >= TotalPages)" @onclick="NextPage">Następna →</button>
+        </div>
+    </div>
+}
+
+@code {
+    private const int PageSize = 25;
+
+    private ActivityLogPageDTO? result;
+    private bool loading;
+    private bool failed;
+    private int currentPage = 1;
+    private string actionFilter = "";
+    private string userSearch = "";
+    private CancellationTokenSource? debounce;
+    private int requestId;
+
+    private string UserSearch
+    {
+        get => userSearch;
+        set
+        {
+            userSearch = value;
+            _ = DebouncedReloadAsync();
+        }
+    }
+
+    private int TotalPages =>
+        result is null ? 1 : Math.Max(1, (int)Math.Ceiling(result.TotalCount / (double)PageSize));
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task DebouncedReloadAsync()
+    {
+        debounce?.Cancel();
+        debounce?.Dispose();
+        debounce = new CancellationTokenSource();
+        var token = debounce.Token;
+        try { await Task.Delay(400, token); }
+        catch (TaskCanceledException) { return; }
+
+        currentPage = 1;
+        await InvokeAsync(async () =>
+        {
+            await LoadAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task OnActionChanged(ChangeEventArgs e)
+    {
+        actionFilter = e.Value?.ToString() ?? "";
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task ReloadAsync() => await LoadAsync();
+
+    private async Task PrevPage()
+    {
+        if (currentPage > 1) { currentPage--; await LoadAsync(); }
+    }
+
+    private async Task NextPage()
+    {
+        if (currentPage < TotalPages) { currentPage++; await LoadAsync(); }
+    }
+
+    private async Task LoadAsync()
+    {
+        var myRequest = ++requestId;
+        loading = true;
+        failed = false;
+
+        var data = await adminApi.GetLogsAsync(userSearch, actionFilter, currentPage, PageSize);
+
+        // Ignoruj spóźnioną odpowiedź na starsze zapytanie.
+        if (myRequest != requestId) return;
+
+        failed = data is null;
+        result = data;
+        loading = false;
+    }
+
+    private static string BadgeClass(string code) => code switch
+    {
+        ActivityActions.AdminUserBlocked or ActivityActions.AdminProductDeleted
+            or ActivityActions.ReportDeleted or ActivityActions.ReportedProductDeleted
+            or ActivityActions.ProductDeleted or ActivityActions.AvatarRemoved => "admin-badge-bad",
+        ActivityActions.UserRegistered or ActivityActions.ProductAdded
+            or ActivityActions.AdminUserUnblocked or ActivityActions.ReviewAdded => "admin-badge-ok",
+        _ => "admin-badge-info"
+    };
+
+    public void Dispose()
+    {
+        debounce?.Cancel();
+        debounce?.Dispose();
+    }
+}

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Security.Claims;
 
@@ -11,9 +12,11 @@ namespace ReShareBlazorApp.Api.Controllers
     public class ReportController : ControllerBase
     {
         private readonly IReportService _reportService;
-        public ReportController(IReportService reportService)
+        private readonly IActivityLogger _activityLogger;
+        public ReportController(IReportService reportService, IActivityLogger activityLogger)
         {
             _reportService = reportService;
+            _activityLogger = activityLogger;
         }
         [Authorize]
         [HttpPost("addReport")]
@@ -29,6 +32,9 @@ namespace ReShareBlazorApp.Api.Controllers
             {
                 return BadRequest();
             }
+            await _activityLogger.LogAsync(User, ActivityActions.ReportAdded,
+                $"Zgłoszono ogłoszenie (id: {report.ProductId}), kategoria: {report.Category}",
+                "Product", report.ProductId);
             return Ok();
         }
         // TODO: na razie [Authorize] (każdy zalogowany). Docelowo tylko admin:
@@ -47,6 +53,8 @@ namespace ReShareBlazorApp.Api.Controllers
             var result = await _reportService.DeleteReportAsync(id);
             if (!result)
                 return NotFound();
+            await _activityLogger.LogAsync(User, ActivityActions.ReportDeleted,
+                $"Usunięto zgłoszenie (id: {id})", "Report", id);
             return Ok();
         }
         [Authorize]
@@ -56,6 +64,8 @@ namespace ReShareBlazorApp.Api.Controllers
             var result = await _reportService.DeleteReportedProductAsync(id);
             if (!result)
                 return NotFound();
+            await _activityLogger.LogAsync(User, ActivityActions.ReportedProductDeleted,
+                $"Usunięto ogłoszenie zgłoszone w zgłoszeniu (id: {id})", "Report", id);
             return Ok();
         }
     }

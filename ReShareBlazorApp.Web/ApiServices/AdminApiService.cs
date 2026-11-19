@@ -59,6 +59,21 @@ namespace ReShareBlazorApp.Web.ApiServices
             return await response.Content.ReadFromJsonAsync<List<ProductDTO>>() ?? new();
         }
 
+        public async Task<ActivityLogPageDTO?> GetLogsAsync(
+            string? user, string? action, int page, int pageSize = 25)
+        {
+            var url = $"api/admin/logs?page={page}&pageSize={pageSize}";
+            if (!string.IsNullOrWhiteSpace(user))
+                url += $"&user={Uri.EscapeDataString(user.Trim())}";
+            if (!string.IsNullOrWhiteSpace(action))
+                url += $"&action={Uri.EscapeDataString(action)}";
+
+            using var request = await CreateRequestAsync(HttpMethod.Get, url);
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<ActivityLogPageDTO>();
+        }
+
         public async Task<bool> DeleteProductAsync(int productId)
         {
             using var request = await CreateRequestAsync(HttpMethod.Delete, $"api/admin/products/{productId}");
