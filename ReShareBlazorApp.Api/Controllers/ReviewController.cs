@@ -1,5 +1,4 @@
-﻿using System.Security.Claims;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Shared.DTOs;
@@ -45,30 +44,18 @@ namespace ReShareBlazorApp.Api.Controllers
                 return BadRequest("Nieprawidłowe dane opinii.");
             }
 
-            var product = await _context.Products.FindAsync(request.ProductId);
-            if (product == null)
+            var productExists = await _context.Products.AnyAsync(p => p.Id == request.ProductId);
+            if (!productExists)
             {
                 return NotFound("Nie znaleziono ogłoszenia.");
             }
 
-            // Pobieramy ID zalogowanego użytkownika z kontekstu żądania API
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            // Jeśli encja Product posiada właściwość UserId (sprawdzamy czy to string i czy nie jest puste)
-            // Możesz dostosować nazwę właściwości w bazie, jeśli w encji Product nazywa się inaczej (np. OwnerId)
-            if (!string.IsNullOrEmpty(currentUserId))
-            {
-                // Jeśli typ product.UserId w bazie to int, a currentUserId to string, upewnij się co do konwersji,
-                // lub jeśli encja Product w ogóle nie ma pola UserId, ten blok zostanie pominięty.
-            }
-
-            // Zapisujemy nową opinię
             var review = new Review
             {
                 ProductId = request.ProductId,
-                AuthorName = string.IsNullOrWhiteSpace(request.AuthorName) ? "Anonim" : request.AuthorName,
+                AuthorName = string.IsNullOrWhiteSpace(request.AuthorName) ? "Anonim" : request.AuthorName.Trim(),
                 Rating = request.Rating,
-                Comment = request.Comment,
+                Comment = request.Comment.Trim(),
                 CreatedAt = DateTime.UtcNow
             };
 
