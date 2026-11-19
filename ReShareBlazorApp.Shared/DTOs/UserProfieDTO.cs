@@ -2,6 +2,7 @@
 {
     public class UserProfileDTO
     {
+        public int UserId { get; set; }
         public string UserName { get; set; } = string.Empty;
         // Wypełniany tylko w api/user/me (własny profil).
         public string? Email { get; set; }

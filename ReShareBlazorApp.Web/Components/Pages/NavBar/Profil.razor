@@ -8,6 +8,7 @@
 @using ReShareBlazorApp.Web.Components.Elements
 @inject UserApiService userApi
 @inject AuthenticationStateProvider AuthStateProvider
+@inject ReviewApiService ReviewApiService 
 
 @if (exist)
 {
@@ -36,7 +37,20 @@
                         <p class="profile-bio">@profile.Bio</p>
                     }
                     <p class="home-card-verified">✔ E-mail zweryfikowany</p>
-                    <p class="profile-rating">★ 4,8 <span>(12 opinii)</span></p>
+                    @if (userRating.TotalReviews > 0)
+                    {
+                        <p class="profile-rating">
+                            ★ @userRating.AverageRating.ToString("0.0",
+                                System.Globalization.CultureInfo.GetCultureInfo("pl-PL"))
+                            <span>(@userRating.TotalReviews @GetReviewLabel(userRating.TotalReviews))</span>
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="profile-rating">
+                            ★ 0,0 <span>(0 opinii)</span>
+                        </p>
+                    }
                 </div>
 
                 @if (isOwner)
@@ -100,12 +114,30 @@ else
     private string Initials => string.IsNullOrWhiteSpace(Username)
         ? "?" : Username[..Math.Min(2, Username.Length)].ToUpper();
     private bool isOwner;
+    private UserRatingDTO userRating = new();
+    private int? profileUserId;
     protected override async Task OnParametersSetAsync()
     {
         profile = await userApi.GetProfileAsync(Username);
         exist = profile != null;
+        if (profile != null)
+        {
+            userRating = await ReviewApiService.GetUserRatingAsync(profile.UserId);
+        }
         avatarUrl = userApi.GetAvatarUrl(profile?.AvatarUrl);
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
         isOwner = string.Equals(state.User.FindFirst(ClaimTypes.Name)?.Value, Username, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string GetReviewLabel(int count)
+    {
+        if (count == 1)
+            return "opinia";
+
+        if (count % 10 >= 2 && count % 10 <= 4 &&
+            (count % 100 < 12 || count % 100 > 14))
+            return "opinie";
+
+        return "opinii";
     }
 }   

@@ -29,5 +29,17 @@ namespace ReShareBlazorApp.Web.ApiServices
             var response = await _http.PostAsJsonAsync("api/review", request);
             return response.IsSuccessStatusCode;
         }
+        public async Task<UserRatingDTO> GetUserRatingAsync(int userId)
+        {
+            try
+            {
+                return await _http.GetFromJsonAsync<UserRatingDTO>(
+                    $"api/review/user/{userId}") ?? new UserRatingDTO();
+            }
+            catch
+            {
+                return new UserRatingDTO();
+            }
+        }
     }
 }
