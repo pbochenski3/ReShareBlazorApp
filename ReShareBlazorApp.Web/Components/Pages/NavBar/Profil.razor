@@ -7,6 +7,7 @@
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Components.Elements
 @inject UserApiService userApi
+@inject NotificationApiService notificationApi
 @inject AuthenticationStateProvider AuthStateProvider
 
 @if (exist)
@@ -44,6 +45,62 @@
                     <a class="home-btn home-btn-outline" href="/ustawienia">Edytuj profil</a>
                 }
             </div>
+
+            @if (isOwner)
+            {
+                <section class="profile-notifications" aria-labelledby="notifications-title">
+                    <h2 id="notifications-title" class="home-section-title">
+                        Powiadomienia
+                        @if (UnreadNotificationsCount > 0)
+                        {
+                            <span class="profile-notification-count">@UnreadNotificationsCount nowych</span>
+                        }
+                    </h2>
+                    <button class="home-btn home-btn-outline" type="button"
+                            @onclick="async () => notifications = await notificationApi.GetNotificationsAsync()">
+                        Odśwież powiadomienia
+                    </button>
+
+                    @if (notifications.Count == 0)
+                    {
+                        <p class="profile-notifications-empty">Nie masz jeszcze powiadomień.</p>
+                    }
+                    else
+                    {
+                        <div class="profile-notification-list">
+                            @foreach (var notification in notifications)
+                            {
+                                <article class="profile-notification @(notification.IsRead ? "is-read" : "is-unread")">
+                                    <div>
+                                        <h3>@notification.Title</h3>
+                                        <p>@notification.Message</p>
+                                        <time datetime="@notification.CreatedAt.ToString("O")">
+                                            @notification.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                        </time>
+                                    </div>
+                                    <div class="profile-notification-actions">
+                                        @if (notification.Type == ReShareBlazorApp.Shared.Enums.NotificationType.NewMessage)
+                                        {
+                                            <a class="home-btn home-btn-outline" href="/wiadomosci">Przejdź do wiadomości</a>
+                                        }
+                                        @if (notification.ProductId is int productId)
+                                        {
+                                            <a class="home-btn home-btn-outline" href="@GetProductUrl(productId)">Zobacz ofertę</a>
+                                        }
+                                        @if (!notification.IsRead)
+                                        {
+                                            <button class="home-btn home-btn-outline" type="button"
+                                                    @onclick="() => MarkNotificationAsReadAsync(notification)">
+                                                Oznacz jako przeczytane
+                                            </button>
+                                        }
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    }
+                </section>
+            }
 
             <!-- Statystyki -->
             <div class="profile-stats">
@@ -100,6 +157,9 @@ else
     private string Initials => string.IsNullOrWhiteSpace(Username)
         ? "?" : Username[..Math.Min(2, Username.Length)].ToUpper();
     private bool isOwner;
+    private List<NotificationDTO> notifications = new();
+    private int UnreadNotificationsCount => notifications.Count(notification => !notification.IsRead);
+
     protected override async Task OnParametersSetAsync()
     {
         profile = await userApi.GetProfileAsync(Username);
@@ -107,5 +167,16 @@ else
         avatarUrl = userApi.GetAvatarUrl(profile?.AvatarUrl);
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
         isOwner = string.Equals(state.User.FindFirst(ClaimTypes.Name)?.Value, Username, StringComparison.OrdinalIgnoreCase);
+        notifications = isOwner
+            ? await notificationApi.GetNotificationsAsync()
+            : new List<NotificationDTO>();
     }
+
+    private async Task MarkNotificationAsReadAsync(NotificationDTO notification)
+    {
+        if (await notificationApi.MarkAsReadAsync(notification.Id))
+            notification.IsRead = true;
+    }
+
+    private static string GetProductUrl(int productId) => $"/details/{productId}";
 }   

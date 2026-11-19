@@ -15,6 +15,7 @@ namespace ReShareBlazorApp.Api.Date
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Report> Reports { get; set; }
         public DbSet<RecentlyViewedProduct> RecentlyViewedProducts { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         public ReshareDbContext(DbContextOptions<ReshareDbContext> options)
             : base(options)
@@ -42,6 +43,26 @@ namespace ReShareBlazorApp.Api.Date
                 .WithMany()
                 .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Notification>(entity =>
+            {
+                entity.HasIndex(notification => notification.ProductId);
+                entity.HasIndex(notification => new
+                {
+                    notification.UserId,
+                    notification.CreatedAt
+                });
+
+                entity.HasOne(notification => notification.User)
+                    .WithMany()
+                    .HasForeignKey(notification => notification.UserId)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(notification => notification.Product)
+                    .WithMany()
+                    .HasForeignKey(notification => notification.ProductId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
 
             builder.Entity<RecentlyViewedProduct>(entity =>
             {

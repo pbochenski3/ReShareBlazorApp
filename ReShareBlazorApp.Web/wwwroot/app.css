@@ -33,6 +33,58 @@
     --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
+.profile-notifications {
+    margin: 0 0 40px;
+}
+
+.profile-notification-count {
+    margin-left: 8px;
+    color: var(--muted);
+    font-size: .9rem;
+    font-weight: 500;
+}
+
+.profile-notifications-empty {
+    color: var(--muted);
+}
+
+.profile-notification-list {
+    display: grid;
+    gap: 12px;
+}
+
+.profile-notification {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--gray);
+}
+
+.profile-notification.is-unread {
+    border-left: 4px solid var(--brand);
+}
+
+.profile-notification h3,
+.profile-notification p {
+    margin: 0 0 5px;
+}
+
+.profile-notification time {
+    color: var(--muted);
+    font-size: .85rem;
+}
+
+.profile-notification-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
 .delete-dialog-backdrop {
     position: fixed;
     inset: 0;

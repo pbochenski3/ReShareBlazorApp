@@ -12,8 +12,8 @@ using ReShareBlazorApp.Api.Date;
 namespace ReShareBlazorApp.Api.Migrations
 {
     [DbContext(typeof(ReshareDbContext))]
-    [Migration("20261119070742_Init")]
-    partial class Init
+    [Migration("20261119084728_AddNotifications")]
+    partial class AddNotifications
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -173,6 +173,48 @@ namespace ReShareBlazorApp.Api.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Locations");
+                });
+
+            modelBuilder.Entity("ReShareBlazorApp.Api.Date.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("ReShareBlazorApp.Api.Date.Product", b =>
@@ -499,6 +541,24 @@ namespace ReShareBlazorApp.Api.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ReShareBlazorApp.Api.Date.Notification", b =>
+                {
+                    b.HasOne("ReShareBlazorApp.Api.Date.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                b.HasOne("ReShareBlazorApp.Api.Date.User", "User")
+                    .WithMany()
+                    .HasForeignKey("UserId")
+                    .OnDelete(DeleteBehavior.NoAction)
+                    .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ReShareBlazorApp.Api.Date.Product", b =>

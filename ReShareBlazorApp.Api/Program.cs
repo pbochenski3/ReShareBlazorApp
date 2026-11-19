@@ -58,6 +58,7 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSingleton<IImageStorage, DiskImageStorage>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 //Repositories
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -71,6 +72,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider
          .GetRequiredService<ReshareDbContext>();
+    await context.Database.MigrateAsync();
     await LocationImportService.ImportAsync(context, app.Environment.ContentRootPath);
 
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();

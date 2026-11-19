@@ -3,6 +3,7 @@ using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared.DTOs;
+using ReShareBlazorApp.Shared.Enums;
 
 namespace ReShareBlazorApp.Api.Services
 {
@@ -15,13 +16,19 @@ namespace ReShareBlazorApp.Api.Services
 
         private readonly IProductRepository _productRepository;
         private readonly IImageStorage _imageStorage;
+        private readonly INotificationService _notificationService;
+        private readonly ILogger<ProductService> _logger;
 
         public ProductService(
             IProductRepository productRepository,
-            IImageStorage imageStorage)
+            IImageStorage imageStorage,
+            INotificationService notificationService,
+            ILogger<ProductService> logger)
         {
             _productRepository = productRepository;
             _imageStorage = imageStorage;
+            _notificationService = notificationService;
+            _logger = logger;
         }
 
         public async Task<bool> AddProductAsync(ProductDTO product)
@@ -78,6 +85,26 @@ namespace ReShareBlazorApp.Api.Services
 
                 if (!result)
                     DeleteFiles(savedFiles);
+                else
+                {
+                    try
+                    {
+                        if (productModel.Type == ProductType.LookingFor)
+                        {
+                            await _notificationService.CreateForMatchingOffersAsync(productModel);
+                        }
+                        else
+                        {
+                            await _notificationService.CreateForMatchingWantedListingsAsync(productModel);
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.LogError(exception,
+                            "Nie udało się utworzyć powiadomień dla nowego ogłoszenia {ProductId}",
+                            productModel.Id);
+                    }
+                }
 
                 return result;
             }
