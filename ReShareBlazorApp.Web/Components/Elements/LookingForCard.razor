@@ -2,49 +2,64 @@
 
 <div class="looking-card">
 
-    <h3 class="looking-card-title">
-        @Product.Name
-    </h3>
+    @if (Product.ImageIds != null && Product.ImageIds.Count > 0)
+    {
+        <img class="looking-card-image"
+             src="@($"/images/{Product.ImageIds[0]}")"
+             alt="@Product.Name" />
+    }
+    else
+    {
+        <div class="looking-card-image looking-card-image-placeholder">
+            Brak zdjęcia
+        </div>
+    }
 
-    <p class="looking-card-description">
-        @Product.Description
-    </p>
+    <div class="looking-card-content">
 
-    <div class="looking-card-details">
+        <h3 class="looking-card-title">
+            @Product.Name
+        </h3>
 
-        <div>
-            @Product.City
+        <p class="looking-card-description">
+            @Product.Description
+        </p>
+
+        <div class="looking-card-details">
+            <div>
+                <i class="fa-solid fa-location-dot"></i>
+                @Product.City
+            </div>
+
+            <div>
+                <i class="fa-regular fa-calendar"></i>
+                Termin: @Product.ExpiresAt.ToString("dd.MM.yyyy")
+            </div>
+
+            <div>
+                <i class="fa-solid fa-coins"></i>
+                Budżet: do @Product.Price zł
+            </div>
         </div>
 
-        <div>
-            Termin: @Product.ExpiresAt.ToString("dd.MM.yyyy")
-        </div>
+        <div class="looking-card-actions">
 
-        <div>
-            Budżet: do @Product.Price zł
+            <a class="home-btn home-btn-primary"
+               href="@($"/details/{Product.ProductId}")">
+                Szczegóły ogłoszenia
+            </a>
+
+            <a class="home-btn home-btn-outline"
+               href="#">
+                Skontaktuj się
+            </a>
+
         </div>
 
     </div>
-
-    <div class="looking-card-actions">
-
-        <a class="home-btn home-btn-primary"
-           href="@($"/details/{Product.ProductId}")">
-            Szczegóły ogłoszenia
-        </a>
-
-        <a class="home-btn home-btn-outline"
-           href="#">
-            Skontaktuj się
-        </a>
-
-    </div>
-
 </div>
 
 @code {
-
     [Parameter]
     public ProductDTO Product { get; set; } = default!;
-
 }

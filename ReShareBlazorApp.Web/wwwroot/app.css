@@ -3547,38 +3547,73 @@ textarea.register-input {
     gap: 24px;
 }
 
-.looking-card {
-    background: #fff;
-    border: 1px solid #e4e6eb;
-    border-radius: 18px;
-    padding: 28px;
+.looking-card-image {
+    display: block;
+    width: 100%;
+    height: 190px;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 12px 12px 0 0;
+}
+
+.looking-card-image-placeholder {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #eef1f6;
+    color: #8993a4;
+    font-size: 14px;
+}
+
+.looking-card {
+    overflow: hidden;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid #e5e9f0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+    .looking-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(20, 38, 65, 0.08);
+    }
+
+.looking-card-content {
+    padding: 18px;
 }
 
 .looking-card-title {
-    font-size: 1.5rem;
+    margin-bottom: 8px;
+    font-size: 18px;
     font-weight: 700;
-    margin-bottom: 16px;
+    color: #172033;
 }
 
 .looking-card-description {
-    color: #6b7280;
-    margin-bottom: 20px;
-    min-height: 80px;
+    color: #68758a;
+    font-size: 13px;
+    line-height: 1.5;
 }
 
 .looking-card-details {
-    color: #6b7280;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 9px;
+    margin: 16px 0;
+    color: #526078;
+    font-size: 13px;
 }
 
+    .looking-card-details i {
+        width: 17px;
+        color: #3769e8;
+    }
+
 .looking-card-actions {
-    margin-top: 24px;
     display: flex;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
 }
 
 .looking-for-all {
@@ -4381,3 +4416,22 @@ textarea.details-report-input {
             width: 100%;
         }
 }
+.home-section-action {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+    .home-section-action a {
+        display: inline-flex;
+        align-items: center;
+        color: var(--brand);
+        font-size: 16px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+        .home-section-action a:hover {
+            color: #075858;
+        }
