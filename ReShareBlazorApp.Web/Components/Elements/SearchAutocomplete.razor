@@ -1,0 +1,119 @@
+﻿@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+
+@inject ProductApiService productApi
+
+<div class="search-autocomplete">
+    <input type="search"
+           name="@Name"
+           value="@Value"
+           @oninput="HandleInput"
+           placeholder="@Placeholder"
+           autocomplete="off"
+           aria-autocomplete="list"
+           aria-expanded="@Suggestions.Any()" />
+
+    @if (Suggestions.Any())
+    {
+        <ul class="search-suggestions" role="listbox">
+            @foreach (var suggestion in Suggestions)
+            {
+                <li role="option">
+                    <button type="button"
+                            class="search-suggestion-item"
+                            @onmousedown:preventDefault
+                            @onclick="() => SelectSuggestion(suggestion)">
+                        <svg width="16" height="16"
+                             viewBox="0 0 24 24"
+                             fill="none"
+                             stroke="currentColor"
+                             stroke-width="2"
+                             stroke-linecap="round">
+                            <circle cx="11" cy="11" r="7" />
+                            <line x1="16.5" y1="16.5" x2="22" y2="22" />
+                        </svg>
+
+                        <span>@suggestion</span>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter] public string Name { get; set; } = "q";
+    [Parameter] public string ListId { get; set; } = "search-suggestions";
+    [Parameter] public string Placeholder { get; set; } = "Szukaj ogłoszeń...";
+    [Parameter] public string? Value { get; set; } = "";
+    [Parameter] public List<string>? AdditionalSuggestions { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    private List<string> Suggestions = new();
+
+    private async Task HandleInput(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString() ?? "";
+
+        await ValueChanged.InvokeAsync(Value);
+        await LoadSuggestions();
+    }
+
+    private async Task SelectSuggestion(string suggestion)
+    {
+        Value = suggestion;
+
+        Suggestions.Clear();
+
+        await ValueChanged.InvokeAsync(Value);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadSuggestions()
+    {
+        Suggestions.Clear();
+
+        if (string.IsNullOrWhiteSpace(Value))
+        {
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        var phrase = Value.Trim();
+
+        if (AdditionalSuggestions != null)
+        {
+            Suggestions.AddRange(
+                AdditionalSuggestions.Where(x =>
+                    x.Contains(phrase, StringComparison.OrdinalIgnoreCase))
+            );
+        }
+
+        try
+        {
+            var products = await productApi.GetProductsAsync(
+                number: 0,
+                search: phrase
+            );
+
+            if (products != null)
+            {
+                Suggestions.AddRange(
+                    products.Select(p => p.Name)
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Błąd pobierania podpowiedzi: {ex.Message}");
+        }
+
+        Suggestions = Suggestions
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(10)
+            .ToList();
+
+        await InvokeAsync(StateHasChanged);
+    }
+}
