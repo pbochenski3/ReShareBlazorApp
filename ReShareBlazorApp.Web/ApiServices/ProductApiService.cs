@@ -53,7 +53,7 @@ namespace ReShareBlazorApp.Web.ApiServices
             {
                 url += $"&category={Uri.EscapeDataString(category.Value.ToString())}";
             }
-            var response = await _httpClient.GetAsync(url);
+                var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<List<ProductDTO>>()
                 ?? new List<ProductDTO>();

@@ -1,7 +1,10 @@
-﻿@page "/details/{ProductId:int}"
+﻿
+@page "/details/{ProductId:int}"
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Web.ApiServices
 @inject ProductApiService productApi
+@inject RecentlyViewedApiService RecentlyViewedApi
+@inject IJSRuntime JS
 
 <div class="details-page">
     <div class="details-container">
@@ -23,7 +26,9 @@
                 <div class="details-empty-icon">!</div>
                 <h2>Nie znaleziono ogłoszenia</h2>
                 <p>Ogłoszenie mogło zostać usunięte lub nie istnieje.</p>
-                <a href="/" class="details-primary-button">Wróć na stronę główną</a>
+                <a href="/" class="details-primary-button">
+                    Wróć na stronę główną
+                </a>
             </div>
         }
         else
@@ -53,6 +58,7 @@
                             {
                                 <span>Brak opisu ogłoszenia.</span>
                             }
+
                             else
                             {
                                 @Product.Description
@@ -141,12 +147,55 @@
 
     public bool IsLoading { get; set; } = true;
 
+    private int _lastRecordedProductId;
+
     protected override async Task OnParametersSetAsync()
     {
         IsLoading = true;
+        Product = null;
 
-        Product = await productApi.GetProductByIdAsync(ProductId);
+        try
+        {
+            Product = await productApi.GetProductByIdAsync(ProductId);
 
-        IsLoading = false;
+            if (Product != null &&
+                Product.ProductId == ProductId)
+            {
+                try
+                {
+                    await RecentlyViewedApi.RecordViewAsync(ProductId);
+                }
+                catch (HttpRequestException)
+                {
+                    // Historia nie może blokować wyświetlania ogłoszenia.
+                }
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Product is null ||
+            Product.ProductId != ProductId ||
+            _lastRecordedProductId == ProductId)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("recentlyViewed.add", ProductId);
+            _lastRecordedProductId = ProductId;
+        }
+        catch (JSDisconnectedException)
+        {
+            // Obsługa rozłączenia Blazora.
+        }
+        catch (JSException)
+        {
+            // Historia nie blokuje działania strony.
+        }
     }
 }
