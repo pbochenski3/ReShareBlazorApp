@@ -360,9 +360,6 @@
         {
             if (Product == null) return false;
 
-            return !string.IsNullOrEmpty(currentUserName) &&
-                   !string.IsNullOrEmpty(Product.AddedBy) &&
-                   string.Equals(currentUserName, Product.AddedBy, StringComparison.OrdinalIgnoreCase);
             bool matchById = currentUserIdInt.HasValue && Product.UserId == currentUserIdInt.Value;
             bool matchByName = !string.IsNullOrEmpty(currentUserName) &&
                                !string.IsNullOrEmpty(Product.AddedBy) &&
@@ -405,11 +402,6 @@
             if (int.TryParse(userIdClaim, out var parsedId))
             {
                 currentUserIdInt = parsedId;
-            }
-
-            if (string.IsNullOrWhiteSpace(newAuthor) && !string.IsNullOrWhiteSpace(currentUserName))
-            {
-                newAuthor = currentUserName;
             }
         }
 
