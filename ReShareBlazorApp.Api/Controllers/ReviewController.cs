@@ -19,19 +19,53 @@ namespace ReShareBlazorApp.Api.Controllers
         [HttpGet("product/{productId:int}")]
         public async Task<ActionResult<IEnumerable<ReviewDTO>>> GetReviewsForProduct(int productId)
         {
-            var reviews = await _context.Reviews
-                .Where(r => r.ProductId == productId)
-                .OrderByDescending(r => r.CreatedAt)
-                .Select(r => new ReviewDTO
+            var reviews = await (
+                from r in _context.Reviews
+                join p in _context.Products on r.ProductId equals p.Id
+                where r.ProductId == productId
+                orderby r.CreatedAt descending
+                select new ReviewDTO
                 {
                     Id = r.Id,
                     ProductId = r.ProductId,
+                    ProductName = p.Name,
                     AuthorName = r.AuthorName,
                     Rating = r.Rating,
                     Comment = r.Comment,
                     CreatedAt = r.CreatedAt
-                })
-                .ToListAsync();
+                }
+            ).ToListAsync();
+
+            return Ok(reviews);
+        }
+
+        [HttpGet("user/{username}")]
+        public async Task<ActionResult<IEnumerable<ReviewDTO>>> GetReviewsForUser(string username)
+        {
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName != null && u.UserName.ToLower() == username.ToLower());
+
+            if (user == null)
+            {
+                return NotFound("Nie znaleziono użytkownika.");
+            }
+
+            var reviews = await (
+                from r in _context.Reviews
+                join p in _context.Products on r.ProductId equals p.Id
+                where p.UserId == user.Id
+                orderby r.CreatedAt descending
+                select new ReviewDTO
+                {
+                    Id = r.Id,
+                    ProductId = r.ProductId,
+                    ProductName = p.Name,
+                    AuthorName = r.AuthorName,
+                    Rating = r.Rating,
+                    Comment = r.Comment,
+                    CreatedAt = r.CreatedAt
+                }
+            ).ToListAsync();
 
             return Ok(reviews);
         }
