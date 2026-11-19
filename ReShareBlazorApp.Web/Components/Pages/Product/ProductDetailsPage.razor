@@ -1,4 +1,5 @@
-﻿@page "/details/{ProductId:int}"
+﻿
+@page "/details/{ProductId:int}"
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReShareBlazorApp.Shared.DTOs
@@ -12,6 +13,8 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ReportApiService reportApi
 @inject NotificationService notify
+@inject RecentlyViewedApiService RecentlyViewedApi
+@inject IJSRuntime JS
 
 <div class="details-page">
     <div class="details-container">
@@ -33,7 +36,9 @@
                 <div class="details-empty-icon">!</div>
                 <h2>Nie znaleziono ogłoszenia</h2>
                 <p>Ogłoszenie mogło zostać usunięte lub nie istnieje.</p>
-                <a href="/" class="details-primary-button">Wróć na stronę główną</a>
+                <a href="/" class="details-primary-button">
+                    Wróć na stronę główną
+                </a>
             </div>
         }
         else
@@ -88,6 +93,7 @@
                             {
                                 <span>Brak opisu ogłoszenia.</span>
                             }
+
                             else
                             {
                                 @Product.Description
@@ -391,6 +397,8 @@
     private bool isReporting;
     private bool isSendingReport;
     private ReportModel reportModel = new();
+
+    private int _lastRecordedProductId;
 
     protected override async Task OnParametersSetAsync()
     {
