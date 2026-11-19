@@ -1,0 +1,143 @@
+@page "/admin/reviews"
+@layout AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@attribute [Authorize(Roles = "Admin")]
+@inject AdminApiService adminApi
+
+<h1 class="admin-title">Opinie</h1>
+
+<div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px;">
+    <input class="admin-search"
+           style="margin-bottom:0;"
+           placeholder="Szukaj po autorze, treści lub ogłoszeniu..."
+           @bind="search"
+           @bind:event="oninput" />
+
+    <select class="admin-search" style="margin-bottom:0; max-width:200px;" @bind="filter">
+        <option value="all">Wszystkie</option>
+        <option value="visible">Widoczne</option>
+        <option value="hidden">Ukryte</option>
+    </select>
+</div>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="admin-alert">@message</div>
+}
+
+@if (reviews is null)
+{
+    <p class="admin-muted">Ładowanie...</p>
+}
+else if (!Filtered.Any())
+{
+    <p class="admin-muted">Brak opinii.</p>
+}
+else
+{
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Ogłoszenie</th>
+                    <th>Autor</th>
+                    <th>Ocena</th>
+                    <th>Opinia</th>
+                    <th>Dodano</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Filtered)
+                {
+                    <tr style="@(r.IsHidden ? "opacity:.6;" : "")">
+                        <td>@r.Id</td>
+                        <td><a href="/details/@r.ProductId">@r.ProductName</a></td>
+                        <td>@r.AuthorName</td>
+                        <td title="@r.Rating / 5">@Stars(r.Rating)</td>
+                        <td style="white-space:normal; min-width:220px; max-width:420px;">@r.Comment</td>
+                        <td>@r.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>
+                            @if (r.IsHidden)
+                            {
+                                <span class="admin-badge admin-badge-bad">ukryta</span>
+                            }
+                            else
+                            {
+                                <span class="admin-badge admin-badge-ok">widoczna</span>
+                            }
+                        </td>
+                        <td class="admin-actions">
+                            @if (confirmId == r.Id)
+                            {
+                                <button class="admin-btn admin-btn-danger" @onclick="() => Delete(r)">Potwierdź</button>
+                                <button class="admin-btn" @onclick="() => confirmId = null">Anuluj</button>
+                            }
+                            else
+                            {
+                                <button class="admin-btn" @onclick="() => ToggleHidden(r)">
+                                    @(r.IsHidden ? "Pokaż" : "Ukryj")
+                                </button>
+                                <button class="admin-btn admin-btn-danger" @onclick="() => confirmId = r.Id">Usuń</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<AdminReviewDTO>? reviews;
+    private string search = "";
+    private string filter = "all";
+    private string? message;
+    private int? confirmId;
+
+    private IEnumerable<AdminReviewDTO> Filtered =>
+        reviews!.Where(r =>
+            (filter == "all"
+                || (filter == "hidden" && r.IsHidden)
+                || (filter == "visible" && !r.IsHidden))
+            && (string.IsNullOrWhiteSpace(search)
+                || r.AuthorName.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || r.Comment.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || r.ProductName.Contains(search, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        reviews = await adminApi.GetReviewsAsync();
+    }
+
+    private static string Stars(int rating)
+    {
+        rating = Math.Clamp(rating, 0, 5);
+        return new string('★', rating) + new string('☆', 5 - rating);
+    }
+
+    private async Task ToggleHidden(AdminReviewDTO review)
+    {
+        message = null;
+        var ok = await adminApi.SetReviewHiddenAsync(review.Id, !review.IsHidden);
+        if (ok)
+            review.IsHidden = !review.IsHidden;
+        else
+            message = "Nie udało się zmienić widoczności opinii.";
+    }
+
+    private async Task Delete(AdminReviewDTO review)
+    {
+        message = null;
+        confirmId = null;
+        var ok = await adminApi.DeleteReviewAsync(review.Id);
+        if (ok)
+            reviews!.Remove(review);
+        else
+            message = "Nie udało się usunąć opinii.";
+    }
+}
