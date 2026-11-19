@@ -114,17 +114,13 @@ namespace ReShareBlazorApp.Web.ApiServices
             return "Ogłoszenie zostało usunięte!";
         }
         public async Task<List<ProductDTO>> GetProductsAsync(
-        int number = 5,
-        ProductCategory? category = null,
-        string? search = null,
-        string? location = null,
-        decimal? minPrice = null,
-        decimal? maxPrice = null,
-        string? sort = null)
-
-        public async Task<List<ProductDTO>> GetProductsAsync
-            (int number = 5,
-            ProductCategory? category = null)
+       int number = 5,
+       ProductCategory? category = null,
+       string? search = null,
+       string? location = null,
+       decimal? minPrice = null,
+       decimal? maxPrice = null,
+       string? sort = null)
         {
             var parameters = new List<string>
             {
@@ -158,6 +154,8 @@ namespace ReShareBlazorApp.Web.ApiServices
             return await response.Content.ReadFromJsonAsync<List<ProductDTO>>()
                 ?? new List<ProductDTO>();
         }
+
+
         public async Task<ProductDTO> GetProductByIdAsync(int id)
         {
             var response = await _httpClient.GetAsync($"api/product/{id}");

@@ -257,22 +257,6 @@ else
             }
         }
     }
-    public async Task AddProduct()
-    {
-        var result = await productService.AddProductAsync(productModel);
-        if (result == "Produkt dodany pomyślnie!")
-        {
-            notify.AddNotification("Ogłoszenie", "Ogłoszenie pomyślnie utworzone!");
-            productModel = new ProductModel();
-            isSelected = false;
-        }
-        else
-        {
-            notify.AddNotification("Błąd", result);
-        }
-    }
-        }
-    }
 
     public async Task SaveProduct()
     {
@@ -295,13 +279,12 @@ else
             else
             {
                 var result = await productService.AddProductAsync(productModel);
-                notify.AddNotification("Ogłoszenie", result.Message);
-
-                if (!result.Success)
-                {
-                    productModel = new ProductModel();
-                    isSelected = false;
-                }
+                    notify.AddNotification("Ogłoszenie", result.Message);
+                    if (result.Success)
+                    {
+                        productModel = new ProductModel();
+                        isSelected = false;
+                    }
             }
         }
         finally

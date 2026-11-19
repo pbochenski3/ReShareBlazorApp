@@ -1,4 +1,5 @@
 @page "/odkrywaj"
+
 @using ReShareBlazorApp.Api.Date.Enums
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Shared.Enums
@@ -17,7 +18,6 @@
 <section class="home-section">
     <div class="home-container">
 
-        <div class="home-search" id="szukaj">
         <form class="home-search"
               method="get"
               action="/odkrywaj">
@@ -26,11 +26,7 @@
 
                 <label class="home-field home-field-wide">
                     <span>Czego szukasz?</span>
-                    <input type="search"
-                           id="search-input"
-                           @bind="searchText"
-                           @bind:event="oninput"
-                           placeholder="np. bilety na koncert" />
+
                     <SearchAutocomplete Name="q"
                                         ListId="discover-suggestions"
                                         @bind-Value="searchText"
@@ -77,7 +73,8 @@
 
                 <label class="home-field">
                     <span>Typ ogłoszenia</span>
-                    <select @bind="selectedType">
+
+                    <select name="typ" @bind="selectedType">
                         <option value="">Wszystkie</option>
                         <option value="Sprzedam">Sprzedam</option>
                         <option value="Oddam">Oddam</option>
@@ -129,7 +126,6 @@
         </form>
 
         <div class="home-section-head page-results-head">
-
             <div>
                 <h2>Wyniki wyszukiwania</h2>
 
@@ -137,7 +133,6 @@
                     Znaleziono @FilteredProducts.Count ogłoszeń
                 </p>
             </div>
-
         </div>
 
         @if (!productsLoaded)
@@ -161,9 +156,8 @@
                                  Location="@product.City"
                                  Term="@product.ExpiresAt.ToString("HH:mm")"
                                  Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")"
-                                 Link="@product.ProductId" />
-                                 Link=@product.ProductId
-                                 ImageUrl="@(product.ImageIds.Count > 0 ? "/images/" + product.ImageIds[0] : null)"/>
+                                 Link="@product.ProductId"
+                                 ImageUrl="@(product.ImageIds.Count > 0 ? "/images/" + product.ImageIds[0] : null)" />
                 }
 
             </div>
@@ -205,16 +199,11 @@
     public string? InitialSort { get; set; }
 
     private string searchText = "";
-
     private string selectedCategory = "";
     private string selectedType = "";
-
     private string locationFilter = "";
-
     private string cenaMin = "";
-
     private string cenaMax = "";
-
     private string sortowanie = "najnowsze";
 
     private bool productsLoaded;
@@ -222,6 +211,7 @@
     protected override async Task OnParametersSetAsync()
     {
         var uri = Navigation.Uri.ToLowerInvariant();
+
         if (uri.Contains("/szukam"))
         {
             pageTitle = "Czego szukają użytkownicy";
@@ -248,21 +238,10 @@
         }
 
         searchText = InitialSearch ?? "";
-
         selectedCategory = InitialCategory ?? "";
-
         locationFilter = InitialLocation ?? "";
-
         cenaMin = InitialMinPrice ?? "";
-
         cenaMax = InitialMaxPrice ?? "";
-
-        if (!productsLoaded)
-        {
-            ProductsList = await productApi.GetProductsAsync(50);
-            productsLoaded = true;
-        }
-    }
         sortowanie = InitialSort ?? "najnowsze";
 
         await LoadProducts();
@@ -295,16 +274,6 @@
                 maxPrice = max;
             }
 
-            if (!string.IsNullOrWhiteSpace(selectedType))
-            {
-                products = products.Where(p =>
-                    (selectedType == "Sprzedam" && p.Type == ProductType.Sell) ||
-                    (selectedType == "Oddam" && p.Type == ProductType.GiveAway) ||
-                    (selectedType == "Szukam" && p.Type == ProductType.LookingFor) ||
-                    p.Type.ToString().Equals(selectedType, StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (!string.IsNullOrWhiteSpace(locationFilter))
             ProductCategory? category = null;
 
             if (Enum.TryParse<ProductCategory>(
@@ -323,6 +292,15 @@
                 maxPrice: maxPrice,
                 sort: sortowanie
             );
+
+            if (!string.IsNullOrWhiteSpace(selectedType))
+            {
+                ProductsList = ProductsList.Where(p =>
+                    (selectedType == "Sprzedam" && p.Type == ProductType.Sell) ||
+                    (selectedType == "Oddam" && p.Type == ProductType.GiveAway) ||
+                    (selectedType == "Szukam" && p.Type == ProductType.LookingFor)
+                ).ToList();
+            }
         }
         catch (Exception ex)
         {
