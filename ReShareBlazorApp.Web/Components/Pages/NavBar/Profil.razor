@@ -1,12 +1,12 @@
 @page "/user/{Username}"
-@using ReShareBlazorApp.Shared.DTOs
-@inject NavigationManager Navigation
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Components.Elements
+@inject NavigationManager Navigation
 @inject UserApiService userApi
+@inject ReviewApiService reviewApi
 @inject AuthenticationStateProvider AuthStateProvider
 
 @if (exist)
@@ -36,7 +36,10 @@
                         <p class="profile-bio">@profile.Bio</p>
                     }
                     <p class="home-card-verified">✔ E-mail zweryfikowany</p>
-                    <p class="profile-rating">★ 4,8 <span>(12 opinii)</span></p>
+                    <p class="profile-rating">
+                        ★ @(userReviews.Any() ? AverageRating.ToString("0.0") : "0,0")
+                        <span>(@userReviews.Count @(userReviews.Count == 1 ? "opinia" : "opinii"))</span>
+                    </p>
                 </div>
 
                 @if (isOwner)
@@ -55,33 +58,87 @@
 
             <!-- Zakładki -->
             <div class="profile-tabs" role="tablist">
-                <button class="profile-tab active" type="button" role="tab">Moje ogłoszenia</button>
-                <button class="profile-tab" type="button" role="tab">Moje poszukiwania</button>
-                <button class="profile-tab" type="button" role="tab">Ulubione</button>
-                <button class="profile-tab" type="button" role="tab">Transakcje</button>
-                <button class="profile-tab" type="button" role="tab">Opinie</button>
+                <button class="profile-tab @(activeTab == "ogloszenia" ? "active" : "")"
+                        type="button" role="tab"
+                        @onclick='() => activeTab = "ogloszenia"'>
+                    Moje ogłoszenia
+                </button>
+                <button class="profile-tab @(activeTab == "poszukiwania" ? "active" : "")"
+                        type="button" role="tab"
+                        @onclick='() => activeTab = "poszukiwania"'>
+                    Moje poszukiwania
+                </button>
+                <button class="profile-tab @(activeTab == "ulubione" ? "active" : "")"
+                        type="button" role="tab"
+                        @onclick='() => activeTab = "ulubione"'>
+                    Ulubione
+                </button>
+                <button class="profile-tab @(activeTab == "transakcje" ? "active" : "")"
+                        type="button" role="tab"
+                        @onclick='() => activeTab = "transakcje"'>
+                    Transakcje
+                </button>
+                <button class="profile-tab @(activeTab == "opinie" ? "active" : "")"
+                        type="button" role="tab"
+                        @onclick='() => activeTab = "opinie"'>
+                    Opinie (@userReviews.Count)
+                </button>
             </div>
 
-            <!-- Moje ogłoszenia -->
-            @* <div class="home-cards">
-            <ListingCard Title="2 bilety na koncert – Kraków" Category="Bilety i rezerwacje" Type="Sprzedam"
-                         Price="240 zł" Location="Kraków" Term="12.12.2026" Published="08.11.2026" />
-            <ListingCard Title="Wózek dziecięcy do oddania" Category="Rodzina i dzieci" Type="Oddam"
-                         Price="Bezpłatnie" Location="Łódź" Term="od zaraz" Published="07.11.2026" />
-        </div> *@
+            <!-- Zawartość zakładek -->
+            @if (activeTab == "ogloszenia")
+            {
+                @* Tutaj w przyszłości lista ogłoszeń użytkownika *@
+            }
+            else if (activeTab == "poszukiwania")
+            {
+                <p class="text-muted">Brak poszukiwań do wyświetlenia.</p>
+            }
+            else if (activeTab == "ulubione")
+            {
+                <p class="text-muted">Brak ulubionych ogłoszeń.</p>
+            }
+            else if (activeTab == "transakcje")
+            {
+                <p class="text-muted">Brak transakcji do wyświetlenia.</p>
+            }
+            else if (activeTab == "opinie")
+            {
+                <h2 class="home-section-title profile-subtitle">
+                    @(isOwner ? "Opinie o Tobie" : $"Opinie o użytkowniku {Username}")
+                </h2>
 
-            <!-- Opinie -->
-            <h2 class="home-section-title profile-subtitle">Opinie o Tobie</h2>
-            <div class="profile-reviews">
-                <article class="profile-review">
-                    <p class="profile-rating">★★★★★ <span>Anna K.</span></p>
-                    <p>Szybki kontakt, wszystko zgodnie z opisem. Polecam.</p>
-                </article>
-                <article class="profile-review">
-                    <p class="profile-rating">★★★★☆ <span>Marek N.</span></p>
-                    <p>Sprawna wymiana, drobne opóźnienie w odpowiedzi.</p>
-                </article>
-            </div>
+                @if (isLoadingReviews)
+                {
+                    <p class="text-muted">Ładowanie opinii...</p>
+                }
+                else if (!userReviews.Any())
+                {
+                    <p class="text-muted">Brak opinii wystawionych pod ogłoszeniami tego użytkownika.</p>
+                }
+                else
+                {
+                    <div class="profile-reviews">
+                        @foreach (var review in userReviews)
+                        {
+                            <article class="profile-review">
+                                <p class="profile-rating">
+                                    @(new string('★', review.Rating) + new string('☆', 5 - review.Rating))
+                                    <span>@review.AuthorName</span>
+                                </p>
+                                @if (!string.IsNullOrWhiteSpace(review.ProductName))
+                                {
+                                    <p class="small text-muted mb-1">
+                                        Dotyczy: <a href="/details/@review.ProductId">@review.ProductName</a>
+                                    </p>
+                                }
+                                <p>@review.Comment</p>
+                                <small class="text-muted">@review.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</small>
+                            </article>
+                        }
+                    </div>
+                }
+            }
         </div>
     </section>
 }
@@ -90,22 +147,39 @@ else
     <h4>Nie znaleziono użytkownika!</h4>
 }
 
-
 @code {
     [Parameter]
     public string Username { get; set; } = string.Empty;
+
     private bool exist;
     private UserProfileDTO? profile;
     private string? avatarUrl;
     private string Initials => string.IsNullOrWhiteSpace(Username)
         ? "?" : Username[..Math.Min(2, Username.Length)].ToUpper();
     private bool isOwner;
+
+    private string activeTab = "opinie";
+    private List<ReviewDTO> userReviews = new();
+    private bool isLoadingReviews = true;
+
+    private double AverageRating => userReviews.Any()
+        ? userReviews.Average(r => (double)r.Rating)
+        : 0.0;
+
     protected override async Task OnParametersSetAsync()
     {
         profile = await userApi.GetProfileAsync(Username);
         exist = profile != null;
-        avatarUrl = userApi.GetAvatarUrl(profile?.AvatarUrl);
-        var state = await AuthStateProvider.GetAuthenticationStateAsync();
-        isOwner = string.Equals(state.User.FindFirst(ClaimTypes.Name)?.Value, Username, StringComparison.OrdinalIgnoreCase);
+
+        if (exist)
+        {
+            avatarUrl = userApi.GetAvatarUrl(profile?.AvatarUrl);
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            isOwner = string.Equals(state.User.FindFirst(ClaimTypes.Name)?.Value, Username, StringComparison.OrdinalIgnoreCase);
+
+            isLoadingReviews = true;
+            userReviews = await reviewApi.GetReviewsForUserAsync(Username);
+            isLoadingReviews = false;
+        }
     }
-}   
+}

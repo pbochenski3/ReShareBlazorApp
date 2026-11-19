@@ -24,6 +24,18 @@ namespace ReShareBlazorApp.Web.ApiServices
             }
         }
 
+        public async Task<List<ReviewDTO>> GetReviewsForUserAsync(string username)
+        {
+            try
+            {
+                return await _http.GetFromJsonAsync<List<ReviewDTO>>($"api/review/user/{Uri.EscapeDataString(username)}") ?? new();
+            }
+            catch
+            {
+                return new();
+            }
+        }
+
         public async Task<bool> AddReviewAsync(CreateReviewRequest request)
         {
             var response = await _http.PostAsJsonAsync("api/review", request);
