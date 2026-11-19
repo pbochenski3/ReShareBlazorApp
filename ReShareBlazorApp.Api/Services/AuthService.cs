@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.IdentityModel.Tokens;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared.DTOs;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Text;
 
@@ -13,11 +15,21 @@ namespace ReShareBlazorApp.Api.Services
     {
         private readonly UserManager<User> _userManager;
         private readonly IConfiguration _configuration;
-        public AuthService(UserManager<User> userManager, IConfiguration configuration)
+        private readonly IAppEmailSender _emailSender;
+        private readonly ILogger<AuthService> _logger;
+
+        public AuthService(
+            UserManager<User> userManager,
+            IConfiguration configuration,
+            IAppEmailSender emailSender,
+            ILogger<AuthService> logger)
         {
             _userManager = userManager;
             _configuration = configuration;
+            _emailSender = emailSender;
+            _logger = logger;
         }
+
         public async Task<RegisterResponse?> RegisterAsync(RegisterRequest request)
         {
             var user = new User
@@ -38,6 +50,7 @@ namespace ReShareBlazorApp.Api.Services
                 Message = "Konto zostało pomyślnie utworzone."
             };
         }
+
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
         {
             var user = await _userManager.FindByEmailAsync(request.Email);
@@ -55,12 +68,12 @@ namespace ReShareBlazorApp.Api.Services
             }
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier,user.Id.ToString()),
-                new Claim(ClaimTypes.Name,user.UserName ?? ""),
-                new Claim(ClaimTypes.Email,user.Email ?? ""),
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.UserName ?? ""),
+                new Claim(ClaimTypes.Email, user.Email ?? ""),
             };
             var userRoles = await _userManager.GetRolesAsync(user);
-            foreach(var role in userRoles)
+            foreach (var role in userRoles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
@@ -87,6 +100,76 @@ namespace ReShareBlazorApp.Api.Services
                 ExpiresAt = expiresAt,
                 Email = user.Email ?? ""
             };
+        }
+
+        public async Task SendPasswordResetAsync(string email)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null || !user.IsActive || string.IsNullOrEmpty(user.Email))
+            {
+                // Celowo nic nie zdradzamy - odpowiedź jest taka sama dla każdego adresu.
+                return;
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+            var baseUrl = (_configuration["App:WebBaseUrl"] ?? "https://localhost:7254").TrimEnd('/');
+            var link = $"{baseUrl}/reset-password" +
+                       $"?email={Uri.EscapeDataString(user.Email)}&token={encodedToken}";
+            var body = EmailStyle.ResetPassword(user.UserName, link);
+
+            var userName = WebUtility.HtmlEncode(user.UserName ?? "");
+           
+            try
+            {
+                await _emailSender.SendAsync(user.Email, "Zmiana hasła - ODDAJ DALEJ", body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Nie udało się wysłać maila ze zmianą hasła.");
+            }
+        }
+
+        public async Task<string?> ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            const string invalidLink =
+                "Link do zmiany hasła jest nieprawidłowy lub wygasł. Poproś o nowy.";
+
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null || !user.IsActive)
+                return invalidLink;
+
+            string token;
+            try
+            {
+                token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(request.Token));
+            }
+            catch (FormatException)
+            {
+                return invalidLink;
+            }
+
+            var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
+            if (result.Succeeded)
+                return null;
+
+            if (result.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.InvalidToken)))
+                return invalidLink;
+
+            var messages = result.Errors
+                .Select(e => e.Code switch
+                {
+                    nameof(IdentityErrorDescriber.PasswordTooShort) => "Hasło musi mieć co najmniej 8 znaków.",
+                    nameof(IdentityErrorDescriber.PasswordRequiresDigit) => "Hasło musi zawierać cyfrę.",
+                    nameof(IdentityErrorDescriber.PasswordRequiresUpper) => "Hasło musi zawierać wielką literę.",
+                    nameof(IdentityErrorDescriber.PasswordRequiresLower) => "Hasło musi zawierać małą literę.",
+                    nameof(IdentityErrorDescriber.PasswordRequiresNonAlphanumeric) => "Hasło musi zawierać znak specjalny.",
+                    _ => "Nie udało się zmienić hasła."
+                })
+                .Distinct();
+
+            return string.Join(" ", messages);
         }
     }
 }

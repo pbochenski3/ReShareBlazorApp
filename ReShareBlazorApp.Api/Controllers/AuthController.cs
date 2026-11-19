@@ -40,6 +40,27 @@ namespace ReShareBlazorApp.Api.Controllers
             }
             return Ok(result);
         }
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
+        {
+            await _authService.SendPasswordResetAsync(request.Email);
+            // Zawsze ta sama odpowiedź - nie zdradzamy, czy konto istnieje.
+            return Ok(new
+            {
+                Message = "Jeśli konto z takim adresem istnieje, wysłaliśmy na nie link do zmiany hasła."
+            });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
+        {
+            var error = await _authService.ResetPasswordAsync(request);
+            if (error != null)
+            {
+                return BadRequest(new { Message = error });
+            }
+            return Ok(new { Message = "Hasło zostało zmienione." });
+        }
 
     }
 }

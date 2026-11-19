@@ -41,5 +41,47 @@ namespace ReShareBlazorApp.Web.ApiServices
 
             return await response.Content.ReadFromJsonAsync<RegisterResponse>();
         }
+        public async Task<bool> ForgotPasswordAsync(string email)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync(
+                    "api/auth/forgot-password",
+                    new ForgotPasswordRequest { Email = email });
+                return response.IsSuccessStatusCode;
+            }
+            catch (HttpRequestException)
+            {
+                return false;
+            }
+        }
+
+        // Zwraca null gdy hasło zmieniono, w przeciwnym razie komunikat błędu.
+        public async Task<string?> ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync(
+                    "api/auth/reset-password",
+                    request);
+                if (response.IsSuccessStatusCode)
+                    return null;
+
+                try
+                {
+                    var body = await response.Content.ReadFromJsonAsync<ErrorBody>();
+                    if (!string.IsNullOrWhiteSpace(body?.Message))
+                        return body.Message;
+                }
+                catch { }
+                return "Nie udało się zmienić hasła. Spróbuj ponownie.";
+            }
+            catch (HttpRequestException)
+            {
+                return "Nie udało się połączyć z serwerem. Spróbuj ponownie później.";
+            }
+        }
+
+        private class ErrorBody { public string? Message { get; set; } }
     }
 }
