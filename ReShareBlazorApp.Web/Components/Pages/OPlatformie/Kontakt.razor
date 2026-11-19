@@ -13,11 +13,11 @@
 <section class="home-section">
     <div class="home-container">
         <div class="info-grid">
-            
+
             <div class="info-content">
                 <h2>Napisz do nas</h2>
                 <p>
-                    Nasz zespół chętnie odpowie na każde pytanie dotyczące działania serwisu, 
+                    Nasz zespół chętnie odpowie na każde pytanie dotyczące działania serwisu,
                     problemów z kontem czy propozycji rozwoju platformy.
                 </p>
 
@@ -30,7 +30,7 @@
 
             <div class="info-contact-box">
                 <h3>Szybka wiadomość</h3>
-                
+
                 <EditForm Model="@contactModel" OnValidSubmit="HandleSubmit" class="auth-form">
                     <DataAnnotationsValidator />
 
@@ -44,6 +44,12 @@
                         <span>Adres e-mail</span>
                         <InputText @bind-Value="contactModel.Email" placeholder="nazwa@domena.pl" />
                         <ValidationMessage For="@(() => contactModel.Email)" />
+                    </label>
+
+                    <label class="home-field">
+                        <span>Tytuł wiadomości</span>
+                        <InputText @bind-Value="contactModel.Subject" placeholder="np. Pytanie o ogłoszenie / Błąd na stronie" />
+                        <ValidationMessage For="@(() => contactModel.Subject)" />
                     </label>
 
                     <label class="home-field">

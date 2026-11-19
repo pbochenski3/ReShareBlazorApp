@@ -15,6 +15,7 @@ namespace ReShareBlazorApp.Api.Date
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Report> Reports { get; set; }
         public DbSet<RecentlyViewedProduct> RecentlyViewedProducts { get; set; }
+        public DbSet<ContactMessage> ContactMessages { get; set; }
 
         public ReshareDbContext(DbContextOptions<ReshareDbContext> options)
             : base(options)
