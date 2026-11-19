@@ -2,6 +2,7 @@
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Shared.DTOs;
 using ReShareBlazorApp.Web.Models;
+using System.Globalization;
 using System.Net.Http.Headers;
 
 namespace ReShareBlazorApp.Web.ApiServices
@@ -112,18 +113,48 @@ namespace ReShareBlazorApp.Web.ApiServices
 
             return "Ogłoszenie zostało usunięte!";
         }
+        public async Task<List<ProductDTO>> GetProductsAsync(
+        int number = 5,
+        ProductCategory? category = null,
+        string? search = null,
+        string? location = null,
+        decimal? minPrice = null,
+        decimal? maxPrice = null,
+        string? sort = null)
 
         public async Task<List<ProductDTO>> GetProductsAsync
             (int number = 5,
             ProductCategory? category = null)
         {
-            var url = $"api/product?number={number}";
-            if(category.HasValue)
+            var parameters = new List<string>
             {
-                url += $"&category={Uri.EscapeDataString(category.Value.ToString())}";
-            }
+                $"number={number}"
+            };
+
+            if (category.HasValue)
+                parameters.Add($"category={Uri.EscapeDataString(category.Value.ToString())}");
+
+            if (!string.IsNullOrWhiteSpace(search))
+                parameters.Add($"q={Uri.EscapeDataString(search)}");
+
+            if (!string.IsNullOrWhiteSpace(location))
+                parameters.Add($"lokalizacja={Uri.EscapeDataString(location)}");
+
+            if (minPrice.HasValue)
+                parameters.Add($"cenaMin={minPrice.Value.ToString(CultureInfo.InvariantCulture)}");
+
+            if (maxPrice.HasValue)
+                parameters.Add($"cenaMax={maxPrice.Value.ToString(CultureInfo.InvariantCulture)}");
+
+            if (!string.IsNullOrWhiteSpace(sort))
+                parameters.Add($"sortowanie={Uri.EscapeDataString(sort)}");
+
+            var url = "api/product?" + string.Join("&", parameters);
+
             var response = await _httpClient.GetAsync(url);
+
             response.EnsureSuccessStatusCode();
+
             return await response.Content.ReadFromJsonAsync<List<ProductDTO>>()
                 ?? new List<ProductDTO>();
         }

@@ -75,6 +75,13 @@ namespace ReShareBlazorApp.Api.Services
             var result = await _productRepository.AddProductAsync(productModel);
             return result;
         }
+        public async Task<List<ProductDTO>> GetProductsAsync(int number = 5,
+        ProductCategory? category = null,
+        string? search = null,
+        string? location = null,
+        decimal? minPrice = null,
+        decimal? maxPrice = null,
+        string? sort = null)
 
         public async Task<bool> UpdateProductAsync(int productId, int userId, ProductUpdateDTO product)
         {
@@ -98,6 +105,29 @@ namespace ReShareBlazorApp.Api.Services
             (int number = 5,
             ProductCategory? category = null)
         {
+            var products = await _productRepository.GetProducts(
+                number,
+                category,
+                search,
+                location,
+                minPrice,
+                maxPrice,
+                sort
+            );
+
+            return products.Select(p => new ProductDTO
+            {
+                Name = p.Name,
+                Description = p.Description,
+                ProductId = p.Id,
+                Price = p.Price,
+                AddedAt = p.AddedAt,
+                ExpiresAt = p.ExpiresAt,
+                Category = p.Category,
+                City = p.City,
+                Type = p.Type,
+                UserId = p.UserId
+            }).ToList();
             var listOfProducts = await _productRepository.GetProducts(number, category);
             var imageIds = await _productRepository
                 .GetImageIdsAsync(listOfProducts.Select(p => p.Id));

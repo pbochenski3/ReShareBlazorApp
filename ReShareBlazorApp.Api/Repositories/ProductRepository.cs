@@ -79,27 +79,63 @@ namespace ReShareBlazorApp.Api.Repositories
         }
 
         public async Task<List<Product>> GetProducts(
-            int number = 5,
-            ProductCategory? category = null
-            )
+    int number = 5,
+    ProductCategory? category = null,
+    string? search = null,
+    string? location = null,
+    decimal? minPrice = null,
+    decimal? maxPrice = null,
+    string? sort = null)
         {
             try
             {
-                var query = _context.Products.AsQueryable();
+                var query = _context.Products.AsNoTracking().AsQueryable();
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var phrase = search.Trim().ToLower();
+
+                    query = query.Where(p =>
+                        p.Name.ToLower().Contains(phrase) ||
+                        p.Description.ToLower().Contains(phrase));
+                }
                 if (category.HasValue)
                 {
                     query = query.Where(p => p.Category == category.Value);
                 }
-                return await query
-                    .OrderByDescending(p => p.AddedAt)
-                    .Take(number)
-                    .ToListAsync();
+                if (!string.IsNullOrWhiteSpace(location))
+                {
+                    var city = location.Trim().ToLower();
 
+                    query = query.Where(p =>
+                        p.City.ToLower().Contains(city));
+                }
+                if (minPrice.HasValue)
+                {
+                    query = query.Where(p => p.Price >= minPrice.Value);
+                }
+                if (maxPrice.HasValue)
+                {
+                    query = query.Where(p => p.Price <= maxPrice.Value);
+                }
+                query = sort switch
+                {
+                    "cenaRosnaco" => query.OrderBy(p => p.Price),
+
+                    "cenaMalejaco" => query.OrderByDescending(p => p.Price),
+
+                    _ => query.OrderByDescending(p => p.AddedAt)
+                };
+                if (number > 0)
+                {
+                    query = query.Take(number);
+                }
+
+                return await query.ToListAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"[ProductRepository] Error occured in GetAllProducts : {ex}");
-                return new List<Product>();
+                _logger.LogError(ex, "Error occurred in GetProducts");
+                throw;
             }
         }
         public async Task<Product?> GetProductById(int id)

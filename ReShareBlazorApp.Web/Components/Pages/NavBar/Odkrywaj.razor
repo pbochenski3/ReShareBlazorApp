@@ -1,5 +1,4 @@
 @page "/odkrywaj"
-
 @using ReShareBlazorApp.Api.Date.Enums
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Web.ApiServices
@@ -7,6 +6,7 @@
 @using System.Globalization
 
 @inject ProductApiService productApi
+@inject NavigationManager Navigation
 
 <PageTitle>Odkrywaj – ODDAJ DALEJ</PageTitle>
 
@@ -16,21 +16,24 @@
 <section class="home-section">
     <div class="home-container">
 
-        <div class="home-search">
+        <form class="home-search"
+              method="get"
+              action="/odkrywaj">
 
             <div class="home-search-row">
 
                 <label class="home-field home-field-wide">
                     <span>Czego szukasz?</span>
-                    <input type="search"
-                           @bind="searchText"
-                           @bind:event="oninput"
-                           placeholder="np. bilety na koncert" />
+                    <SearchAutocomplete Name="q"
+                                        ListId="discover-suggestions"
+                                        @bind-Value="searchText"
+                                        Placeholder="np. bilety na koncert" />
                 </label>
 
                 <label class="home-field">
                     <span>Kategoria</span>
-                    <select @bind="selectedCategory">
+
+                    <select name="kategoria" @bind="selectedCategory">
                         <option value="">Wszystkie</option>
 
                         @foreach (var category in Enum.GetValues<ProductCategory>())
@@ -42,11 +45,11 @@
                     </select>
                 </label>
 
-               
                 <label class="home-field">
                     <span>Lokalizacja</span>
 
                     <input type="text"
+                           name="lokalizacja"
                            @bind="locationFilter"
                            @bind:event="oninput"
                            @bind:after="LoadSuggestedLocations"
@@ -67,9 +70,10 @@
 
                 <label class="home-field">
                     <span>Cena od (zł)</span>
+
                     <input type="number"
+                           name="cenaMin"
                            @bind="cenaMin"
-                           @bind:event="oninput"
                            min="0"
                            step="0.01"
                            placeholder="0" />
@@ -77,17 +81,35 @@
 
                 <label class="home-field">
                     <span>Cena do (zł)</span>
+
                     <input type="number"
+                           name="cenaMax"
                            @bind="cenaMax"
-                           @bind:event="oninput"
                            min="0"
                            step="0.01"
                            placeholder="1000" />
                 </label>
 
+                <label class="home-field">
+                    <span>Sortowanie</span>
+
+                    <select name="sortowanie" @bind="sortowanie">
+                        <option value="najnowsze">Najnowsze</option>
+                        <option value="cenaRosnaco">Cena rosnąco</option>
+                        <option value="cenaMalejaco">Cena malejąco</option>
+                    </select>
+                </label>
+
             </div>
 
-        </div>
+            <div class="home-search-row">
+                <button type="submit"
+                        class="home-btn home-btn-primary">
+                    Szukaj ogłoszeń
+                </button>
+            </div>
+
+        </form>
 
         <div class="home-section-head page-results-head">
 
@@ -98,16 +120,6 @@
                     Znaleziono @FilteredProducts.Count ogłoszeń
                 </p>
             </div>
-
-            <label class="page-sort">
-                <span>Sortuj:</span>
-
-                <select @bind="sortowanie">
-                    <option value="najnowsze">Najnowsze</option>
-                    <option value="cenaRosnaco">Cena rosnąco</option>
-                    <option value="cenaMalejaco">Cena malejąco</option>
-                </select>
-            </label>
 
         </div>
 
@@ -130,8 +142,9 @@
                                  Type="@product.Type"
                                  Price="@product.Price.ToString("F2", CultureInfo.InvariantCulture)"
                                  Location="@product.City"
-                                 Term="@(product.ExpiresAt.ToString("HH:mm") ?? "Brak terminu")"
+                                 Term="@product.ExpiresAt.ToString("HH:mm")"
                                  Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")"
+                                 Link="@product.ProductId" />
                                  Link=@product.ProductId
                                  ImageUrl="@(product.ImageIds.Count > 0 ? "/images/" + product.ImageIds[0] : null)"/>
                 }
@@ -145,6 +158,7 @@
 @code {
 
     public List<ProductDTO> ProductsList { get; set; } = new();
+
     public List<LocationDTO> SuggestedLocations { get; set; } = new();
 
     [SupplyParameterFromQuery(Name = "q")]
@@ -162,12 +176,98 @@
     [SupplyParameterFromQuery(Name = "cenaMax")]
     public string? InitialMaxPrice { get; set; }
 
+    [SupplyParameterFromQuery(Name = "sortowanie")]
+    public string? InitialSort { get; set; }
+
     private string searchText = "";
+
     private string selectedCategory = "";
+
     private string locationFilter = "";
 
     private string cenaMin = "";
+
     private string cenaMax = "";
+
+    private string sortowanie = "najnowsze";
+
+    private bool productsLoaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        searchText = InitialSearch ?? "";
+
+        selectedCategory = InitialCategory ?? "";
+
+        locationFilter = InitialLocation ?? "";
+
+        cenaMin = InitialMinPrice ?? "";
+
+        cenaMax = InitialMaxPrice ?? "";
+
+        sortowanie = InitialSort ?? "najnowsze";
+
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        productsLoaded = false;
+
+        try
+        {
+            decimal? minPrice = null;
+            decimal? maxPrice = null;
+
+            if (decimal.TryParse(
+                cenaMin,
+                NumberStyles.Number,
+                CultureInfo.InvariantCulture,
+                out var min))
+            {
+                minPrice = min;
+            }
+
+            if (decimal.TryParse(
+                cenaMax,
+                NumberStyles.Number,
+                CultureInfo.InvariantCulture,
+                out var max))
+            {
+                maxPrice = max;
+            }
+
+            ProductCategory? category = null;
+
+            if (Enum.TryParse<ProductCategory>(
+                selectedCategory,
+                out var parsedCategory))
+            {
+                category = parsedCategory;
+            }
+
+            ProductsList = await productApi.GetProductsAsync(
+                number: 0,
+                category: category,
+                search: searchText,
+                location: locationFilter,
+                minPrice: minPrice,
+                maxPrice: maxPrice,
+                sort: sortowanie
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Błąd pobierania ogłoszeń: {ex.Message}");
+
+            ProductsList = new();
+        }
+        finally
+        {
+            productsLoaded = true;
+        }
+    }
+
     private async Task LoadSuggestedLocations()
     {
         if (string.IsNullOrWhiteSpace(locationFilter) ||
@@ -177,83 +277,18 @@
             return;
         }
 
-        SuggestedLocations = await productApi.SearchLocationsAsync(
-            locationFilter.Trim());
-    }
-
-    private string sortowanie { get; set; } = "najnowsze";
-
-    private bool productsLoaded;
-
-    protected override async Task OnParametersSetAsync()
-    {
-        searchText = InitialSearch ?? "";
-        selectedCategory = InitialCategory ?? "";
-        locationFilter = InitialLocation ?? "";
-        cenaMin = InitialMinPrice ?? "";
-        cenaMax = InitialMaxPrice ?? "";
-
-        if (!productsLoaded)
+        try
         {
-            ProductsList = await productApi.GetProductsAsync(20);
-            productsLoaded = true;
+            SuggestedLocations = await productApi.SearchLocationsAsync(
+                locationFilter.Trim());
+        }
+        catch
+        {
+            SuggestedLocations.Clear();
         }
     }
 
-    private List<ProductDTO> FilteredProducts
-    {
-        get
-        {
-            var products = ProductsList.AsEnumerable();
-
-            if (!string.IsNullOrWhiteSpace(searchText))
-            {
-                var search = searchText.Trim();
-
-                products = products.Where(p =>
-                    (!string.IsNullOrWhiteSpace(p.Name) &&
-                     p.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
-                    ||
-                    (!string.IsNullOrWhiteSpace(p.Description) &&
-                     p.Description.Contains(search, StringComparison.OrdinalIgnoreCase))
-                );
-            }
-
-            if (!string.IsNullOrWhiteSpace(selectedCategory))
-            {
-                products = products.Where(p =>
-                    p.Category.ToString() == selectedCategory);
-            }
-
-            if (!string.IsNullOrWhiteSpace(locationFilter))
-            {
-                products = products.Where(p =>
-                    !string.IsNullOrWhiteSpace(p.City) &&
-                    p.City.Contains(locationFilter, StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (decimal.TryParse(cenaMin, NumberStyles.Number,
-                CultureInfo.InvariantCulture, out var min))
-            {
-                products = products.Where(p => p.Price >= min);
-            }
-
-            if (decimal.TryParse(cenaMax, NumberStyles.Number,
-                CultureInfo.InvariantCulture, out var max))
-            {
-                products = products.Where(p => p.Price <= max);
-            }
-
-            return sortowanie switch
-            {
-                "cenaRosnaco" => products.OrderBy(p => p.Price).ToList(),
-
-                "cenaMalejaco" => products.OrderByDescending(p => p.Price).ToList(),
-
-                _ => products.OrderByDescending(p => p.AddedAt).ToList()
-            };
-        }
-    }
+    private List<ProductDTO> FilteredProducts => ProductsList;
 
     private string GetCategoryName(ProductCategory category)
     {
