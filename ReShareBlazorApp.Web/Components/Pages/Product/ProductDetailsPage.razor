@@ -122,7 +122,6 @@
                                 </div>
                             </div>
 
-                            <!-- BLOKADA DLA WŁAŚCICIELA OGŁOSZENIA -->
                             @if (IsOwner)
                             {
                                 <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill">
@@ -137,14 +136,17 @@
                             }
                         </div>
 
-                        <!-- Formularz dodawania opinii (dostępny tylko gdy !IsOwner) -->
+                        <!-- Formularz dodawania opinii -->
                         @if (showAddForm && !IsOwner)
                         {
                             <div class="card border-0 shadow-sm p-4 mb-4 rounded-4 bg-white" style="border-left: 4px solid #0f766e !important;">
                                 <h5 class="fw-bold mb-3 text-dark">Wystaw opinię do tego ogłoszenia</h5>
                                 <div class="mb-3">
                                     <label class="form-label small fw-semibold text-muted">Twoje imię / nazwa:</label>
-                                    <input type="text" class="form-control rounded-3" @bind="newAuthor" placeholder="np. Anna K." />
+                                    <input type="text"
+                                           class="form-control rounded-3 bg-light"
+                                           value="@(currentUserName ?? "Anonim")"
+                                           readonly />
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label small fw-semibold text-muted">Ocena (gwiazdki):</label>
@@ -358,6 +360,9 @@
         {
             if (Product == null) return false;
 
+            return !string.IsNullOrEmpty(currentUserName) &&
+                   !string.IsNullOrEmpty(Product.AddedBy) &&
+                   string.Equals(currentUserName, Product.AddedBy, StringComparison.OrdinalIgnoreCase);
             bool matchById = currentUserIdInt.HasValue && Product.UserId == currentUserIdInt.Value;
             bool matchByName = !string.IsNullOrEmpty(currentUserName) &&
                                !string.IsNullOrEmpty(Product.AddedBy) &&
@@ -369,7 +374,6 @@
 
     private List<ReviewDTO>? reviews;
     private bool showAddForm = false;
-    private string newAuthor = "";
     private int newRating = 5;
     private string newComment = "";
 
@@ -433,10 +437,12 @@
     {
         if (IsOwner || string.IsNullOrWhiteSpace(newComment)) return;
 
+        var author = !string.IsNullOrWhiteSpace(currentUserName) ? currentUserName : "Anonim";
+
         var request = new CreateReviewRequest
         {
             ProductId = ProductId,
-            AuthorName = string.IsNullOrWhiteSpace(newAuthor) ? "Anonim" : newAuthor,
+            AuthorName = author,
             Rating = newRating,
             Comment = newComment
         };
