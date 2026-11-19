@@ -31,16 +31,14 @@ namespace ReShareBlazorApp.Api.Controllers
             }
             return Ok();
         }
-        // TODO: na razie [Authorize] (każdy zalogowany). Docelowo tylko admin:
-        // [Authorize(Roles = "Admin")] na trzech akcjach poniżej.
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<ActionResult<List<ReportDTO>>> GetReports()
         {
             var reports = await _reportService.GetReportsAsync();
             return Ok(reports);
         }
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteReport(int id)
         {
@@ -49,7 +47,7 @@ namespace ReShareBlazorApp.Api.Controllers
                 return NotFound();
             return Ok();
         }
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id:int}/product")]
         public async Task<IActionResult> DeleteReportedProduct(int id)
         {

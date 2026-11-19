@@ -73,13 +73,9 @@ using (var scope = app.Services.CreateScope())
          .GetRequiredService<ReshareDbContext>();
     await LocationImportService.ImportAsync(context, app.Environment.ContentRootPath);
 
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
-    if (!await roleManager.RoleExistsAsync("Admin"))
-    {
-        await roleManager.CreateAsync(new IdentityRole<int>("Admin"));
-    }
-
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
+    await IdentitySeeder.SeedAsync(userManager, roleManager);
 }
 
 app.UseHttpsRedirection();
