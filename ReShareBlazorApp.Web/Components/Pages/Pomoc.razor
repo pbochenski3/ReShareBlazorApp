@@ -1,0 +1,242 @@
+@page "/pomoc"
+@page "/help"
+@page "/faq"
+@rendermode InteractiveServer
+
+@using ReShareBlazorApp.Web.Components.Elements
+@using ReShareBlazorApp.Web.Components.Pages.NavBar
+
+<PageTitle>Centrum Pomocy – ODDAJ DALEJ</PageTitle>
+
+<PageHeader Title="Centrum Pomocy"
+            Subtitle="Masz pytania dotyczące korzystania z serwisu? Sprawdź odpowiedzi na najczęściej zadawane pytania lub skontaktuj się z nami." />
+
+<div class="help-page">
+    <div class="home-container">
+
+        <!-- Pole wyszukiwania pytań -->
+        <div class="help-search-container">
+            <div class="help-search-input-wrapper">
+                <span class="help-search-icon">🔍</span>
+                <input type="text"
+                       class="help-search-input"
+                       placeholder="Wpisz pytanie lub słowo kluczowe (np. jak dodać, odbiór, konto)..."
+                       @bind="searchQuery"
+                       @bind:event="oninput" />
+                @if (!string.IsNullOrWhiteSpace(searchQuery))
+                {
+                    <button type="button" class="help-search-clear" @onclick="() => searchQuery = string.Empty" title="Wyczyść">
+                        ✕
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- Szybkie kafelki pomocy -->
+        <div class="help-quick-cards">
+            <a href="/add-product" class="help-quick-card">
+                <div class="help-quick-icon">📝</div>
+                <h3 class="help-quick-title">Dodaj ogłoszenie</h3>
+                <p class="help-quick-desc">Dowiedz się, jak wystawić produkt, bilet lub oddać niepotrzebną rzecz.</p>
+            </a>
+
+            <div class="help-quick-card" style="cursor: pointer;" @onclick='() => SelectCategory("Bezpieczeństwo")'>
+                <div class="help-quick-icon">🛡️</div>
+                <h3 class="help-quick-title">Zasady bezpieczeństwa</h3>
+                <p class="help-quick-desc">Sprawdź, jak bezpiecznie przeprowadzać transakcje i unikać oszustw.</p>
+            </div>
+
+            <a href="mailto:pomoc@oddajdalej.pl" class="help-quick-card">
+                <div class="help-quick-icon">💬</div>
+                <h3 class="help-quick-title">Napisz do nas</h3>
+                <p class="help-quick-desc">Nasz zespół wsparcia chętnie pomoże rozwiązać każdy Twój problem.</p>
+            </a>
+        </div>
+
+        <!-- Zakładki kategorii pytań -->
+        <div class="help-nav-tabs">
+            @foreach (var cat in categories)
+            {
+                <button type="button"
+                        class="help-tab-btn @(selectedCategory == cat ? "active" : "")"
+                        @onclick="() => SelectCategory(cat)">
+                    @cat
+                </button>
+            }
+        </div>
+
+        <!-- Lista pytań i odpowiedzi (Akordeon) -->
+        <div class="help-faq-section">
+            @if (FilteredFaqs.Any())
+            {
+                <div class="help-faq-list">
+                    @foreach (var item in FilteredFaqs)
+                    {
+                        var isOpen = openQuestionIds.Contains(item.Id);
+                        <div class="faq-card @(isOpen ? "open" : "")">
+                            <button type="button" class="faq-toggle-btn" @onclick="() => ToggleQuestion(item.Id)">
+                                <span>@item.Question</span>
+                                <span class="faq-arrow">▼</span>
+                            </button>
+
+                            @if (isOpen)
+                            {
+                                <div class="faq-content">
+                                    @((MarkupString)item.AnswerHtml)
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="help-empty-results">
+                    <h3>Nie znaleziono odpowiedzi na zapytanie „@searchQuery”</h3>
+                    <p>Spróbuj użyć innych słów kluczowych lub skontaktuj się bezpośrednio z naszym działem pomocy.</p>
+                </div>
+            }
+        </div>
+
+        <!-- Baner wsparcia / kontaktu -->
+        <div class="help-contact-banner">
+            <div class="help-contact-info">
+                <h3>Potrzebujesz indywidualnej pomocy?</h3>
+                <p>Nasz zespół jest do Twojej dyspozycji od poniedziałku do piątku w godzinach 8:00 – 18:00.<br />Napisz do nas na <strong>pomoc@oddajdalej.pl</strong>.</p>
+            </div>
+            <div class="help-contact-actions">
+                <a href="mailto:pomoc@oddajdalej.pl" class="help-btn-white">Skontaktuj się</a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<SiteFooter />
+
+@code {
+    private string searchQuery = "";
+    private string selectedCategory = "Wszystkie";
+    private HashSet<int> openQuestionIds = new() { 1 }; // pierwsze pytanie domyślnie otwarte
+
+    private readonly List<string> categories = new()
+    {
+        "Wszystkie",
+        "Dodawanie ogłoszeń",
+        "Kupowanie i odbiór",
+        "Bezpieczeństwo",
+        "Konto użytkownika"
+    };
+
+    private record FaqItem(int Id, string Category, string Question, string AnswerHtml);
+
+    private readonly List<FaqItem> faqItems = new()
+    {
+        new FaqItem(
+            1,
+            "Dodawanie ogłoszeń",
+            "Jak dodać ogłoszenie na platformie ODDAJ DALEJ?",
+            "<p>Aby dodać ogłoszenie, kliknij przycisk <strong>„+ Dodaj ogłoszenie”</strong> w górnym pasku lub w stopce strony.</p><p>Jeśli nie jesteś jeszcze zalogowany, zostaniesz przekierowany do logowania. Następnie wybierz typ ogłoszenia (<em>Sprzedam</em>, <em>Oddam</em> lub <em>Szukam</em>), uzupełnij tytuł, opis, cenę, miejscowość, datę ważności oraz kategorię i kliknij <strong>„Dodaj produkt”</strong>.</p>"
+        ),
+        new FaqItem(
+            2,
+            "Dodawanie ogłoszeń",
+            "Czy wystawianie ogłoszeń jest płatne?",
+            "<p><strong>Nie!</strong> Dodawanie ogłoszeń na platformie ODDAJ DALEJ jest w 100% bezpłatne – bez żadnych ukrytych prowizji czy opłat za wystawienie, zarówno przy sprzedaży, oddawaniu za darmo, jak i w poszukiwaniu ofert.</p>"
+        ),
+        new FaqItem(
+            3,
+            "Dodawanie ogłoszeń",
+            "Czym różnią się typy ogłoszeń: Sprzedam, Oddam, Szukam?",
+            "<p>Platforma obsługuje 3 główne typy ogłoszeń:</p><ul><li><strong>Sprzedam:</strong> Gdy posiadasz bilet, rezerwację, transport lub rzecz i chcesz ją odpłatnie odsprzedać.</li><li><strong>Oddam:</strong> Gdy chcesz przekazać coś zupełnie za darmo innej osobie (np. bilet, którego nie wykorzystasz, książkę, sprzęt).</li><li><strong>Szukam:</strong> Gdy pilnie potrzebujesz biletów, transportu lub pomocy w określonym terminie.</li></ul>"
+        ),
+        new FaqItem(
+            4,
+            "Dodawanie ogłoszeń",
+            "Jak długo moje ogłoszenie będzie widoczne?",
+            "<p>Termin ważności określasz samodzielnie w polu <strong>„Data ważności”</strong> podczas tworzenia ogłoszenia. Po nadejściu wskazanego terminu ogłoszenie automatycznie przestaje być prezentowane w wynikach wyszukiwania.</p>"
+        ),
+        new FaqItem(
+            5,
+            "Kupowanie i odbiór",
+            "Jak mogę skontaktować się z autorem ogłoszenia?",
+            "<p>Przejdź na stronę szczegółów wybranego ogłoszenia i kliknij przycisk <strong>„Skontaktuj się”</strong> lub <strong>„Napisz wiadomość”</strong>. Zostaniesz przeniesiony do wewnętrznego czatu <em>Wiadomości</em>, gdzie możesz bezpiecznie omówić szczegóły przekazania i warunki.</p>"
+        ),
+        new FaqItem(
+            6,
+            "Kupowanie i odbiór",
+            "W jaki sposób realizowana jest płatność i przekazanie przedmiotu?",
+            "<p>Ustalenia dotyczące sposobu zapłaty oraz przekazania przedmiotu lub biletów leżą w gestii użytkowników. <strong>Rekomendujemy odbiór osobisty</strong> w publicznym, oświetlonym miejscu lub bezpośrednie przekazanie cyfrowe biletów po potwierdzeniu tożsamości.</p>"
+        ),
+        new FaqItem(
+            7,
+            "Kupowanie i odbiór",
+            "Co zrobić, gdy ogłoszenie jest już nieaktualne?",
+            "<p>Jeśli autor ogłoszenia poinformuje Cię, że przedmiot został już oddany lub sprzedany, autor może usunąć ogłoszenie. Możesz również zgłosić nieaktualną ofertę za pomocą formularza zgłoszeń.</p>"
+        ),
+        new FaqItem(
+            8,
+            "Bezpieczeństwo",
+            "Jakie są podstawowe zasady bezpieczeństwa transakcji?",
+            "<p>Zawsze pamiętaj o podstawowych regułach:</p><ul><li>Nigdy nie klikaj w linki do płatności wysyłane w zewnętrznych komunikatorach (np. WhatsApp, SMS).</li><li>Nie podawaj numerów kart płatniczych ani kodów BLIK osobom trzecim.</li><li>Przy biletach imiennych zawsze upewnij się u organizatora, czy możliwa jest oficjalna zmiana danych uczestnika.</li><li>Preferuj spotkania w miejscach publicznych (np. galeria handlowa, stacja benzynowa).</li></ul>"
+        ),
+        new FaqItem(
+            9,
+            "Bezpieczeństwo",
+            "Jak zgłosić podejrzane ogłoszenie lub użytkownika?",
+            "<p>Jeśli natrafisz na ogłoszenie naruszające zasady lub podejrzewasz próbę oszustwa, kliknij link <strong>„Zgłaszanie nadużyć”</strong> w stopce strony lub wyślij wiadomość bezpośrednio na <strong>pomoc@oddajdalej.pl</strong> z linkiem do ogłoszenia.</p>"
+        ),
+        new FaqItem(
+            10,
+            "Konto użytkownika",
+            "Jak założyć konto i czy jest to konieczne?",
+            "<p>Przeglądanie i wyszukiwanie ogłoszeń jest dostępne dla wszystkich bez logowania. Jednak aby dodać własne ogłoszenie lub prowadzić konwersacje w module wiadomości, należy posiadać bezpłatne konto.</p><p>Rejestracja trwa kilkanaście sekund – wystarczy podać nazwę użytkownika, adres e-mail i hasło na stronie <a href='/register'>Rejestracji</a>.</p>"
+        ),
+        new FaqItem(
+            11,
+            "Konto użytkownika",
+            "Gdzie mogę zobaczyć moje ogłoszenia i edytować profil?",
+            "<p>Po zalogowaniu kliknij w link <strong>„Profil”</strong> w prawym górnym rogu strony. Zobaczysz tam podsumowanie swojego konta, dodane ogłoszenia oraz opinie.</p>"
+        )
+    };
+
+    private IEnumerable<FaqItem> FilteredFaqs
+    {
+        get
+        {
+            var items = faqItems.AsEnumerable();
+
+            if (selectedCategory != "Wszystkie")
+            {
+                items = items.Where(x => x.Category == selectedCategory);
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var query = searchQuery.Trim();
+                items = items.Where(x =>
+                    x.Question.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    x.AnswerHtml.Contains(query, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return items;
+        }
+    }
+
+    private void ToggleQuestion(int id)
+    {
+        if (openQuestionIds.Contains(id))
+        {
+            openQuestionIds.Remove(id);
+        }
+        else
+        {
+            openQuestionIds.Add(id);
+        }
+    }
+
+    private void SelectCategory(string category)
+    {
+        selectedCategory = category;
+    }
+}

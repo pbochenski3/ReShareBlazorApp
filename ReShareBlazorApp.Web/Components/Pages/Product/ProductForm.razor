@@ -1,4 +1,6 @@
 ﻿@page "/add-product"
+@page "/dodaj-ogloszenie"
+@attribute [Authorize]
 @page "/edit-product/{ProductId:int}"
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
@@ -253,6 +255,22 @@ else
             {
                 notify.AddNotification("Lokalizacja", "Nie udało się pobrać lokalizacji.");
             }
+        }
+    }
+    public async Task AddProduct()
+    {
+        var result = await productService.AddProductAsync(productModel);
+        if (result == "Produkt dodany pomyślnie!")
+        {
+            notify.AddNotification("Ogłoszenie", "Ogłoszenie pomyślnie utworzone!");
+            productModel = new ProductModel();
+            isSelected = false;
+        }
+        else
+        {
+            notify.AddNotification("Błąd", result);
+        }
+    }
         }
     }
 
