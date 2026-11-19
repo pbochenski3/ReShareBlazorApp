@@ -1,0 +1,52 @@
+﻿@page "/ulubione"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using ReShareBlazorApp.Shared.Categories
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Components.Elements
+@inject FavoriteApiService favoriteApi
+
+<PageTitle>Ulubione – ODDAJ DALEJ</PageTitle>
+
+<PageHeader Title="Ulubione" Subtitle="Ogłoszenia, które oznaczyłeś gwiazdką." />
+
+<section class="home-section">
+    <div class="home-container">
+        @if (Favorites.Count == 0)
+        {
+            <p class="page-count">Nie masz jeszcze ulubionych. Kliknij ☆ na ogłoszeniu, aby je tu zapisać. <a class="home-link" href="/odkrywaj">Przeglądaj ogłoszenia</a></p>
+        }
+        else
+        {
+            <p class="page-count">Liczba ulubionych: @Favorites.Count</p>
+            <div class="home-cards" data-remove-on-unfav>
+                @foreach (var product in Favorites)
+                {
+                    <ListingCard Title="@product.Name"
+                                 Description="@product.Description"
+                                 Link="@($"/ogloszenie/{product.Id}")"
+                                 ProductId="product.Id"
+                                 IsFavorite="true"
+                                 Category="@ListingCategories.NameOf(product.Category)"
+                                 Type="@(product.Price <= 0 ? "Oddam" : "Sprzedam")"
+                                 Price="@ListingFormat.Price(product.Price)"
+                                 Location="Kraków"
+                                 Term="@product.ExpiresAt.ToString("dd.MM.yyyy")"
+                                 Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")" />
+                }
+            </div>
+        }
+    </div>
+</section>
+
+<SiteFooter />
+
+@code {
+    private List<ProductDTO> Favorites { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Favorites = await favoriteApi.GetFavoritesAsync(); // tylko ogłoszenia zalogowanego użytkownika
+    }
+}
