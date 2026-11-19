@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ReShareBlazorApp.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class Init : Migration
+    public partial class intil : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -34,6 +34,7 @@ namespace ReShareBlazorApp.Api.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
                     City = table.Column<string>(type: "nvarchar(60)", maxLength: 60, nullable: true),
                     Bio = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: true),
                     AvatarPath = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
