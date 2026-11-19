@@ -1,4 +1,6 @@
 ﻿@page "/add-product"
+@page "/dodaj-ogloszenie"
+@attribute [Authorize]
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 @using ReShareBlazorApp.Api.Date.Enums
@@ -165,10 +167,17 @@ else
     }
     public async Task AddProduct()
     {
-        await productService.AddProductAsync(productModel);
-        notify.AddNotification("Ogłoszenie", "Ogłoszenie pomyślnie utworzone!");
-        productModel = new ProductModel();
-        isSelected = false;
+        var result = await productService.AddProductAsync(productModel);
+        if (result == "Produkt dodany pomyślnie!")
+        {
+            notify.AddNotification("Ogłoszenie", "Ogłoszenie pomyślnie utworzone!");
+            productModel = new ProductModel();
+            isSelected = false;
+        }
+        else
+        {
+            notify.AddNotification("Błąd", result);
+        }
     }
     private void ChooseType(ProductType type)
     {

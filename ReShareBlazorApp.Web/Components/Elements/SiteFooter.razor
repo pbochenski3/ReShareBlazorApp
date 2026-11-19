@@ -13,9 +13,16 @@
         <div>
             <h4>Dla użytkowników</h4>
             <ul>
-                <li><a href="/add-product">Dodaj ogłoszenie</a></li>
+                <AuthorizeView>
+                    <Authorized>
+                        <li><a href="/add-product">Dodaj ogłoszenie</a></li>
+                    </Authorized>
+                    <NotAuthorized>
+                        <li><a href="/login">Dodaj ogłoszenie</a></li>
+                    </NotAuthorized>
+                </AuthorizeView>
                 <li><a href="/oferty">Przeglądaj oferty</a></li>
-                <li><a href="/szukam">Szukaj</a></li>
+                <li><a href="/szukaj">Szukaj</a></li>
                 <li><a href="/pomoc">Pomoc</a></li>
             </ul>
         </div>

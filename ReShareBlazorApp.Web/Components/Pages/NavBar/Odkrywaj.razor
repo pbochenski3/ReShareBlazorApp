@@ -1,28 +1,34 @@
 @page "/odkrywaj"
+@page "/oferty"
+@page "/szukaj"
+@page "/szukam"
 
 @using ReShareBlazorApp.Api.Date.Enums
 @using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Shared.Enums
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Components.Elements
 @using System.Globalization
 
 @inject ProductApiService productApi
+@inject NavigationManager Navigation
 
-<PageTitle>Odkrywaj – ODDAJ DALEJ</PageTitle>
+<PageTitle>@pageTitle – ODDAJ DALEJ</PageTitle>
 
-<PageHeader Title="Odkrywaj"
-            Subtitle="Przeglądaj ogłoszenia dodane przez innych użytkowników." />
+<PageHeader Title="@pageTitle"
+            Subtitle="@pageSubtitle" />
 
 <section class="home-section">
     <div class="home-container">
 
-        <div class="home-search">
+        <div class="home-search" id="szukaj">
 
             <div class="home-search-row">
 
                 <label class="home-field home-field-wide">
                     <span>Czego szukasz?</span>
                     <input type="search"
+                           id="search-input"
                            @bind="searchText"
                            @bind:event="oninput"
                            placeholder="np. bilety na koncert" />
@@ -64,6 +70,16 @@
             </div>
 
             <div class="home-search-row">
+
+                <label class="home-field">
+                    <span>Typ ogłoszenia</span>
+                    <select @bind="selectedType">
+                        <option value="">Wszystkie</option>
+                        <option value="Sprzedam">Sprzedam</option>
+                        <option value="Oddam">Oddam</option>
+                        <option value="Szukam">Szukam</option>
+                    </select>
+                </label>
 
                 <label class="home-field">
                     <span>Cena od (zł)</span>
@@ -141,10 +157,15 @@
     </div>
 </section>
 
+<SiteFooter />
+
 @code {
 
     public List<ProductDTO> ProductsList { get; set; } = new();
     public List<LocationDTO> SuggestedLocations { get; set; } = new();
+
+    private string pageTitle = "Odkrywaj";
+    private string pageSubtitle = "Przeglądaj ogłoszenia dodane przez innych użytkowników.";
 
     [SupplyParameterFromQuery(Name = "q")]
     public string? InitialSearch { get; set; }
@@ -161,8 +182,12 @@
     [SupplyParameterFromQuery(Name = "cenaMax")]
     public string? InitialMaxPrice { get; set; }
 
+    [SupplyParameterFromQuery(Name = "typ")]
+    public string? InitialType { get; set; }
+
     private string searchText = "";
     private string selectedCategory = "";
+    private string selectedType = "";
     private string locationFilter = "";
 
     private string cenaMin = "";
@@ -186,6 +211,32 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        var uri = Navigation.Uri.ToLowerInvariant();
+        if (uri.Contains("/szukam"))
+        {
+            pageTitle = "Czego szukają użytkownicy";
+            pageSubtitle = "Ogłoszenia osób poszukujących biletów, transportu lub innych rzeczy.";
+            selectedType = "Szukam";
+        }
+        else if (uri.Contains("/szukaj"))
+        {
+            pageTitle = "Wyszukiwarka ogłoszeń";
+            pageSubtitle = "Wyszukaj interesujące Cię oferty, usługi lub przedmioty.";
+            selectedType = InitialType ?? "";
+        }
+        else if (uri.Contains("/oferty"))
+        {
+            pageTitle = "Przeglądaj oferty";
+            pageSubtitle = "Wszystkie aktualne ogłoszenia dostępne na platformie.";
+            selectedType = InitialType ?? "";
+        }
+        else
+        {
+            pageTitle = "Odkrywaj";
+            pageSubtitle = "Przeglądaj ogłoszenia dodane przez innych użytkowników.";
+            selectedType = InitialType ?? "";
+        }
+
         searchText = InitialSearch ?? "";
         selectedCategory = InitialCategory ?? "";
         locationFilter = InitialLocation ?? "";
@@ -194,7 +245,7 @@
 
         if (!productsLoaded)
         {
-            ProductsList = await productApi.GetProductsAsync(20);
+            ProductsList = await productApi.GetProductsAsync(50);
             productsLoaded = true;
         }
     }
@@ -222,6 +273,15 @@
             {
                 products = products.Where(p =>
                     p.Category.ToString() == selectedCategory);
+            }
+
+            if (!string.IsNullOrWhiteSpace(selectedType))
+            {
+                products = products.Where(p =>
+                    (selectedType == "Sprzedam" && p.Type == ProductType.Sell) ||
+                    (selectedType == "Oddam" && p.Type == ProductType.GiveAway) ||
+                    (selectedType == "Szukam" && p.Type == ProductType.LookingFor) ||
+                    p.Type.ToString().Equals(selectedType, StringComparison.OrdinalIgnoreCase));
             }
 
             if (!string.IsNullOrWhiteSpace(locationFilter))
