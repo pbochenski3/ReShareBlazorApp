@@ -95,6 +95,25 @@
                     </InputSelect>
                     <ValidationMessage For="@(() => productModel.Category)" />
                 </div>
+                <div class="product-field">
+
+                    <label>Stan produktu</label>
+
+                    <InputSelect @bind-Value="productModel.Condition"
+                                  class="product-input">
+
+                        @foreach (var condition in Enum.GetValues<ProductCondition>())
+                        {
+                            <option value="@condition">
+                                @GetConditionName(condition)
+                            </option>
+                        }
+
+                    </InputSelect>
+                    
+
+
+                </div>
 
                 <div class="product-field">
                     <label>Zdjęcia (opcjonalnie, maks. @MaxImages)</label>
@@ -279,6 +298,7 @@ else
             else
             {
                 var result = await productService.AddProductAsync(productModel);
+                
                     notify.AddNotification("Ogłoszenie", result.Message);
                     if (result.Success)
                     {
@@ -369,6 +389,16 @@ else
             ProductCategory.Transports => "Transport",
             ProductCategory.Services => "Usługi",
             _ => category.ToString()
+        };
+    }
+    private string GetConditionName(ProductCondition condition)
+    {
+        return condition switch
+        {
+            ProductCondition.New => "Nowy",
+            ProductCondition.Used => "Używany",
+            ProductCondition.Damaged => "Uszkodzony",
+            _ => condition.ToString()
         };
     }
 

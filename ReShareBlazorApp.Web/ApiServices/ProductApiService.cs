@@ -30,6 +30,7 @@ namespace ReShareBlazorApp.Web.ApiServices
                 Price = productModel.Price,
                 ExpiresAt = productModel.ExpiresAt,
                 Category = productModel.Category,
+                Condition = productModel.Condition,
                 City = productModel.City,
                 Type = productModel.Type,
                 Images = productModel.Images
@@ -76,6 +77,7 @@ namespace ReShareBlazorApp.Web.ApiServices
                 Price = productModel.Price,
                 ExpiresAt = productModel.ExpiresAt,
                 Category = productModel.Category,
+                Condition = productModel.Condition,
                 City = productModel.City,
                 Type = productModel.Type
             };

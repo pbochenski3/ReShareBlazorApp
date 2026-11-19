@@ -21,6 +21,8 @@ namespace ReShareBlazorApp.Shared.DTOs
         public DateTime ExpiresAt { get; set; }
         public ProductType Type { get; set; }
         public ProductCategory Category { get; set; }
+        public ProductCondition Condition { get; set; }
+
         public string AddedBy { get; set; } = "";
         public int UserId { get; set; }
 

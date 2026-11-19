@@ -25,6 +25,7 @@ namespace ReShareBlazorApp.Web.Models
         public string City { get; set; } = "";
         [Required(ErrorMessage = "Wybierz kategorię produktu.")]
         public ProductCategory Category { get; set; }
+        public ProductCondition Condition { get; set; }
 
         public int UserId { get; set; }
 

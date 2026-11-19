@@ -69,6 +69,7 @@ namespace ReShareBlazorApp.Api.Services
                     ExpiresAt = product.ExpiresAt,
                     Category = product.Category,
                     Type = product.Type,
+                    Condition = product.Condition,
                     City = product.City,
                     UserId = product.UserId,
                     Images = images
@@ -119,6 +120,7 @@ namespace ReShareBlazorApp.Api.Services
                 AddedAt = p.AddedAt,
                 ExpiresAt = p.ExpiresAt,
                 Category = p.Category,
+                Condition = p.Condition,
                 City = p.City,
                 Type = p.Type,
                 UserId = p.UserId,
@@ -178,6 +180,7 @@ namespace ReShareBlazorApp.Api.Services
                 Price = product.Price,
                 City = product.City,
                 Category = product.Category,
+                Condition = product.Condition,
                 AddedAt = product.AddedAt,
                 ExpiresAt = product.ExpiresAt,
                 Type = product.Type,

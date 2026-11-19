@@ -20,5 +20,6 @@ namespace ReShareBlazorApp.Api.Date
         public User user { get; set; }
         public bool isDeleted { get; set; } = false;
         public List<ProductImage> Images { get; set; } = new();
+        public ProductCondition Condition { get; set; }
     }
 }

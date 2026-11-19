@@ -1,5 +1,6 @@
 @using ReShareBlazorApp.Api.Date.Enums
 @using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Shared.Enums
 @using ReShareBlazorApp.Web.ApiServices
 @inject ProductApiService productApi
 
@@ -46,6 +47,26 @@
                         <option value="Szukam">Szukam</option>
                         <option value="Oferuję wolny termin">Oferuję wolny termin</option>
                     </select>
+                </label>
+                <label class="home-field">
+
+                    <span>Stan produktu</span>
+
+                    <select name="stan" value="@stan">
+
+                        <option value="">
+                            Wszystkie
+                        </option>
+
+                        @foreach (var condition in Enum.GetValues<ProductCondition>())
+                        {
+                            <option value="@condition">
+                                @GetConditionName(condition)
+                            </option>
+                        }
+
+                    </select>
+
                 </label>
             </div>
 
@@ -111,6 +132,9 @@
     [SupplyParameterFromQuery(Name = "typ")]
     public string? typ { get; set; }
 
+    [SupplyParameterFromQuery(Name = "stan")]
+    public string? stan { get; set; }
+
     [SupplyParameterFromQuery(Name = "lokalizacja")]
     public string? lokalizacja { get; set; }
 
@@ -149,6 +173,16 @@
             ProductCategory.Transports => "Transport",
             ProductCategory.Services => "Usługi",
             _ => category.ToString()
+        };
+    }
+    private string GetConditionName(ProductCondition condition)
+    {
+        return condition switch
+        {
+            ProductCondition.New => "Nowy",
+            ProductCondition.Used => "Używany",
+            ProductCondition.Damaged => "Uszkodzony",
+            _ => condition.ToString()
         };
     }
 }
