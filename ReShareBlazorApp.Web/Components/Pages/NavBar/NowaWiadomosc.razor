@@ -1,0 +1,36 @@
+﻿@page "/wiadomosci/nowa/{SenderId:int}/{RecipientId:int}/{ProductId:int}"
+@attribute [Authorize]
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Nowa wiadomość – ODDAJ DALEJ</PageTitle>
+
+@* Strona celowo pusta – tu później powstanie okno pisania wiadomości. *@
+@* Poniższy blok służy tylko do sprawdzenia, czy ID dotarły; można go usunąć. *@
+<div class="home-container" style="padding: 2rem 0;">
+    <p>Piszący (ID): @SenderId</p>
+    <p>Wystawiający ogłoszenie (ID): @RecipientId</p>
+    <p>Ogłoszenie (ID): @ProductId</p>
+</div>
+
+@code {
+    [Parameter] public int SenderId { get; set; }
+    [Parameter] public int RecipientId { get; set; }
+    [Parameter] public int ProductId { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var user = (await AuthStateProvider.GetAuthenticationStateAsync()).User;
+        var claim = user.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        // ID z adresu można podrobić, więc sprawdzamy je z zalogowanym użytkownikiem
+        // i nie pozwalamy pisać do samego siebie.
+        if (!int.TryParse(claim, out var loggedUserId)
+            || loggedUserId != SenderId
+            || SenderId == RecipientId)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+}

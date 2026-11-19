@@ -1,5 +1,4 @@
-﻿
-@page "/details/{ProductId:int}"
+﻿@page "/details/{ProductId:int}"
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReShareBlazorApp.Shared.DTOs
@@ -246,6 +245,17 @@
                             @(isFollowing ? "✓ Obserwujesz" : "+ Obserwuj użytkownika")
                         </button>
 
+                        <!-- PRZYCISK NAPISZ WIADOMOŚĆ W STYLU VINTED -->
+                        @if (!IsOwner)
+                        {
+                            <button type="button"
+                                    class="btn w-100 mb-3"
+                                    style="font-weight: 600; padding: 10px; background-color: #0f766e; color: #fff;"
+                                    @onclick="WriteMessage">
+                                ✉ Napisz wiadomość
+                            </button>
+                        }
+
                         <a href="/" class="details-primary-button">
                             Przeglądaj inne ogłoszenia
                         </a>
@@ -468,6 +478,22 @@
         {
             Console.WriteLine($"Błąd: {ex.Message}");
         }
+    }
+
+    private void WriteMessage()
+    {
+        if (Product == null || IsOwner) return;
+
+        // Niezalogowany użytkownik nie może pisać wiadomości
+        if (!currentUserIdInt.HasValue)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        // /wiadomosci/nowa/{piszący}/{wystawiający ogłoszenie}/{ogłoszenie}
+        Navigation.NavigateTo(
+            $"/wiadomosci/nowa/{currentUserIdInt.Value}/{Product.UserId}/{Product.ProductId}");
     }
 
     private async Task LoadReviews()
