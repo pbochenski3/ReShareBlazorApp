@@ -88,6 +88,18 @@ namespace ReShareBlazorApp.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "UserFollows",
+                columns: table => new
+                {
+                    FollowerId = table.Column<int>(type: "int", nullable: false),
+                    FollowingId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserFollows", x => new { x.FollowerId, x.FollowingId });
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AspNetRoleClaims",
                 columns: table => new
                 {
@@ -245,6 +257,32 @@ namespace ReShareBlazorApp.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "RecentlyViewedProducts",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    ProductId = table.Column<int>(type: "int", nullable: false),
+                    ViewedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RecentlyViewedProducts", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_RecentlyViewedProducts_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_RecentlyViewedProducts_Products_ProductId",
+                        column: x => x.ProductId,
+                        principalTable: "Products",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Reports",
                 columns: table => new
                 {
@@ -323,6 +361,22 @@ namespace ReShareBlazorApp.Api.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_RecentlyViewedProducts_ProductId",
+                table: "RecentlyViewedProducts",
+                column: "ProductId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RecentlyViewedProducts_UserId_ProductId",
+                table: "RecentlyViewedProducts",
+                columns: new[] { "UserId", "ProductId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RecentlyViewedProducts_UserId_ViewedAt",
+                table: "RecentlyViewedProducts",
+                columns: new[] { "UserId", "ViewedAt" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Reports_ProductId",
                 table: "Reports",
                 column: "ProductId");
@@ -358,10 +412,16 @@ namespace ReShareBlazorApp.Api.Migrations
                 name: "ProductImages");
 
             migrationBuilder.DropTable(
+                name: "RecentlyViewedProducts");
+
+            migrationBuilder.DropTable(
                 name: "Reports");
 
             migrationBuilder.DropTable(
                 name: "Reviews");
+
+            migrationBuilder.DropTable(
+                name: "UserFollows");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");

@@ -12,8 +12,8 @@ using ReShareBlazorApp.Api.Date;
 namespace ReShareBlazorApp.Api.Migrations
 {
     [DbContext(typeof(ReshareDbContext))]
-    [Migration("20261119065253_Init2")]
-    partial class Init2
+    [Migration("20261119070742_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -259,6 +259,35 @@ namespace ReShareBlazorApp.Api.Migrations
                     b.ToTable("ProductImages");
                 });
 
+            modelBuilder.Entity("ReShareBlazorApp.Api.Date.RecentlyViewedProduct", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ViewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("UserId", "ProductId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "ViewedAt");
+
+                    b.ToTable("RecentlyViewedProducts");
+                });
+
             modelBuilder.Entity("ReShareBlazorApp.Api.Date.Report", b =>
                 {
                     b.Property<int>("Id")
@@ -492,6 +521,25 @@ namespace ReShareBlazorApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("ReShareBlazorApp.Api.Date.RecentlyViewedProduct", b =>
+                {
+                    b.HasOne("ReShareBlazorApp.Api.Date.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("ReShareBlazorApp.Api.Date.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ReShareBlazorApp.Api.Date.Report", b =>
