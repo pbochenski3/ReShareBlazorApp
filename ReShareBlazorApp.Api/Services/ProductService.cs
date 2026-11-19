@@ -22,7 +22,6 @@ namespace ReShareBlazorApp.Api.Services
         }
         public async Task<bool> AddProductAsync(ProductDTO product)
         {
-            // najpierw zapisujemy pliki na dysku, potem rekordy w bazie
             var images = new List<ProductImage>();
             var savedFiles = new List<string>();
             try

@@ -57,19 +57,17 @@ namespace ReShareBlazorApp.Api.Repositories
                 return false;
             }
         }
+          
+
+
+
 
         public async Task<bool> DeleteProductAsync(int productId, int userId)
         {
             try
             {
-                var product = await _context.Products
-                    .Include(p => p.Images)
-                    .FirstOrDefaultAsync(p => p.Id == productId && p.UserId == userId);
-
-                if (product == null)
-                    return false;
-
-                _context.Products.Remove(product);
+                await _context.Products.Where(p => p.Id == productId && p.UserId == userId)
+                    .ExecuteUpdateAsync(p => p.SetProperty(p => p.isDeleted, true));
                 await _context.SaveChangesAsync();
                 return true;
             }
