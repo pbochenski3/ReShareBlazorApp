@@ -1,12 +1,15 @@
+
 @page "/user/{Username}"
-@using ReShareBlazorApp.Shared.DTOs
-@inject NavigationManager Navigation
-@using System.Security.Claims
-@using Microsoft.AspNetCore.Components.Authorization
+
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Web.ApiServices
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @using ReShareBlazorApp.Web.Components.Elements
+
+@inject NavigationManager Navigation
 @inject UserApiService userApi
+@inject BadgeApiService BadgeApiService
 @inject AuthenticationStateProvider AuthStateProvider
 
 @if (exist)
@@ -18,7 +21,9 @@
             <div class="profile-card">
                 @if (avatarUrl is not null)
                 {
-                    <img class="avatar-upload-preview" src="@avatarUrl" alt="Zdjęcie profilowe" />
+                    <img class="avatar-upload-preview"
+                         src="@avatarUrl"
+                         alt="Zdjęcie profilowe" />
                 }
                 else
                 {
@@ -27,61 +32,219 @@
 
                 <div class="profile-info">
                     <h2>@Username</h2>
+
                     @if (!string.IsNullOrEmpty(profile?.City))
                     {
-                        <p class="profile-email">Lokalizacja: @profile.City</p>
+                        <p class="profile-email">
+                            Lokalizacja: @profile.City
+                        </p>
                     }
+
                     @if (!string.IsNullOrEmpty(profile?.Bio))
                     {
                         <p class="profile-bio">@profile.Bio</p>
                     }
-                    <p class="home-card-verified">✔ E-mail zweryfikowany</p>
-                    <p class="profile-rating">★ 4,8 <span>(12 opinii)</span></p>
+
+                    <p class="home-card-verified">
+                        ✔ E-mail zweryfikowany
+                    </p>
+
+                    <p class="profile-rating">
+                        ★ 4,8 <span>(12 opinii)</span>
+                    </p>
                 </div>
 
                 @if (isOwner)
                 {
-                    <a class="home-btn home-btn-outline" href="/ustawienia">Edytuj profil</a>
+                    <a class="home-btn home-btn-outline"
+                       href="/ustawienia">
+                        Edytuj profil
+                    </a>
                 }
             </div>
 
             <!-- Statystyki -->
             <div class="profile-stats">
-                <div class="profile-stat"><strong>5</strong><span>Ogłoszenia</span></div>
-                <div class="profile-stat"><strong>2</strong><span>Poszukiwania</span></div>
-                <div class="profile-stat"><strong>9</strong><span>Transakcje</span></div>
-                <div class="profile-stat"><strong>14</strong><span>Ulubione</span></div>
+                <div class="profile-stat">
+                    <strong>5</strong>
+                    <span>Ogłoszenia</span>
+                </div>
+
+                <div class="profile-stat">
+                    <strong>2</strong>
+                    <span>Poszukiwania</span>
+                </div>
+
+                <div class="profile-stat">
+                    <strong>@earnedBadgeCount</strong>
+                    <span>Odznaki</span>
+                </div>
+
+                <div class="profile-stat">
+                    <strong>14</strong>
+                    <span>Ulubione</span>
+                </div>
             </div>
 
             <!-- Zakładki -->
             <div class="profile-tabs" role="tablist">
-                <button class="profile-tab active" type="button" role="tab">Moje ogłoszenia</button>
-                <button class="profile-tab" type="button" role="tab">Moje poszukiwania</button>
-                <button class="profile-tab" type="button" role="tab">Ulubione</button>
-                <button class="profile-tab" type="button" role="tab">Transakcje</button>
-                <button class="profile-tab" type="button" role="tab">Opinie</button>
+
+                <button class="profile-tab @(selectedTab == "ogloszenia" ? "active" : "")"
+                        type="button"
+                        role="tab"
+                        @onclick='() => SelectTab("ogloszenia")'>
+                    Moje ogłoszenia
+                </button>
+
+                <button class="profile-tab @(selectedTab == "poszukiwania" ? "active" : "")"
+                        type="button"
+                        role="tab"
+                        @onclick='() => SelectTab("poszukiwania")'>
+                    Moje poszukiwania
+                </button>
+
+                <button class="profile-tab @(selectedTab == "ulubione" ? "active" : "")"
+                        type="button"
+                        role="tab"
+                        @onclick='() => SelectTab("ulubione")'>
+                    Ulubione
+                </button>
+
+                @if (isOwner)
+                {
+                    <button class="profile-tab @(selectedTab == "odznaki" ? "active" : "")"
+                            type="button"
+                            role="tab"
+                            @onclick="ShowBadgesAsync">
+                         Odznaki
+                    </button>
+                }
+
+                <button class="profile-tab @(selectedTab == "opinie" ? "active" : "")"
+                        type="button"
+                        role="tab"
+                        @onclick='() => SelectTab("opinie")'>
+                    Opinie
+                </button>
+
             </div>
 
-            <!-- Moje ogłoszenia -->
-            @* <div class="home-cards">
-            <ListingCard Title="2 bilety na koncert – Kraków" Category="Bilety i rezerwacje" Type="Sprzedam"
-                         Price="240 zł" Location="Kraków" Term="12.12.2026" Published="08.11.2026" />
-            <ListingCard Title="Wózek dziecięcy do oddania" Category="Rodzina i dzieci" Type="Oddam"
-                         Price="Bezpłatnie" Location="Łódź" Term="od zaraz" Published="07.11.2026" />
-        </div> *@
+            <!-- ZAWARTOŚĆ ZAKŁADEK -->
 
-            <!-- Opinie -->
-            <h2 class="home-section-title profile-subtitle">Opinie o Tobie</h2>
-            <div class="profile-reviews">
-                <article class="profile-review">
-                    <p class="profile-rating">★★★★★ <span>Anna K.</span></p>
-                    <p>Szybki kontakt, wszystko zgodnie z opisem. Polecam.</p>
-                </article>
-                <article class="profile-review">
-                    <p class="profile-rating">★★★★☆ <span>Marek N.</span></p>
-                    <p>Sprawna wymiana, drobne opóźnienie w odpowiedzi.</p>
-                </article>
-            </div>
+            @if (selectedTab == "opinie")
+            {
+                <!-- Opinie -->
+                <h2 class="home-section-title profile-subtitle">
+                    Opinie o Tobie
+                </h2>
+
+                <div class="profile-reviews">
+                    <article class="profile-review">
+                        <p class="profile-rating">
+                            ★★★★★ <span>Anna K.</span>
+                        </p>
+                        <p>
+                            Szybki kontakt, wszystko zgodnie z opisem.
+                            Polecam.
+                        </p>
+                    </article>
+
+                    <article class="profile-review">
+                        <p class="profile-rating">
+                            ★★★★☆ <span>Marek N.</span>
+                        </p>
+                        <p>
+                            Sprawna wymiana, drobne opóźnienie
+                            w odpowiedzi.
+                        </p>
+                    </article>
+                </div>
+            }
+            else if (selectedTab == "odznaki")
+            {
+                <!-- Odznaki -->
+                <h2 class="home-section-title profile-subtitle">
+                    🏅 Twoje odznaki
+                </h2>
+
+                @if (badgesLoading)
+                {
+                    <p class="badges-message">
+                        Ładowanie odznak...
+                    </p>
+                }
+                else if (!string.IsNullOrEmpty(badgesError))
+                {
+                    <p class="badges-error">
+                        @badgesError
+                    </p>
+                }
+                else if (badges.Count == 0)
+                {
+                    <p class="badges-message">
+                        Nie ma jeszcze dostępnych odznak.
+                    </p>
+                }
+                else
+                {
+                    <div class="badges-grid">
+
+                        @foreach (var badge in badges)
+                        {
+                            <div class="badge-card @(badge.IsEarned ? "earned" : "locked")">
+
+                                <div class="badge-icon">
+                                    @badge.Icon
+                                </div>
+
+                                <h3>@badge.Name</h3>
+
+                                <p>@badge.Description</p>
+
+                                @if (badge.IsEarned)
+                                {
+                                    <span class="earned-label">
+                                        ✓ Zdobyta
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="locked-label">
+                                        🔒 Nie zdobyto
+                                    </span>
+                                }
+
+                            </div>
+                        }
+
+                    </div>
+                }
+            }
+            else if (selectedTab == "ogloszenia")
+            {
+                <h2 class="home-section-title profile-subtitle">
+                    Moje ogłoszenia
+                </h2>
+
+                <p>Tu będą wyświetlane Twoje ogłoszenia.</p>
+            }
+            else if (selectedTab == "poszukiwania")
+            {
+                <h2 class="home-section-title profile-subtitle">
+                    Moje poszukiwania
+                </h2>
+
+                <p>Tu będą wyświetlane Twoje poszukiwania.</p>
+            }
+            else if (selectedTab == "ulubione")
+            {
+                <h2 class="home-section-title profile-subtitle">
+                    Ulubione
+                </h2>
+
+                <p>Tu będą wyświetlane ulubione produkty.</p>
+            }
+
         </div>
     </section>
 }
@@ -90,22 +253,75 @@ else
     <h4>Nie znaleziono użytkownika!</h4>
 }
 
-
 @code {
     [Parameter]
     public string Username { get; set; } = string.Empty;
+
     private bool exist;
+
     private UserProfileDTO? profile;
+
     private string? avatarUrl;
-    private string Initials => string.IsNullOrWhiteSpace(Username)
-        ? "?" : Username[..Math.Min(2, Username.Length)].ToUpper();
+
     private bool isOwner;
+
+    private string selectedTab = "opinie";
+
+    private List<BadgeDTO> badges = new();
+
+    private bool badgesLoading;
+
+    private string? badgesError;
+
+    private int earnedBadgeCount =>
+        badges.Count(b => b.IsEarned);
+
+    private string Initials =>
+        string.IsNullOrWhiteSpace(Username)
+            ? "?"
+            : Username[..Math.Min(2, Username.Length)].ToUpper();
+
     protected override async Task OnParametersSetAsync()
     {
         profile = await userApi.GetProfileAsync(Username);
+
         exist = profile != null;
+
         avatarUrl = userApi.GetAvatarUrl(profile?.AvatarUrl);
+
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
-        isOwner = string.Equals(state.User.FindFirst(ClaimTypes.Name)?.Value, Username, StringComparison.OrdinalIgnoreCase);
+
+        isOwner = string.Equals(
+            state.User.FindFirst(ClaimTypes.Name)?.Value,
+            Username,
+            StringComparison.OrdinalIgnoreCase
+        );
     }
-}   
+
+    private void SelectTab(string tab)
+    {
+        selectedTab = tab;
+    }
+
+    private async Task ShowBadgesAsync()
+    {
+        selectedTab = "odznaki";
+
+        badgesLoading = true;
+        badgesError = null;
+
+        try
+        {
+            badges = await BadgeApiService.GetMyBadgesAsync();
+        }
+        catch (Exception ex)
+        {
+            badgesError = "Nie udało się pobrać odznak: " + ex.Message;
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            badgesLoading = false;
+        }
+    }
+}

@@ -1,0 +1,95 @@
+﻿
+@page "/moje-odznaki"
+
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@using Microsoft.AspNetCore.Authorization
+
+@inject BadgeApiService BadgeApiService
+
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Moje odznaki</PageTitle>
+
+<div class="badges-page">
+
+    <div class="badges-header">
+        <h1>🏅 Moje odznaki</h1>
+        <p>Sprawdź, które osiągnięcia udało Ci się zdobyć.</p>
+    </div>
+
+    @if (loading)
+    {
+        <p class="badges-message">Ładowanie odznak...</p>
+    }
+    else if (!string.IsNullOrEmpty(error))
+    {
+        <p class="badges-error">@error</p>
+    }
+    else if (badges.Count == 0)
+    {
+        <p class="badges-message">Brak dostępnych odznak.</p>
+    }
+    else
+    {
+        <div class="badges-summary">
+            <span>Zdobyte odznaki:</span>
+            <strong>@badges.Count(b => b.IsEarned) / @badges.Count</strong>
+        </div>
+
+        <div class="badges-grid">
+            @foreach (var badge in badges)
+            {
+                <div class="badge-card @(badge.IsEarned ? "earned" : "locked")">
+
+                    <div class="badge-icon">
+                        @badge.Icon
+                    </div>
+
+                    <h3>@badge.Name</h3>
+
+                    <p>@badge.Description</p>
+
+                    @if (badge.IsEarned)
+                    {
+                        <span class="earned-label">
+                            ✓ Zdobyta
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="locked-label">
+                            🔒 Nie zdobyto
+                        </span>
+                    }
+
+                </div>
+            }
+        </div>
+    }
+
+</div>
+
+@code {
+    private List<BadgeDTO> badges = new();
+
+    private bool loading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            badges = await BadgeApiService.GetMyBadgesAsync();
+        }
+        catch (Exception ex)
+        {
+            error = "Nie udało się pobrać odznak: " + ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+}

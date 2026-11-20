@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Services;
@@ -13,10 +14,14 @@ namespace ReShareBlazorApp.Api.Services
     {
         private readonly UserManager<User> _userManager;
         private readonly IConfiguration _configuration;
-        public AuthService(UserManager<User> userManager, IConfiguration configuration)
+        private readonly ReshareDbContext _context;
+        private readonly ILogger<AuthService> _logger;
+        public AuthService(UserManager<User> userManager, IConfiguration configuration, ReshareDbContext context, ILogger<AuthService> logger)
         {
             _userManager = userManager;
             _configuration = configuration;
+            _context = context;
+            _logger = logger;
         }
         public async Task<RegisterResponse?> RegisterAsync(RegisterRequest request)
         {
@@ -33,6 +38,46 @@ namespace ReShareBlazorApp.Api.Services
             {
                 return null;
             }
+
+            try
+            {
+                var badge = await _context.Badges
+                    .FirstOrDefaultAsync(b => b.Name == "Nowy użytkownik");
+
+                if (badge != null)
+                {
+                    var alreadyEarned = await _context.UserBadges
+                        .AnyAsync(ub =>
+                            ub.UserId == user.Id &&
+                            ub.BadgeId == badge.Id);
+
+                    if (!alreadyEarned)
+                    {
+                        var userBadge = new UserBadge
+                        {
+                            UserId = user.Id,
+                            BadgeId = badge.Id,
+                            IsEarned = true,
+                            EarnedAt = DateTime.Now
+                        };
+
+                        await _context.UserBadges.AddAsync(userBadge);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Nie znaleziono odznaki Nowy użytkownik.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Nie udało się przyznać odznaki nowemu użytkownikowi.");
+            }
+
             return new RegisterResponse
             {
                 Message = "Konto zostało pomyślnie utworzone."

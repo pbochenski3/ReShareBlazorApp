@@ -1,0 +1,13 @@
+﻿using ReShareBlazorApp.Api.Date;
+
+namespace ReShareBlazorApp.Api.Interfaces.Repositories
+{
+    public interface IBadgeRepository
+    {
+        Task<List<Badge>> ViewAllBadgesAsync();
+
+        Task<List<Badge>> ViewUnlockBadgeAsync(int userId);
+
+        Task<bool> AddBadgeAsync(Badge badge);
+    }
+}

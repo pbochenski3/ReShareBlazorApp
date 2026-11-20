@@ -58,10 +58,12 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSingleton<IImageStorage, DiskImageStorage>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IBadgeService, BadgeService>();
 //Repositories
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
+builder.Services.AddScoped<IBadgeRepository, BadgeRepository>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

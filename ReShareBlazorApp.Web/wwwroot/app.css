@@ -4871,3 +4871,247 @@ textarea.details-report-input {
         .home-section-action a:hover {
             color: #075858;
         }
+
+
+.badges-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 25px;
+}
+
+.badge-card {
+    background: white;
+    border-radius: 16px;
+    padding: 25px 20px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+}
+
+    .badge-card.earned {
+        border: 2px solid #39845b;
+    }
+
+    .badge-card.locked {
+        border: 2px solid #dedede;
+        opacity: 0.55;
+        filter: grayscale(1);
+    }
+
+.badge-icon {
+    font-size: 50px;
+    margin-bottom: 12px;
+}
+
+.badge-card h3 {
+    color: #333;
+    font-size: 19px;
+}
+
+.badge-card p {
+    color: #777;
+    font-size: 14px;
+}
+
+.earned-label,
+.locked-label {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+}
+
+.earned-label {
+    background: #e2f3e8;
+    color: #39845b;
+}
+
+.locked-label {
+    background: #eee;
+    color: #777;
+}
+
+.badges-message {
+    padding: 25px 0;
+    color: #777;
+}
+
+.badges-error {
+    color: #c0392b;
+}
+.admin-badge-link {
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+    .admin-badge-link:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
+        cursor: pointer;
+    }
+
+
+/* ===== ZARZĄDZANIE ODZNAKAMI ===== */
+
+.admin-badges-container {
+    display: grid;
+    grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+    margin-top: 24px;
+    width: 100%;
+}
+
+.admin-badge-form,
+.admin-badge-list {
+    background: #ffffff;
+    border: 1px solid #e1e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 5px rgba(20, 40, 60, 0.04);
+}
+
+.admin-title {
+    color: #17243a;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 24px;
+}
+
+.admin-badge-form h2,
+.admin-badge-list h2 {
+    color: #17243a;
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 22px;
+}
+
+.admin-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+    .admin-form-group label {
+        color: #53647a;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .admin-form-group .form-control {
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 13px;
+        border: 1px solid #dce3e9;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #17243a;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+        .admin-form-group .form-control:focus {
+            border-color: #087c7c;
+            box-shadow: 0 0 0 3px rgba(8, 124, 124, 0.10);
+        }
+
+.admin-add-badge-btn {
+    width: 100%;
+    min-height: 44px;
+    border: none;
+    border-radius: 8px;
+    background: #087c7c;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+    .admin-add-badge-btn:hover {
+        background: #066767;
+    }
+
+    .admin-add-badge-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+.admin-badge-message {
+    margin: 16px 0 0;
+    padding: 11px 13px;
+    border-radius: 8px;
+    background: #e8f5f1;
+    color: #08704f;
+    font-size: 13px;
+}
+
+.admin-badges-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.admin-badge-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 22px 16px;
+    border: 1px solid #e1e7eb;
+    border-radius: 10px;
+    background: #ffffff;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+    .admin-badge-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 14px rgba(20, 40, 60, 0.08);
+    }
+
+.admin-badge-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 62px;
+    height: 62px;
+    margin-bottom: 12px;
+    border-radius: 50%;
+    background: #e4f2f1;
+    font-size: 32px;
+}
+
+.admin-badge-item h3 {
+    color: #17243a;
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 8px;
+}
+
+.admin-badge-item p {
+    color: #718096;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+@media (max-width: 900px) {
+    .admin-badges-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .admin-badge-form,
+    .admin-badge-list {
+        padding: 18px;
+    }
+
+    .admin-badges-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

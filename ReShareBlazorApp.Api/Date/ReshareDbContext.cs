@@ -7,7 +7,6 @@ namespace ReShareBlazorApp.Api.Date
 {
     public class ReshareDbContext : IdentityDbContext<User, IdentityRole<int>, int>
     {
-        public DbSet<User> Users { get; set; }
         public DbSet<Product> Products { get; set; }
         public DbSet<ProductImage> ProductImages { get; set; }
         public DbSet<Location> Locations { get; set; }
@@ -15,6 +14,8 @@ namespace ReShareBlazorApp.Api.Date
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Report> Reports { get; set; }
         public DbSet<RecentlyViewedProduct> RecentlyViewedProducts { get; set; }
+        public DbSet<Badge> Badges { get; set; }
+        public DbSet<UserBadge> UserBadges { get; set; }
 
         public ReshareDbContext(DbContextOptions<ReshareDbContext> options)
             : base(options)
@@ -47,14 +48,12 @@ namespace ReShareBlazorApp.Api.Date
             {
                 entity.HasKey(x => x.Id);
 
-                // Ten sam produkt może wystąpić tylko raz w historii danego użytkownika.
                 entity.HasIndex(x => new
                 {
                     x.UserId,
                     x.ProductId
                 }).IsUnique();
 
-                // Przyspiesza pobieranie ostatnio oglądanych.
                 entity.HasIndex(x => new
                 {
                     x.UserId,
@@ -74,6 +73,11 @@ namespace ReShareBlazorApp.Api.Date
                     .HasForeignKey(x => x.ProductId)
                     .OnDelete(DeleteBehavior.NoAction);
             });
+
+            // Użytkownik może zdobyć daną odznakę tylko raz.
+            builder.Entity<UserBadge>()
+                .HasIndex(ub => new { ub.UserId, ub.BadgeId })
+                .IsUnique();
         }
     }
 }

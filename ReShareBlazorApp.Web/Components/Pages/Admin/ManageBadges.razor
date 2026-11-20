@@ -1,0 +1,142 @@
+﻿
+@page "/admin/badges"
+@layout AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+
+@attribute [Authorize(Roles = "Admin")]
+
+@inject BadgeApiService BadgeApiService
+
+<PageTitle>Zarządzanie odznakami</PageTitle>
+
+<h1 class="admin-title">Zarządzanie odznakami</h1>
+
+<div class="admin-badges-container">
+
+    <div class="admin-badge-form">
+        <h2>Dodaj nową odznakę</h2>
+
+        <EditForm Model="@newBadge" OnValidSubmit="AddBadgeAsync">
+            <div class="admin-form-group">
+                <label>Nazwa odznaki</label>
+                <InputText class="form-control"
+                           @bind-Value="newBadge.Name" />
+            </div>
+
+            <div class="admin-form-group">
+                <label>Opis odznaki</label>
+                <InputText class="form-control"
+                           @bind-Value="newBadge.Description" />
+            </div>
+
+            <div class="admin-form-group">
+                <label>Ikona (emoji)</label>
+                <InputText class="form-control"
+                           @bind-Value="newBadge.Icon" />
+            </div>
+
+            <button type="submit" class="admin-add-badge-btn"
+                    disabled="@saving">
+                @(saving ? "Dodawanie..." : "Dodaj odznakę")
+            </button>
+        </EditForm>
+
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <p class="admin-badge-message">@message</p>
+        }
+    </div>
+
+    <div class="admin-badge-list">
+        <h2>Dostępne odznaki</h2>
+
+        @if (loading)
+        {
+            <p>Ładowanie...</p>
+        }
+        else if (badges.Count == 0)
+        {
+            <p>Nie ma jeszcze żadnych odznak.</p>
+        }
+        else
+        {
+            <div class="admin-badges-grid">
+                @foreach (var badge in badges)
+                {
+                    <div class="admin-badge-item">
+                        <span class="admin-badge-icon">@badge.Icon</span>
+                        <h3>@badge.Name</h3>
+                        <p>@badge.Description</p>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+</div>
+
+@code {
+    private List<BadgeDTO> badges = new();
+
+    private BadgeDTO newBadge = new();
+
+    private bool loading = true;
+    private bool saving = false;
+
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBadgesAsync();
+    }
+
+    private async Task LoadBadgesAsync()
+    {
+        try
+        {
+            badges = await BadgeApiService.GetAllBadgesAsync();
+        }
+        catch (Exception ex)
+        {
+            message = "Nie udało się pobrać odznak: " + ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task AddBadgeAsync()
+    {
+        saving = true;
+        message = null;
+
+        try
+        {
+            var result = await BadgeApiService.AddBadgeAsync(newBadge);
+
+            if (result)
+            {
+                message = "Odznaka została dodana!";
+
+                newBadge = new BadgeDTO();
+
+                await LoadBadgesAsync();
+            }
+            else
+            {
+                message = "Nie udało się dodać odznaki.";
+            }
+        }
+        catch (Exception ex)
+        {
+            message = "Błąd: " + ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

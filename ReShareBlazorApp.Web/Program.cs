@@ -26,6 +26,7 @@ builder.Services.AddScoped<ReviewApiService>();
 builder.Services.AddScoped<ReportApiService>();
 builder.Services.AddScoped<ContactApiService>();
 builder.Services.AddScoped<AdminApiService>();
+builder.Services.AddScoped<BadgeApiService>();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
