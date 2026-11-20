@@ -8,6 +8,7 @@
 @using ReShareBlazorApp.Web.Models
 @inject ProductApiService productApi
 @inject HttpClient Http
+@inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject ReviewApiService ReviewApiService
 @inject AuthenticationStateProvider AuthStateProvider
@@ -241,10 +242,16 @@
                             ID użytkownika: @Product.UserId
                         </div>
 
-                        <!-- PRZYCISK OBSERWUJ W STYLU VINTED -->
-                        <button class="btn w-100 mb-3 @(isFollowing ? "btn-outline-secondary" : "btn-success")" style="font-weight: 600; padding: 10px;" @onclick="ToggleFollowUser">
+                        <button class="btn w-100 mb-2 @(isFollowing ? "btn-outline-secondary" : "btn-success")"
+                                style="font-weight: 600; padding: 10px;"
+                                @onclick="ToggleFollowUser">
                             @(isFollowing ? "✓ Obserwujesz" : "+ Obserwuj użytkownika")
                         </button>
+
+                        @if (!string.IsNullOrWhiteSpace(followMessage))
+                        {
+                            <div class="small text-danger mb-3">@followMessage</div>
+                        }
 
                         <a href="/" class="details-primary-button">
                             Przeglądaj inne ogłoszenia
@@ -430,11 +437,46 @@
         IsLoading = false;
     }
 
+    private async Task<HttpRequestMessage> CreateAuthorizedRequest(HttpMethod method, string url)
+    {
+        var request = new HttpRequestMessage(method, url);
+
+        try
+        {
+            // Szukamy tokenu w najpopularniejszych kluczach w localStorage oraz sessionStorage
+            var keys = new[] { "authToken", "token", "jwt", "jwtToken", "accessToken" };
+            string? token = null;
+
+            foreach (var key in keys)
+            {
+                token = await JS.InvokeAsync<string?>("localStorage.getItem", key)
+                     ?? await JS.InvokeAsync<string?>("sessionStorage.getItem", key);
+
+                if (!string.IsNullOrWhiteSpace(token))
+                    break;
+            }
+
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                token = token.Trim('"');
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+        }
+        catch
+        {
+            // Ignorujemy błędy JS przy prerenderze
+        }
+
+        return request;
+    }
+
     private async Task CheckFollowStatus()
     {
         try
         {
-            var response = await Http.GetAsync($"api/users/{Product!.UserId}/is-following");
+            using var request = await CreateAuthorizedRequest(HttpMethod.Get, $"api/users/{Product!.UserId}/is-following");
+            var response = await Http.SendAsync(request);
+
             if (response.IsSuccessStatusCode)
             {
                 isFollowing = await response.Content.ReadFromJsonAsync<bool>();
@@ -448,9 +490,13 @@
 
     private async Task ToggleFollowUser()
     {
+        followMessage = null;
+
         try
         {
-            var response = await Http.PostAsync($"api/users/{Product!.UserId}/toggle-follow", null);
+            using var request = await CreateAuthorizedRequest(HttpMethod.Post, $"api/users/{Product!.UserId}/toggle-follow");
+            var response = await Http.SendAsync(request);
+
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<ToggleResult>();
@@ -459,6 +505,10 @@
                     isFollowing = result.IsFollowing;
                 }
             }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
             else
             {
                 Navigation.NavigateTo("/login");
@@ -466,7 +516,7 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Błąd: {ex.Message}");
+            followMessage = $"Błąd połączenia z API: {ex.Message}";
         }
     }
 

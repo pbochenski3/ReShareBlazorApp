@@ -4,6 +4,7 @@ using ReShareBlazorApp.Shared.DTOs;
 using ReShareBlazorApp.Web.Models;
 using System.Globalization;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 
 namespace ReShareBlazorApp.Web.ApiServices
 {
@@ -167,12 +168,11 @@ namespace ReShareBlazorApp.Web.ApiServices
         {
             var url = $"api/product/searchLocations?query={Uri.EscapeDataString(query)}";
 
-            var response = await _httpClient.GetAsync(url);
+			var response = await _httpClient.GetAsync(url);
+			response.EnsureSuccessStatusCode();
 
-            response.EnsureSuccessStatusCode();
-
-            return await response.Content.ReadFromJsonAsync<List<LocationDTO>>()
-                ?? new List<LocationDTO>();
-        }
-    }
+			return await response.Content.ReadFromJsonAsync<List<LocationDTO>>()
+				?? new List<LocationDTO>();
+		}
+	}
 }
