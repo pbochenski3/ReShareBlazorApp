@@ -4871,3 +4871,87 @@ textarea.details-report-input {
         .home-section-action a:hover {
             color: #075858;
         }
+/* ---------- Licznik odratowanych rzeczy (strona główna) ---------- */
+.saved-counter {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.saved-counter-main,
+.saved-counter-top {
+    background: var(--surface, #fff);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    box-shadow: var(--shadow-sm);
+    padding: 36px 44px;
+    text-align: center;
+}
+
+.saved-counter-main {
+    flex: 2 1 420px;
+}
+
+.saved-counter-label {
+    margin: 0 0 4px;
+    color: var(--muted);
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.saved-counter-number {
+    margin: 0;
+    color: var(--brand);
+    font-size: clamp(3.2rem, 9vw, 5.6rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+}
+
+.saved-counter-sub {
+    margin: 6px 0 0;
+    color: var(--muted);
+}
+
+.saved-counter-top {
+    flex: 1 1 260px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    color: var(--ink);
+    text-decoration: none;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+    .saved-counter-top:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+.saved-counter-top-label {
+    color: var(--muted);
+    font-size: .95rem;
+    font-weight: 600;
+}
+
+.saved-counter-top-name {
+    color: var(--brand);
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    line-height: 1.2;
+}
+
+.saved-counter-top-count {
+    color: var(--muted);
+    font-size: .95rem;
+}
+
+@media (max-width: 600px) {
+    .saved-counter-main,
+    .saved-counter-top {
+        padding: 28px 22px;
+    }
+}

@@ -249,6 +249,12 @@
                             <a href="/edit-product/@Product.ProductId" class="details-secondary-button d-block text-center mt-2">
                                 Edytuj ogłoszenie
                             </a>
+                            <button type="button"
+                                    class="details-primary-button"
+                                    style="margin-top: 10px; cursor: pointer;"
+                                    @onclick="OpenSoldDialog">
+                                ✓ Sprzedane
+                            </button>
                             <button type="button" class="details-danger-button w-100 mt-2" @onclick="OpenDeleteDialog">
                                 Usuń ogłoszenie
                             </button>
@@ -325,6 +331,26 @@
             </div>
         }
 
+        @if (IsSoldDialogVisible)
+        {
+            <div class="delete-dialog-backdrop">
+                <div class="delete-dialog" role="dialog" aria-modal="true" aria-labelledby="sold-dialog-title">
+                    <div class="delete-dialog-icon" style="background: #e3f1f1; color: #097171;">✓</div>
+                    <h2 id="sold-dialog-title">Czy ogłoszenie zostało sprzedane?</h2>
+                    <p>Ogłoszenie zniknie ze strony, a licznik odratowanych rzeczy na stronie głównej zwiększy się o 1.</p>
+
+                    <div class="delete-dialog-actions">
+                        <button type="button" class="delete-dialog-cancel" @onclick="CloseSoldDialog" disabled="@IsMarkingSold">
+                            Anuluj
+                        </button>
+                        <button type="button" class="delete-dialog-confirm" style="background: #097171; border-color: #097171;" @onclick="ConfirmSoldAsync" disabled="@IsMarkingSold">
+                            @(IsMarkingSold ? "Zapisywanie..." : "Tak, sprzedane")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+
         @if (IsDeleteDialogVisible)
         {
             <div class="delete-dialog-backdrop">
@@ -357,6 +383,8 @@
     private bool isFollowing = false;
     private bool IsDeleteDialogVisible { get; set; }
     private bool IsDeleting { get; set; }
+    private bool IsSoldDialogVisible { get; set; }
+    private bool IsMarkingSold { get; set; }
 
     private string? currentUserName;
     private int? currentUserIdInt;
@@ -505,6 +533,41 @@
             stars += i <= rating ? "★" : "☆";
         }
         return stars;
+    }
+
+    private void OpenSoldDialog()
+    {
+        if (Product == null || !IsOwner)
+            return;
+
+        IsSoldDialogVisible = true;
+    }
+
+    private void CloseSoldDialog()
+    {
+        if (!IsMarkingSold)
+            IsSoldDialogVisible = false;
+    }
+
+    private async Task ConfirmSoldAsync()
+    {
+        if (Product == null || !IsOwner || IsMarkingSold)
+            return;
+
+        IsMarkingSold = true;
+
+        var result = await productApi.MarkAsSoldAsync(Product.ProductId);
+        notify.AddNotification("Ogłoszenie", result);
+
+        if (result == "Ogłoszenie zostało oznaczone jako sprzedane!")
+        {
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            IsMarkingSold = false;
+            IsSoldDialogVisible = false;
+        }
     }
 
     private void OpenDeleteDialog()

@@ -157,6 +157,48 @@ namespace ReShareBlazorApp.Api.Services
             return deleted;
         }
 
+        public async Task<bool> MarkAsSoldAsync(int productId, int userId)
+        {
+            var product = await _productRepository.GetProductById(productId);
+
+            if (product == null || product.UserId != userId)
+                return false;
+
+            var marked = await _productRepository.MarkAsSoldAsync(productId, userId);
+
+            if (marked)
+            {
+                DeleteFiles(product.Images.Select(image => image.StoredFileName));
+            }
+
+            return marked;
+        }
+
+        public async Task<CompletedStatsDTO> GetCompletedStatsAsync()
+        {
+            var counts = await _productRepository.GetCompletedCountsByCategoryAsync();
+
+            var stats = new CompletedStatsDTO
+            {
+                TotalCompleted = counts.Values.Sum(),
+                TopCategory = ProductCategory.Tickets,
+                TopCategoryCount = counts.GetValueOrDefault(ProductCategory.Tickets)
+            };
+
+            // Bilety są domyślnym zwycięzcą - zmieniają się dopiero, gdy inna kategoria
+            // ma ściśle więcej sprzedanych ogłoszeń (przy remisie zostają bilety).
+            foreach (var (category, count) in counts.OrderBy(c => c.Key))
+            {
+                if (count > stats.TopCategoryCount)
+                {
+                    stats.TopCategory = category;
+                    stats.TopCategoryCount = count;
+                }
+            }
+
+            return stats;
+        }
+
         public async Task<ProductDTO?> GetProductById(int id)
         {
             var product = await _productRepository.GetProductById(id);

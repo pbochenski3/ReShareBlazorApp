@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ReShareBlazorApp.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class Init : Migration
+    public partial class asap : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -85,6 +85,18 @@ namespace ReShareBlazorApp.Api.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Reviews", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserFollows",
+                columns: table => new
+                {
+                    FollowerId = table.Column<int>(type: "int", nullable: false),
+                    FollowingId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserFollows", x => new { x.FollowerId, x.FollowingId });
                 });
 
             migrationBuilder.CreateTable(
@@ -362,6 +374,9 @@ namespace ReShareBlazorApp.Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "Reviews");
+
+            migrationBuilder.DropTable(
+                name: "UserFollows");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");

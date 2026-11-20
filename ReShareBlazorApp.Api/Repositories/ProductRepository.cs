@@ -66,15 +66,57 @@ namespace ReShareBlazorApp.Api.Repositories
         {
             try
             {
-                await _context.Products.Where(p => p.Id == productId && p.UserId == userId)
-                    .ExecuteUpdateAsync(p => p.SetProperty(p => p.isDeleted, true));
-                await _context.SaveChangesAsync();
-                return true;
+                // Zwykłe usunięcie = ogłoszenie znika z bazy na stałe (powiązane zdjęcia i zgłoszenia
+                // kasują się kaskadowo). Dzięki temu NIE zwiększa licznika "odratowanych" rzeczy.
+                var rows = await _context.Products
+                    .Where(p => p.Id == productId && p.UserId == userId)
+                    .ExecuteDeleteAsync();
+                return rows > 0;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[ProductRepository] Error occurred in DeleteProductAsync");
                 return false;
+            }
+        }
+
+        // Oznaczenie jako sprzedane: isDeleted = true (ogłoszenie znika ze strony, a wiersz zostaje
+        // w bazie i jest liczony przez licznik na stronie głównej).
+        public async Task<bool> MarkAsSoldAsync(int productId, int userId)
+        {
+            try
+            {
+                var rows = await _context.Products
+                    .Where(p => p.Id == productId && p.UserId == userId)
+                    .ExecuteUpdateAsync(p => p.SetProperty(x => x.isDeleted, true));
+                return rows > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ProductRepository] Error occurred in MarkAsSoldAsync");
+                return false;
+            }
+        }
+
+        // Licznik: ogłoszenia oznaczone jako sprzedane (isDeleted = true), pogrupowane po kategorii
+        public async Task<Dictionary<ProductCategory, int>> GetCompletedCountsByCategoryAsync()
+        {
+            try
+            {
+                var rows = await _context.Products
+                    .AsNoTracking()
+                    .IgnoreQueryFilters()
+                    .Where(p => p.isDeleted)
+                    .GroupBy(p => p.Category)
+                    .Select(g => new { Category = g.Key, Count = g.Count() })
+                    .ToListAsync();
+
+                return rows.ToDictionary(r => r.Category, r => r.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ProductRepository] Error occurred in GetCompletedCountsByCategoryAsync");
+                throw;
             }
         }
 

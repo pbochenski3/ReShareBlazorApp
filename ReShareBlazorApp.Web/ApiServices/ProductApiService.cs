@@ -113,6 +113,25 @@ namespace ReShareBlazorApp.Web.ApiServices
 
             return "Ogłoszenie zostało usunięte!";
         }
+        public async Task<string> MarkAsSoldAsync(int productId)
+        {
+            var authState = await _authStateProvider.GetAuthenticationStateAsync();
+            var token = authState.User.FindFirst("access_token")?.Value;
+            if (string.IsNullOrEmpty(token))
+                return "Brak tokenu uwierzytelniającego!";
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                $"api/product/{productId}/sold");
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+                return "Nie udało się oznaczyć ogłoszenia jako sprzedane!";
+
+            return "Ogłoszenie zostało oznaczone jako sprzedane!";
+        }
         public async Task<List<ProductDTO>> GetProductsAsync(
        int number = 5,
        ProductCategory? category = null,
@@ -162,6 +181,23 @@ namespace ReShareBlazorApp.Web.ApiServices
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadFromJsonAsync<ProductDTO>()
                 ?? new ProductDTO();
+        }
+        public async Task<CompletedStatsDTO> GetCompletedStatsAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("api/product/stats");
+
+                if (!response.IsSuccessStatusCode)
+                    return new CompletedStatsDTO();
+
+                return await response.Content.ReadFromJsonAsync<CompletedStatsDTO>()
+                    ?? new CompletedStatsDTO();
+            }
+            catch
+            {
+                return new CompletedStatsDTO();
+            }
         }
         public async Task<List<LocationDTO>> SearchLocationsAsync(string query)
         {

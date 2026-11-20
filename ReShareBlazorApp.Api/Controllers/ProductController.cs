@@ -66,6 +66,28 @@ namespace ReShareBlazorApp.Api.Controllers
             return NoContent();
         }
 
+        [Authorize]
+        [HttpPost("{id:int}/sold")]
+        public async Task<IActionResult> MarkAsSold(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            var result = await _productService.MarkAsSoldAsync(id, currentUserId);
+            if (!result)
+                return NotFound();
+
+            return NoContent();
+        }
+
+        [HttpGet("stats")]
+        public async Task<ActionResult<CompletedStatsDTO>> GetCompletedStats()
+        {
+            var stats = await _productService.GetCompletedStatsAsync();
+            return Ok(stats);
+        }
+
         [HttpGet]
         public async Task<ActionResult<List<ProductDTO>>> GetProducts(
         [FromQuery] int number = 5,
