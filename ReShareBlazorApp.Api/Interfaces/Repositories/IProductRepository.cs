@@ -1,6 +1,7 @@
 ﻿using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Shared.DTOs;
+using ReShareBlazorApp.Shared.Enums;
 
 namespace ReShareBlazorApp.Api.Interfaces.Repositories
 {
@@ -15,7 +16,9 @@ namespace ReShareBlazorApp.Api.Interfaces.Repositories
             string? location = null,
             decimal? minPrice = null,
             decimal? maxPrice = null,
-            string? sort = null);
+            string? sort = null,
+            int? userId = null,
+            ProductType? type = null);
 
         Task<bool> UpdateProductAsync(int productId, int userId, ProductUpdateDTO product);
         Task<bool> DeleteProductAsync(int productId, int userId);

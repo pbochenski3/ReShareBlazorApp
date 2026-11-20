@@ -3,6 +3,7 @@ using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Shared.DTOs;
+using ReShareBlazorApp.Shared.Enums;
 
 namespace ReShareBlazorApp.Api.Repositories
 {
@@ -85,11 +86,24 @@ namespace ReShareBlazorApp.Api.Repositories
     string? location = null,
     decimal? minPrice = null,
     decimal? maxPrice = null,
-    string? sort = null)
+    string? sort = null,
+    int? userId = null,
+    ProductType? type = null)
         {
             try
             {
-                var query = _context.Products.AsNoTracking().AsQueryable();
+                var query = _context.Products
+                    .AsNoTracking()
+                    .Where(p => !p.isDeleted)
+                    .AsQueryable();
+                if (userId.HasValue)
+                {
+                    query = query.Where(p => p.UserId == userId.Value);
+                }
+                if (type.HasValue)
+                {
+                    query = query.Where(p => p.Type == type.Value);
+                }
                 if (!string.IsNullOrWhiteSpace(search))
                 {
                     var phrase = search.Trim().ToLower();
