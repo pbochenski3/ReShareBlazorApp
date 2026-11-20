@@ -1,4 +1,5 @@
 ﻿@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Shared.Enums
 
 <div class="looking-card">
 
@@ -33,6 +34,11 @@
 
             <div>
                 <i class="fa-regular fa-calendar"></i>
+                
+                Stan produktu: @GetConditionName(Product.Condition)
+            </div>
+            <div>
+                <i class="fa-regular fa-calendar"></i>
                 Termin: @Product.ExpiresAt.ToString("dd.MM.yyyy")
             </div>
 
@@ -62,4 +68,14 @@
 @code {
     [Parameter]
     public ProductDTO Product { get; set; } = default!;
+    private string GetConditionName(ProductCondition condition)
+    {
+        return condition switch
+        {
+            ProductCondition.New => "Nowy",
+            ProductCondition.Used => "Używany",
+            ProductCondition.Damaged => "Uszkodzony",
+            _ => condition.ToString()
+        };
+    }
 }
