@@ -1,5 +1,5 @@
-﻿
-@page "/details/{ProductId:int}"
+﻿@page "/details/{ProductId:int}"
+@using System.Net.Http.Headers
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReShareBlazorApp.Shared.DTOs
@@ -15,7 +15,6 @@
 @inject ReportApiService reportApi
 @inject NotificationService notify
 @inject RecentlyViewedApiService RecentlyViewedApi
-@inject IJSRuntime JS
 
 <div class="details-page">
     <div class="details-container">
@@ -368,6 +367,7 @@
     public ProductDTO? Product { get; set; }
     public bool IsLoading { get; set; } = true;
     private bool isFollowing = false;
+    private string? followMessage;
     private bool IsDeleteDialogVisible { get; set; }
     private bool IsDeleting { get; set; }
 
@@ -443,7 +443,6 @@
 
         try
         {
-            // Szukamy tokenu w najpopularniejszych kluczach w localStorage oraz sessionStorage
             var keys = new[] { "authToken", "token", "jwt", "jwtToken", "accessToken" };
             string? token = null;
 
