@@ -12,6 +12,12 @@ namespace ReShareBlazorApp.Web.ApiServices
         }
         public async Task<LoginResponse?> LoginAsync(LoginModel model)
         {
+            var (resp, _) = await LoginWithDetailsAsync(model);
+            return resp;
+        }
+
+        public async Task<(LoginResponse? Response, string? ErrorMessage)> LoginWithDetailsAsync(LoginModel model)
+        {
             var request = new LoginRequest
             {
                 Email = model.Email,
@@ -22,8 +28,24 @@ namespace ReShareBlazorApp.Web.ApiServices
                 request
                 );
             if (!response.IsSuccessStatusCode)
-                return null;
-            return await response.Content.ReadFromJsonAsync<LoginResponse>();
+            {
+                try
+                {
+                    var err = await response.Content.ReadFromJsonAsync<LoginErrorBody>();
+                    if (!string.IsNullOrWhiteSpace(err?.Message))
+                        return (null, err.Message);
+                }
+                catch { }
+
+                return (null, "Nieprawidłowy e-mail lub hasło!");
+            }
+            var loginResp = await response.Content.ReadFromJsonAsync<LoginResponse>();
+            return (loginResp, null);
+        }
+
+        private class LoginErrorBody
+        {
+            public string? Message { get; set; }
         }
         public async Task<RegisterResponse?> RegisterAsync(RegisterModel model)
         {

@@ -51,6 +51,51 @@ namespace ReShareBlazorApp.Web.ApiServices
             return response.IsSuccessStatusCode;
         }
 
+        public async Task<bool> SetTemporaryBlockAsync(int userId, int hours, DateTimeOffset? blockedUntil = null)
+        {
+            using var request = await CreateRequestAsync(
+                HttpMethod.Post,
+                $"api/admin/users/{userId}/temporary-block");
+            request.Content = JsonContent.Create(new TemporaryBlockRequest
+            {
+                Hours = hours,
+                BlockedUntil = blockedUntil
+            });
+            var response = await _httpClient.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> UnblockUserAsync(int userId)
+        {
+            using var request = await CreateRequestAsync(
+                HttpMethod.Post,
+                $"api/admin/users/{userId}/unblock");
+            var response = await _httpClient.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> WarnUserAsync(int userId, string message)
+        {
+            using var request = await CreateRequestAsync(
+                HttpMethod.Post,
+                $"api/admin/users/{userId}/warn");
+            request.Content = JsonContent.Create(new WarnUserRequest
+            {
+                Message = message
+            });
+            var response = await _httpClient.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> ClearWarningAsync(int userId)
+        {
+            using var request = await CreateRequestAsync(
+                HttpMethod.Post,
+                $"api/admin/users/{userId}/clear-warning");
+            var response = await _httpClient.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
         public async Task<List<ProductDTO>> GetProductsAsync()
         {
             using var request = await CreateRequestAsync(HttpMethod.Get, "api/admin/products");

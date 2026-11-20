@@ -3,10 +3,10 @@
 @rendermode InteractiveServer
 @inject NavigationManager nav
 <div class="login-container">
-    @if(Error == "1")
+    @if(!string.IsNullOrEmpty(Error))
     {
         <div class="login-error">
-            Nieprawidłowy e-mail lub hasło!
+            @(Error == "1" ? "Nieprawidłowy e-mail lub hasło!" : Error)
         </div>
     }
     <form method="post" action="/auth/login">

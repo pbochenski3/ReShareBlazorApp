@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Api.Middleware;
 using ReShareBlazorApp.Api.Repositories;
 using ReShareBlazorApp.Api.Services;
 using System.Text;
@@ -87,6 +88,7 @@ app.UseStaticFiles(new StaticFileOptions
 });
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<UserBlockCheckMiddleware>();
 app.MapControllers();
 
 app.Run();

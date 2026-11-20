@@ -52,22 +52,69 @@ else
                         </td>
                         <td>@user.Email</td>
                         <td>
-                            @if (user.IsActive)
+                            @if (!user.IsActive)
                             {
-                                <span class="admin-badge admin-badge-ok">aktywny</span>
+                                <span class="admin-badge admin-badge-bad">zablokowany na stałe</span>
+                            }
+                            else if (user.IsTemporarilyBlocked)
+                            {
+                                <span class="admin-badge admin-badge-temp" title="Blokada do @user.LockoutEnd?.ToLocalTime().ToString("dd.MM.yyyy HH:mm")">
+                                    zablokowany do @user.LockoutEnd?.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                </span>
                             }
                             else
                             {
-                                <span class="admin-badge admin-badge-bad">zablokowany</span>
+                                <span class="admin-badge admin-badge-ok">aktywny</span>
+                            }
+
+                            @if (user.HasWarning)
+                            {
+                                <span class="admin-badge admin-badge-warn" title="@user.WarningMessage">
+                                    ⚠️ Ostrzeżony
+                                </span>
                             }
                         </td>
                         <td class="admin-actions">
                             @if (user.Id != currentUserId)
                             {
-                                <button class="admin-btn @(user.IsActive ? "admin-btn-danger" : "")"
-                                        @onclick="() => ToggleActive(user)">
-                                    @(user.IsActive ? "Zablokuj" : "Odblokuj")
-                                </button>
+                                <div class="admin-actions-group">
+                                    @if (user.IsBlocked)
+                                    {
+                                        <button class="admin-btn admin-btn-ok"
+                                                @onclick="() => UnblockUser(user)"
+                                                title="Odblokuj użytkownika">
+                                            Odblokuj
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="admin-btn admin-btn-danger"
+                                                @onclick="() => BlockPermanently(user)"
+                                                title="Zablokuj użytkownika na stałe">
+                                            Zablokuj
+                                        </button>
+                                        <button class="admin-btn admin-btn-temp"
+                                                @onclick="() => OpenTempBlockModal(user)"
+                                                title="Zablokuj użytkownika na określony czas">
+                                            Zablokuj czasowo
+                                        </button>
+                                    }
+
+                                    <button class="admin-btn admin-btn-warning"
+                                            @onclick="() => OpenWarnModal(user)"
+                                            title="Wyślij ostrzeżenie użytkownikowi">
+                                        @(user.HasWarning ? "Edytuj ostrzeżenie" : "Ostrzeż")
+                                    </button>
+
+                                    @if (user.HasWarning)
+                                    {
+                                        <button class="admin-btn admin-btn-ghost"
+                                                @onclick="() => ClearWarning(user)"
+                                                title="Usuń aktywne ostrzeżenie">
+                                            Usuń ostrzeżenie
+                                        </button>
+                                    }
+                                </div>
                             }
                         </td>
                     </tr>
@@ -77,11 +124,92 @@ else
     </div>
 }
 
+@if (tempBlockUser != null)
+{
+    <div class="admin-modal-backdrop" @onclick="CloseTempBlockModal">
+        <div class="admin-modal" @onclick:stopPropagation="true">
+            <div class="admin-modal-header">
+                <h3>Tymczasowa blokada: @tempBlockUser.UserName</h3>
+                <button class="admin-modal-close" @onclick="CloseTempBlockModal">✕</button>
+            </div>
+            <div class="admin-modal-body">
+                <p class="admin-muted">Wybierz na jaki czas chcesz zablokować użytkownika. W tym okresie użytkownik nie będzie mógł korzystać z serwisu. Po upływie tego czasu odblokuje się automatycznie.</p>
+
+                <div class="admin-form-group">
+                    <label class="admin-form-label">Okres blokady:</label>
+                    <select class="admin-form-select" @bind="selectedDuration">
+                        <option value="1">1 godzina</option>
+                        <option value="6">6 godzin</option>
+                        <option value="12">12 godzin</option>
+                        <option value="24">24 godziny (1 dzień)</option>
+                        <option value="72">3 dni (72 godziny)</option>
+                        <option value="168">7 dni (1 tydzień)</option>
+                        <option value="720">30 dni (1 miesiąc)</option>
+                        <option value="custom">Własna data i godzina</option>
+                    </select>
+                </div>
+
+                @if (selectedDuration == "custom")
+                {
+                    <div class="admin-form-group">
+                        <label class="admin-form-label">Zablokuj do dnia i godziny:</label>
+                        <input type="datetime-local" class="admin-form-input" @bind="customBlockUntil" />
+                    </div>
+                }
+            </div>
+            <div class="admin-modal-footer">
+                <button class="admin-btn" @onclick="CloseTempBlockModal">Anuluj</button>
+                <button class="admin-btn admin-btn-danger" @onclick="ApplyTempBlock">Zastosuj blokadę</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (warnUser != null)
+{
+    <div class="admin-modal-backdrop" @onclick="CloseWarnModal">
+        <div class="admin-modal" @onclick:stopPropagation="true">
+            <div class="admin-modal-header">
+                <h3>Ostrzeżenie dla: @warnUser.UserName</h3>
+                <button class="admin-modal-close" @onclick="CloseWarnModal">✕</button>
+            </div>
+            <div class="admin-modal-body">
+                <p class="admin-muted">Treść ostrzeżenia zostanie wyświetlona użytkownikowi w widocznym banerze na górze strony, informując o możliwej blokadzie konta.</p>
+
+                <div class="admin-form-group">
+                    <label class="admin-form-label">Treść ostrzeżenia:</label>
+                    <textarea class="admin-form-textarea" rows="3" @bind="warnMessageText"
+                              placeholder="Wpisz treść ostrzeżenia..."></textarea>
+                </div>
+
+                <div class="admin-chips">
+                    <span class="admin-chip" @onclick='() => warnMessageText = "Twoje konto narusza zasady serwisu. W przypadku kolejnych naruszeń zostanie natychmiast zablokowane."'>Naruszenie zasad</span>
+                    <span class="admin-chip" @onclick='() => warnMessageText = "Zgłoszono podejrzaną aktywność w Twoich ogłoszeniach. Upewnij się, że są zgodne z regulaminem, w przeciwnym razie konto zostanie zablokowane."'>Podejrzane ogłoszenia</span>
+                    <span class="admin-chip" @onclick='() => warnMessageText = "Naruszenie zasad kultury osobistej. Kolejne niestosowne zachowanie poskutkuje blokadą konta."'>Kultura</span>
+                </div>
+            </div>
+            <div class="admin-modal-footer">
+                <button class="admin-btn" @onclick="CloseWarnModal">Anuluj</button>
+                <button class="admin-btn admin-btn-warning" @onclick="ApplyWarning">Wyślij ostrzeżenie</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<AdminUserDTO>? users;
     private string search = "";
     private string? message;
     private int currentUserId;
+
+    // Stan modala blokady czasowej
+    private AdminUserDTO? tempBlockUser;
+    private string selectedDuration = "24";
+    private DateTime customBlockUntil = DateTime.Now.AddDays(1);
+
+    // Stan modala ostrzeżenia
+    private AdminUserDTO? warnUser;
+    private string warnMessageText = "";
 
     private IEnumerable<AdminUserDTO> Filtered =>
         users!.Where(u =>
@@ -97,13 +225,133 @@ else
         users = await adminApi.GetUsersAsync();
     }
 
-    private async Task ToggleActive(AdminUserDTO user)
+    private async Task BlockPermanently(AdminUserDTO user)
     {
         message = null;
-        var ok = await adminApi.SetUserActiveAsync(user.Id, !user.IsActive);
+        var ok = await adminApi.SetUserActiveAsync(user.Id, false);
         if (ok)
-            user.IsActive = !user.IsActive;
+        {
+            user.IsActive = false;
+            user.LockoutEnd = null;
+            message = $"Użytkownik {user.UserName} został zablokowany na stałe.";
+        }
         else
-            message = "Nie udało się zmienić statusu użytkownika.";
+        {
+            message = "Nie udało się zablokować użytkownika.";
+        }
+    }
+
+    private async Task UnblockUser(AdminUserDTO user)
+    {
+        message = null;
+        var ok = await adminApi.UnblockUserAsync(user.Id);
+        if (ok)
+        {
+            user.IsActive = true;
+            user.LockoutEnd = null;
+            message = $"Użytkownik {user.UserName} został pomyślnie odblokowany.";
+        }
+        else
+        {
+            message = "Nie udało się odblokować użytkownika.";
+        }
+    }
+
+    private void OpenTempBlockModal(AdminUserDTO user)
+    {
+        tempBlockUser = user;
+        selectedDuration = "24";
+        customBlockUntil = DateTime.Now.AddDays(1);
+    }
+
+    private void CloseTempBlockModal()
+    {
+        tempBlockUser = null;
+    }
+
+    private async Task ApplyTempBlock()
+    {
+        if (tempBlockUser == null) return;
+        message = null;
+
+        int hours = 0;
+        DateTimeOffset? customUntil = null;
+
+        if (selectedDuration == "custom")
+        {
+            if (customBlockUntil <= DateTime.Now)
+            {
+                message = "Wybrana data musi być w przyszłości.";
+                return;
+            }
+            customUntil = new DateTimeOffset(customBlockUntil);
+        }
+        else
+        {
+            int.TryParse(selectedDuration, out hours);
+        }
+
+        var ok = await adminApi.SetTemporaryBlockAsync(tempBlockUser.Id, hours, customUntil);
+        if (ok)
+        {
+            tempBlockUser.LockoutEnd = customUntil ?? DateTimeOffset.UtcNow.AddHours(hours);
+            tempBlockUser.IsActive = true;
+            message = $"Użytkownik {tempBlockUser.UserName} został zablokowany do {tempBlockUser.LockoutEnd?.ToLocalTime().ToString("dd.MM.yyyy HH:mm")}.";
+            CloseTempBlockModal();
+        }
+        else
+        {
+            message = "Nie udało się zablokować użytkownika czasowo.";
+        }
+    }
+
+    private void OpenWarnModal(AdminUserDTO user)
+    {
+        warnUser = user;
+        warnMessageText = !string.IsNullOrWhiteSpace(user.WarningMessage)
+            ? user.WarningMessage
+            : "Twoje konto narusza zasady serwisu. W przypadku kolejnych naruszeń zostanie natychmiast zablokowane.";
+    }
+
+    private void CloseWarnModal()
+    {
+        warnUser = null;
+    }
+
+    private async Task ApplyWarning()
+    {
+        if (warnUser == null) return;
+        message = null;
+
+        var text = string.IsNullOrWhiteSpace(warnMessageText)
+            ? "Twoje konto narusza zasady serwisu. W przypadku kolejnych naruszeń zostanie natychmiast zablokowane."
+            : warnMessageText.Trim();
+
+        var ok = await adminApi.WarnUserAsync(warnUser.Id, text);
+        if (ok)
+        {
+            warnUser.WarningMessage = text;
+            message = $"Wysłano ostrzeżenie do użytkownika {warnUser.UserName}.";
+            CloseWarnModal();
+        }
+        else
+        {
+            message = "Nie udało się zapisać ostrzeżenia.";
+        }
+    }
+
+    private async Task ClearWarning(AdminUserDTO user)
+    {
+        message = null;
+        var ok = await adminApi.ClearWarningAsync(user.Id);
+        if (ok)
+        {
+            user.WarningMessage = null;
+            message = $"Usunięto ostrzeżenie użytkownika {user.UserName}.";
+        }
+        else
+        {
+            message = "Nie udało się usunąć ostrzeżenia.";
+        }
     }
 }

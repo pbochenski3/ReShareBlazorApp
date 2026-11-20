@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Security.Claims;
@@ -11,9 +13,29 @@ namespace ReShareBlazorApp.Api.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
-        public UserController(IUserService userService)
+        private readonly UserManager<User> _userManager;
+
+        public UserController(IUserService userService, UserManager<User> userManager)
         {
             _userService = userService;
+            _userManager = userManager;
+        }
+
+        [Authorize]
+        [HttpGet("my-status")]
+        public async Task<ActionResult<UserStatusDTO>> GetMyStatus()
+        {
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user == null) return NotFound();
+
+            return Ok(new UserStatusDTO
+            {
+                Id = user.Id,
+                IsActive = user.IsActive,
+                LockoutEnd = user.LockoutEnd,
+                WarningMessage = user.PhoneNumber
+            });
         }
 
         [HttpGet]

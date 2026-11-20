@@ -24,9 +24,11 @@ public class AdminController : ControllerBase
             .Select(u => new AdminUserDTO
             {
                 Id = u.Id,
-                UserName = u.UserName,
-                Email = u.Email,
+                UserName = u.UserName ?? "",
+                Email = u.Email ?? "",
                 IsActive = u.IsActive,
+                LockoutEnd = u.LockoutEnd,
+                WarningMessage = u.PhoneNumber
             })
             .ToListAsync();
         return Ok(users);
@@ -39,7 +41,7 @@ public class AdminController : ControllerBase
         return Ok(new AdminStatsDTO
         {
             TotalUsers = await _context.Users.CountAsync(),
-            ActiveUsers = await _context.Users.CountAsync(u => u.IsActive),
+            ActiveUsers = await _context.Users.CountAsync(u => u.IsActive && (!u.LockoutEnd.HasValue || u.LockoutEnd.Value <= DateTimeOffset.UtcNow)),
             TotalProducts = await _context.Products.CountAsync(),
             ProductsLast7Days = await _context.Products.CountAsync(p => p.AddedAt >= weekAgo)
         });
@@ -49,12 +51,83 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> SetUserActive(int id, [FromQuery] bool value)
     {
         if (User.FindFirstValue(ClaimTypes.NameIdentifier) == id.ToString())
-            return BadRequest();   // nie blokuj samego siebie
+            return BadRequest(new { message = "Nie możesz zablokować samego siebie." });
 
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
         if (user == null) return NotFound();
 
         user.IsActive = value;
+        if (value)
+        {
+            user.LockoutEnd = null;
+        }
+        await _context.SaveChangesAsync();
+        return Ok();
+    }
+
+    [HttpPost("users/{id:int}/temporary-block")]
+    public async Task<IActionResult> SetTemporaryBlock(int id, [FromBody] TemporaryBlockRequest request)
+    {
+        if (User.FindFirstValue(ClaimTypes.NameIdentifier) == id.ToString())
+            return BadRequest(new { message = "Nie możesz zablokować samego siebie." });
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null) return NotFound();
+
+        DateTimeOffset targetDate;
+        if (request.BlockedUntil.HasValue && request.BlockedUntil.Value > DateTimeOffset.UtcNow)
+        {
+            targetDate = request.BlockedUntil.Value;
+        }
+        else if (request.Hours > 0)
+        {
+            targetDate = DateTimeOffset.UtcNow.AddHours(request.Hours);
+        }
+        else
+        {
+            return BadRequest(new { message = "Podaj prawidłowy czas blokady." });
+        }
+
+        user.LockoutEnabled = true;
+        user.LockoutEnd = targetDate;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { lockoutEnd = user.LockoutEnd });
+    }
+
+    [HttpPost("users/{id:int}/unblock")]
+    public async Task<IActionResult> UnblockUser(int id)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null) return NotFound();
+
+        user.IsActive = true;
+        user.LockoutEnd = null;
+        await _context.SaveChangesAsync();
+        return Ok();
+    }
+
+    [HttpPost("users/{id:int}/warn")]
+    public async Task<IActionResult> WarnUser(int id, [FromBody] WarnUserRequest request)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null) return NotFound();
+
+        user.PhoneNumber = string.IsNullOrWhiteSpace(request.Message)
+            ? "Twoje konto narusza zasady serwisu. W przypadku dalszych naruszeń regulaminu zostanie zablokowane."
+            : request.Message.Trim();
+
+        await _context.SaveChangesAsync();
+        return Ok(new { warningMessage = user.PhoneNumber });
+    }
+
+    [HttpPost("users/{id:int}/clear-warning")]
+    public async Task<IActionResult> ClearWarning(int id)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null) return NotFound();
+
+        user.PhoneNumber = null;
         await _context.SaveChangesAsync();
         return Ok();
     }

@@ -21,10 +21,11 @@ namespace ReShareBlazorApp.Web.Endpoints
                 AuthApiService authApiService,
                 IConfiguration configuration) =>
             {
-                var result = await authApiService.LoginAsync(model);
+                var (result, errorMessage) = await authApiService.LoginWithDetailsAsync(model);
                 if (result is null)
                 {
-                    return Results.Redirect("/login?error=1");
+                    var msg = string.IsNullOrEmpty(errorMessage) ? "Nieprawidłowy e-mail lub hasło!" : errorMessage;
+                    return Results.Redirect($"/login?error={Uri.EscapeDataString(msg)}");
                 }
                 var tokenHandler = new JwtSecurityTokenHandler();
                 var validationParameters = new TokenValidationParameters
@@ -55,7 +56,7 @@ namespace ReShareBlazorApp.Web.Endpoints
                 }
                 catch (SecurityTokenException)
                 {
-                    return Results.Redirect("/login?error=1");
+                    return Results.Redirect("/login?error=" + Uri.EscapeDataString("Błąd weryfikacji tokenu sesji."));
                 }
                 var identity = (ClaimsIdentity)principal.Identity!;
                 identity.AddClaim(new Claim("access_token", result.Token));
