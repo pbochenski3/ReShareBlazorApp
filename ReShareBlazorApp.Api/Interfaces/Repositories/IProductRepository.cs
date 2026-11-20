@@ -26,5 +26,10 @@ namespace ReShareBlazorApp.Api.Interfaces.Repositories
         Task<Product?> GetProductById(int id);
         Task<Dictionary<int, List<int>>> GetImageIdsAsync(IEnumerable<int> productIds);
         Task<ProductImage?> GetImageAsync(int imageId);
+
+        // Ulubione. ToggleFavoriteAsync: true = dodano, false = usunięto, null = ogłoszenie nie istnieje
+        Task<bool?> ToggleFavoriteAsync(int userId, int productId);
+        Task<List<int>> GetFavoriteProductIdsAsync(int userId);
+        Task<List<Product>> GetFavoriteProductsAsync(int userId);
     }
 }

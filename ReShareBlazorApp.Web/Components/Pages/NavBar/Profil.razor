@@ -8,6 +8,8 @@
 @using ReShareBlazorApp.Web.Components.Elements
 @inject UserApiService userApi
 @inject AuthenticationStateProvider AuthStateProvider
+@inject FavoritesState Favorites
+@implements IDisposable
 
 @if (exist)
 {
@@ -50,17 +52,40 @@
                 <div class="profile-stat"><strong>5</strong><span>Ogłoszenia</span></div>
                 <div class="profile-stat"><strong>2</strong><span>Poszukiwania</span></div>
                 <div class="profile-stat"><strong>9</strong><span>Transakcje</span></div>
-                <div class="profile-stat"><strong>14</strong><span>Ulubione</span></div>
+                @if (isOwner)
+                {
+                    <div class="profile-stat"><strong>@Favorites.Count</strong><span>Ulubione</span></div>
+                }
             </div>
 
             <!-- Zakładki -->
             <div class="profile-tabs" role="tablist">
-                <button class="profile-tab active" type="button" role="tab">Moje ogłoszenia</button>
-                <button class="profile-tab" type="button" role="tab">Moje poszukiwania</button>
-                <button class="profile-tab" type="button" role="tab">Ulubione</button>
-                <button class="profile-tab" type="button" role="tab">Transakcje</button>
-                <button class="profile-tab" type="button" role="tab">Opinie</button>
+                <button class="profile-tab @(activeTab == "ads" ? "active" : "")" type="button" role="tab"
+                        aria-selected="@(activeTab == "ads" ? "true" : "false")"
+                        @onclick='() => activeTab = "ads"'>Moje ogłoszenia</button>
+                <button class="profile-tab @(activeTab == "wanted" ? "active" : "")" type="button" role="tab"
+                        aria-selected="@(activeTab == "wanted" ? "true" : "false")"
+                        @onclick='() => activeTab = "wanted"'>Moje poszukiwania</button>
+                @if (isOwner)
+                {
+                    @* ulubione są prywatne - zakładkę widzi tylko właściciel profilu *@
+                    <button class="profile-tab @(activeTab == "favorites" ? "active" : "")" type="button" role="tab"
+                            aria-selected="@(activeTab == "favorites" ? "true" : "false")"
+                            @onclick='() => activeTab = "favorites"'>Ulubione</button>
+                }
+                <button class="profile-tab @(activeTab == "deals" ? "active" : "")" type="button" role="tab"
+                        aria-selected="@(activeTab == "deals" ? "true" : "false")"
+                        @onclick='() => activeTab = "deals"'>Transakcje</button>
+                <button class="profile-tab @(activeTab == "reviews" ? "active" : "")" type="button" role="tab"
+                        aria-selected="@(activeTab == "reviews" ? "true" : "false")"
+                        @onclick='() => activeTab = "reviews"'>Opinie</button>
             </div>
+
+            <!-- Ulubione -->
+            @if (activeTab == "favorites" && isOwner)
+            {
+                <FavoriteListings />
+            }
 
             <!-- Moje ogłoszenia -->
             @* <div class="home-cards">
@@ -100,6 +125,23 @@ else
     private string Initials => string.IsNullOrWhiteSpace(Username)
         ? "?" : Username[..Math.Min(2, Username.Length)].ToUpper();
     private bool isOwner;
+    private string activeTab = "ads";
+
+    protected override void OnInitialized()
+    {
+        Favorites.Changed += OnFavoritesChanged;
+    }
+
+    private void OnFavoritesChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Favorites.Changed -= OnFavoritesChanged;
+    }
+
     protected override async Task OnParametersSetAsync()
     {
         profile = await userApi.GetProfileAsync(Username);
@@ -107,5 +149,9 @@ else
         avatarUrl = userApi.GetAvatarUrl(profile?.AvatarUrl);
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
         isOwner = string.Equals(state.User.FindFirst(ClaimTypes.Name)?.Value, Username, StringComparison.OrdinalIgnoreCase);
+        if (isOwner)
+            await Favorites.EnsureLoadedAsync();
+        else if (activeTab == "favorites")
+            activeTab = "ads";
     }
 }   

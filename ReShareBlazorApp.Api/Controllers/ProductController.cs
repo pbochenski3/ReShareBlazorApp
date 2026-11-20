@@ -81,6 +81,44 @@ namespace ReShareBlazorApp.Api.Controllers
             return NoContent();
         }
 
+        [Authorize]
+        [HttpGet("favorites")]
+        public async Task<ActionResult<List<ProductDTO>>> GetFavorites()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            return Ok(await _productService.GetFavoritesAsync(currentUserId));
+        }
+
+        [Authorize]
+        [HttpGet("favorites/ids")]
+        public async Task<ActionResult<List<int>>> GetFavoriteIds()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            return Ok(await _productService.GetFavoriteIdsAsync(currentUserId));
+        }
+
+        // Przełącza gwiazdkę: dodaje do ulubionych albo usuwa z ulubionych.
+        [Authorize]
+        [HttpPost("{id:int}/favorite")]
+        public async Task<ActionResult<FavoriteToggleDTO>> ToggleFavorite(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            var isFavorite = await _productService.ToggleFavoriteAsync(currentUserId, id);
+            if (isFavorite == null)
+                return NotFound();
+
+            return Ok(new FavoriteToggleDTO { IsFavorite = isFavorite.Value });
+        }
+
         [HttpGet("stats")]
         public async Task<ActionResult<CompletedStatsDTO>> GetCompletedStats()
         {

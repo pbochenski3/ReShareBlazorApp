@@ -12,6 +12,8 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ReportApiService reportApi
 @inject NotificationService notify
+@inject FavoritesState Favorites
+@implements IDisposable
 
 <div class="details-page">
     <div class="details-container">
@@ -235,6 +237,18 @@
                             ID użytkownika: @Product.UserId
                         </div>
 
+                        <!-- ULUBIONE: żółta gwiazdka (pełna = w ulubionych, pusta z obrysem = nie) -->
+                        <button type="button"
+                                class="details-fav-button @(IsFavorite ? "is-active" : "")"
+                                aria-pressed="@(IsFavorite ? "true" : "false")"
+                                disabled="@isTogglingFavorite"
+                                @onclick="ToggleFavoriteAsync">
+                            <svg class="fav-star" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                            <span>@(IsFavorite ? "Usuń z ulubionych" : "Dodaj do ulubionych")</span>
+                        </button>
+
                         <!-- PRZYCISK OBSERWUJ W STYLU VINTED -->
                         <button class="btn w-100 mb-3 @(isFollowing ? "btn-outline-secondary" : "btn-success")" style="font-weight: 600; padding: 10px;" @onclick="ToggleFollowUser">
                             @(isFollowing ? "✓ Obserwujesz" : "+ Obserwuj użytkownika")
@@ -414,6 +428,49 @@
 
     private int selectedImageIndex;
 
+    private bool isTogglingFavorite;
+    private bool IsFavorite => Product != null && Favorites.IsFavorite(Product.ProductId);
+
+    protected override void OnInitialized()
+    {
+        Favorites.Changed += OnFavoritesChanged;
+    }
+
+    private void OnFavoritesChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleFavoriteAsync()
+    {
+        if (Product == null || isTogglingFavorite)
+            return;
+
+        // Ulubione tylko dla zalogowanych - reszta trafia na logowanie
+        if (!await Favorites.IsLoggedInAsync())
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        isTogglingFavorite = true;
+        try
+        {
+            var result = await Favorites.ToggleAsync(Product.ProductId);
+            if (result == null)
+                notify.AddNotification("Ulubione", "Nie udało się zmienić ulubionych. Spróbuj ponownie.");
+        }
+        finally
+        {
+            isTogglingFavorite = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        Favorites.Changed -= OnFavoritesChanged;
+    }
+
     private static string GetImageUrl(int imageId) => $"/images/{imageId}";
 
     private bool isReporting;
@@ -445,6 +502,7 @@
         {
             await LoadReviews();
             await CheckFollowStatus();
+            await Favorites.EnsureLoadedAsync();
         }
 
         IsLoading = false;
