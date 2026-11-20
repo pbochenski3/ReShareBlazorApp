@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 
 namespace ReShareBlazorApp.Web.ApiServices
 {
@@ -40,6 +41,54 @@ namespace ReShareBlazorApp.Web.ApiServices
             var response = await _httpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode) return new();
             return await response.Content.ReadFromJsonAsync<List<AdminUserDTO>>() ?? new();
+        }
+
+        public async Task<(bool success, string? error, AdminUserDTO? createdUser)> CreateUserAsync(AdminCreateUserRequest model)
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Post, "api/admin/users");
+            request.Content = JsonContent.Create(model);
+            var response = await _httpClient.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                var user = await response.Content.ReadFromJsonAsync<AdminUserDTO>();
+                return (true, null, user);
+            }
+
+            string? errorMessage = null;
+            try
+            {
+                var errorObj = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+                if (errorObj != null && errorObj.TryGetValue("message", out var msg))
+                {
+                    errorMessage = msg;
+                }
+            }
+            catch
+            {
+                errorMessage = "Wystąpił błąd podczas dodawania użytkownika.";
+            }
+
+            return (false, errorMessage ?? "Wystąpił błąd podczas dodawania użytkownika.", null);
+        }
+
+        public async Task<(bool success, string? error)> SetUserRoleAsync(int userId, bool isAdmin)
+        {
+            using var request = await CreateRequestAsync(
+                HttpMethod.Post,
+                $"api/admin/users/{userId}/role?isAdmin={isAdmin.ToString().ToLower()}");
+            var response = await _httpClient.SendAsync(request);
+            if (response.IsSuccessStatusCode) return (true, null);
+
+            string? error = null;
+            try
+            {
+                var errorObj = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+                if (errorObj != null && errorObj.TryGetValue("message", out var msg))
+                    error = msg;
+            }
+            catch { }
+
+            return (false, error ?? "Nie udało się zmienić roli użytkownika.");
         }
 
         public async Task<bool> SetUserActiveAsync(int userId, bool isActive)
