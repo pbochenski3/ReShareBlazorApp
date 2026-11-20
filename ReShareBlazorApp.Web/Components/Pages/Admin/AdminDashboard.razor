@@ -1,0 +1,103 @@
+@page "/admin"
+@layout AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@attribute [Authorize(Roles = "Admin")]
+@inject AdminApiService adminApi
+
+<h1 class="admin-title">Dashboard</h1>
+
+@if (loading)
+{
+    <p class="admin-muted">Ładowanie...</p>
+}
+else if (stats is null)
+{
+    <div class="admin-alert">Nie udało się pobrać statystyk. Sprawdź, czy API działa.</div>
+}
+else
+{
+    <div class="admin-cards">
+        <div class="admin-card">
+            <span class="admin-card-label">Użytkownicy</span>
+            <strong class="admin-card-value">@stats.TotalUsers</strong>
+        </div>
+        <div class="admin-card">
+            <span class="admin-card-label">Aktywni użytkownicy</span>
+            <strong class="admin-card-value">@stats.ActiveUsers</strong>
+        </div>
+        <div class="admin-card">
+            <span class="admin-card-label">Ogłoszenia</span>
+            <strong class="admin-card-value">@stats.TotalProducts</strong>
+        </div>
+        <div class="admin-card">
+            <span class="admin-card-label">Nowe ogłoszenia (7 dni)</span>
+            <strong class="admin-card-value">@stats.ProductsLast7Days</strong>
+        </div>
+    </div>
+}
+
+<h2 class="admin-title" style="margin-top:2rem">Blokada awaryjna</h2>
+
+@if (!string.IsNullOrEmpty(lockError))
+{
+    <div class="admin-alert">@lockError</div>
+}
+
+@if (lockdown is null)
+{
+    <p class="admin-muted">Nie udało się pobrać stanu blokady.</p>
+}
+else
+{
+    <p>
+        Strona:
+        @if (lockdown.IsLocked)
+        {
+            <span class="admin-badge admin-badge-bad">ZABLOKOWANA – przerwa techniczna</span>
+        }
+        else
+        {
+            <span class="admin-badge admin-badge-ok">działa normalnie</span>
+        }
+    </p>
+
+    <button class="admin-btn @(lockdown.IsLocked ? "" : "admin-btn-danger")"
+            disabled="@lockBusy"
+            @onclick="Toggle">
+        @(lockdown.IsLocked ? "Odblokuj stronę" : "Zablokuj całą stronę")
+    </button>
+}
+
+@code {
+    private AdminStatsDTO? stats;
+    private LockdownDTO? lockdown;
+    private bool loading = true;
+    private bool lockBusy;
+    private string? lockError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        stats = await adminApi.GetStatsAsync();
+        lockdown = await adminApi.GetLockdownAsync();
+        loading = false;
+    }
+
+    private async Task Toggle()
+    {
+        if (lockdown is null)
+            return;
+
+        lockBusy = true;
+        lockError = null;
+
+        var target = new LockdownDTO { IsLocked = !lockdown.IsLocked };
+        if (await adminApi.SetLockdownAsync(target))
+            lockdown = target;
+        else
+            lockError = "Nie udało się zmienić stanu blokady.";
+
+        lockBusy = false;
+    }
+}

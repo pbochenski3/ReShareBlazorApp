@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using ReShareBlazorApp.Web.ApiServices;
 using ReShareBlazorApp.Web.Components;
 using ReShareBlazorApp.Web.Endpoints;
+using ReShareBlazorApp.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,6 +52,7 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseLockdown();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
