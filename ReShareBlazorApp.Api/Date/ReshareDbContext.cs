@@ -20,6 +20,8 @@ namespace ReShareBlazorApp.Api.Date
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<ContactMessage> ContactMessages { get; set; }
 		public DbSet<LockdownSettings> LockdownSettings { get; set; }
+        public DbSet<Badge> Badges { get; set; }
+        public DbSet<UserBadge> UserBadges { get; set; }
 
 
         public ReshareDbContext(DbContextOptions<ReshareDbContext> options)
@@ -103,6 +105,11 @@ namespace ReShareBlazorApp.Api.Date
 				entity.Property(x => x.CreatedAt).HasColumnType("datetime2");
 				entity.Property(x => x.ExpiresAt).HasColumnType("datetime2");
 			});
-		}
+
+            // Użytkownik może zdobyć daną odznakę tylko raz.
+            builder.Entity<UserBadge>()
+                .HasIndex(ub => new { ub.UserId, ub.BadgeId })
+                .IsUnique();
+        }
 	}
 }

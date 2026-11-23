@@ -58,6 +58,46 @@ namespace ReShareBlazorApp.Api.Services
                 "User",
                 user.Id);
 
+
+            try
+            {
+                var badge = await _context.Badges
+                    .FirstOrDefaultAsync(b => b.Name == "Nowy użytkownik");
+
+                if (badge != null)
+                {
+                    var alreadyEarned = await _context.UserBadges
+                        .AnyAsync(ub =>
+                            ub.UserId == user.Id &&
+                            ub.BadgeId == badge.Id);
+
+                    if (!alreadyEarned)
+                    {
+                        var userBadge = new UserBadge
+                        {
+                            UserId = user.Id,
+                            BadgeId = badge.Id,
+                            IsEarned = true,
+                            EarnedAt = DateTime.Now
+                        };
+
+                        await _context.UserBadges.AddAsync(userBadge);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Nie znaleziono odznaki Nowy użytkownik.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Nie udało się przyznać odznaki nowemu użytkownikowi.");
+            }
+
             return new RegisterResponse
             {
                 Message = "Konto zostało pomyślnie utworzone."

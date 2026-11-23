@@ -1,3 +1,4 @@
+
 @page "/user/{Username}"
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
@@ -11,6 +12,7 @@
 @inject NotificationApiService notificationApi
 @inject ReviewApiService reviewApi
 @inject ProductApiService productApi
+@inject BadgeApiService BadgeApiService
 @inject AuthenticationStateProvider AuthStateProvider
 
 @if (isLoadingProfile)
