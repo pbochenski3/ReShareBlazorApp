@@ -23,55 +23,99 @@ else if (!messages.Any())
 }
 else
 {
-    <div class="admin-table-wrap">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>Data</th>
-                    <th>Nadawca</th>
-                    <th>E-mail</th>
-                    <th>Tytuł</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in messages)
-                {
-                    <tr>
-                        <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
-                        <td>@item.Name</td>
-                        <td>@item.Email</td>
-                        <td><strong>@item.Subject</strong></td>
-                        <td>
-                            @if (item.IsRead)
-                            {
-                                <span class="admin-badge admin-badge-ok">przeczytana</span>
-                            }
-                            else
-                            {
-                                <span class="admin-badge admin-badge-info">nowa</span>
-                            }
-                        </td>
-                        <td class="admin-actions">
-                            <button type="button" class="admin-btn" @onclick="() => OpenMessage(item)">
-                                Pokaż wiadomość
-                            </button>
-                            @if (!item.IsRead)
-                            {
-                                <button type="button" class="admin-btn" @onclick="() => MarkRead(item)">
-                                    Oznacz jako przeczytaną
-                                </button>
-                            }
-                            <button type="button" class="admin-btn admin-btn-danger" @onclick="() => Delete(item)">
-                                Usuń
-                            </button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:16px;">
+        <input class="admin-search"
+               style="margin-bottom:0;"
+               placeholder="Szukaj po nadawcy, e-mailu, tytule lub treści..."
+               @bind="searchQuery"
+               @bind:event="oninput" />
+
+        <select class="admin-search"
+                style="margin-bottom:0; max-width:200px;"
+                @bind="statusFilter">
+            <option value="all">Status: Wszystkie</option>
+            <option value="unread">Status: Nowe</option>
+            <option value="read">Status: Przeczytane</option>
+        </select>
+
+        <select class="admin-search"
+                style="margin-bottom:0; max-width:260px;"
+                @bind="subjectFilter">
+            <option value="">Tytuł: Wszystkie</option>
+            @foreach (var subj in AvailableSubjects)
+            {
+                <option value="@subj">@subj</option>
+            }
+        </select>
+
+        @if (HasActiveFilters)
+        {
+            <button type="button" class="admin-btn" @onclick="ClearFilters">
+                Wyczyść filtry
+            </button>
+        }
     </div>
+
+    <p class="admin-muted" style="margin-bottom:12px;">
+        Wyświetlane: <strong>@FilteredMessages.Count()</strong> z @messages.Count
+    </p>
+
+    @if (!FilteredMessages.Any())
+    {
+        <p class="admin-muted">Brak wiadomości spełniających wybrane filtry.</p>
+    }
+    else
+    {
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Nadawca</th>
+                        <th>E-mail</th>
+                        <th>Tytuł</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in FilteredMessages)
+                    {
+                        <tr>
+                            <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@item.Name</td>
+                            <td>@item.Email</td>
+                            <td><strong>@item.Subject</strong></td>
+                            <td>
+                                @if (item.IsRead)
+                                {
+                                    <span class="admin-badge admin-badge-ok">przeczytana</span>
+                                }
+                                else
+                                {
+                                    <span class="admin-badge admin-badge-info">nowa</span>
+                                }
+                            </td>
+                            <td class="admin-actions">
+                                <button type="button" class="admin-btn" @onclick="() => OpenMessage(item)">
+                                    Pokaż wiadomość
+                                </button>
+                                @if (!item.IsRead)
+                                {
+                                    <button type="button" class="admin-btn" @onclick="() => MarkRead(item)">
+                                        Oznacz jako przeczytaną
+                                    </button>
+                                }
+                                <button type="button" class="admin-btn admin-btn-danger" @onclick="() => Delete(item)">
+                                    Usuń
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 }
 
 @if (selectedMessage is not null)
@@ -110,9 +154,56 @@ else
     private ContactMessageDTO? selectedMessage;
     private string? message;
 
+    private string searchQuery = "";
+    private string statusFilter = "all";
+    private string subjectFilter = "";
+
+    private IEnumerable<string> AvailableSubjects =>
+        messages?
+            .Select(m => m.Subject)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct()
+            .OrderBy(s => s)
+        ?? Enumerable.Empty<string>();
+
+    private bool HasActiveFilters =>
+        !string.IsNullOrWhiteSpace(searchQuery)
+        || statusFilter != "all"
+        || !string.IsNullOrWhiteSpace(subjectFilter);
+
+    private IEnumerable<ContactMessageDTO> FilteredMessages =>
+        (messages ?? Enumerable.Empty<ContactMessageDTO>()).Where(m =>
+        {
+            if (statusFilter == "unread" && m.IsRead) return false;
+            if (statusFilter == "read" && !m.IsRead) return false;
+
+            if (!string.IsNullOrWhiteSpace(subjectFilter)
+                && !string.Equals(m.Subject, subjectFilter, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var q = searchQuery.Trim();
+                var match = m.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
+                            || m.Email.Contains(q, StringComparison.OrdinalIgnoreCase)
+                            || m.Subject.Contains(q, StringComparison.OrdinalIgnoreCase)
+                            || m.Message.Contains(q, StringComparison.OrdinalIgnoreCase);
+                if (!match) return false;
+            }
+
+            return true;
+        });
+
     protected override async Task OnInitializedAsync()
     {
         messages = await contactApi.GetContactMessagesAsync() ?? new List<ContactMessageDTO>();
+    }
+
+    private void ClearFilters()
+    {
+        searchQuery = "";
+        statusFilter = "all";
+        subjectFilter = "";
     }
 
     private async Task OpenMessage(ContactMessageDTO item)
