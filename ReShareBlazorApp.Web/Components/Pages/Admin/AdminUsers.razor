@@ -13,10 +13,18 @@
 <div class="admin-header">
     <div class="admin-header-title-wrap">
         <h1 class="admin-title">Użytkownicy</h1>
-        <p class="admin-muted" style="margin: 0;">Zarządzaj kontami użytkowników oraz uprawnieniami administratora.</p>
+        <p class="admin-muted" style="margin: 0;">
+            Zarządzaj kontami użytkowników oraz uprawnieniami administratora.
+        </p>
     </div>
-    <button type="button" class="admin-btn admin-btn-primary" @onclick="OpenAddModal" disabled="@isActionInProgress">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+    <button type="button"
+            class="admin-btn admin-btn-primary"
+            @onclick="OpenAddModal"
+            disabled="@isActionInProgress">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
             <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
             <circle cx="8.5" cy="7" r="4"></circle>
             <line x1="20" y1="8" x2="20" y2="14"></line>
@@ -27,19 +35,25 @@
 </div>
 
 <input class="admin-search"
-       placeholder="Szukaj po nazwie, e-mailu lub roli..."
+       placeholder="Szukaj po nazwie, e-mailu, miejscowości lub roli..."
        @bind="search"
        @bind:event="oninput" />
 
 @if (!string.IsNullOrEmpty(errorMessage))
 {
     <div class="admin-alert">@errorMessage</div>
-    <div class="@(messageIsError ? "admin-alert" : "admin-alert-success")">@message</div>
 }
 
 @if (!string.IsNullOrEmpty(successMessage))
 {
     <div class="admin-alert-success">@successMessage</div>
+}
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="@(messageIsError ? "admin-alert" : "admin-alert-success")">
+        @message
+    </div>
 }
 
 @if (users is null)
@@ -72,6 +86,7 @@ else
                     <th style="text-align: right;">Akcje</th>
                 </tr>
             </thead>
+
             <tbody>
                 @foreach (var user in Filtered)
                 {
@@ -85,26 +100,39 @@ else
                                        @onchange="(e) => ToggleSelectUser(user.Id, e.Value)" />
                             }
                         </td>
+
                         <td>@user.Id</td>
+
                         <td>
                             <strong>@user.UserName</strong>
+
                             @if (user.Id == currentUserId)
                             {
                                 <span class="admin-badge admin-badge-info">to Ty</span>
                             }
                         </td>
+
                         <td>@user.Email</td>
-                        <td>@(string.IsNullOrWhiteSpace(user.City) ? "-" : user.City)</td>
+
                         <td>
                             @if (user.IsAdmin)
                             {
-                                <span class="admin-badge admin-badge-admin">Administrator</span>
+                                <span class="admin-badge admin-badge-admin">
+                                    Administrator
+                                </span>
                             }
                             else
                             {
-                                <span class="admin-badge admin-badge-user">Użytkownik</span>
+                                <span class="admin-badge admin-badge-user">
+                                    Użytkownik
+                                </span>
                             }
                         </td>
+
+                        <td>
+                            @(string.IsNullOrWhiteSpace(user.City) ? "-" : user.City)
+                        </td>
+
                         <td>
                             @if (user.IsActive)
                             {
@@ -115,10 +143,15 @@ else
                                 <span class="admin-badge admin-badge-bad">zablokowany</span>
                             }
                         </td>
+
                         <td class="admin-actions">
-                            @if (user.Id != currentUserId && !string.Equals(user.UserName, "admin12345", StringComparison.OrdinalIgnoreCase))
-                            {
-                                <div class="admin-actions-inner">
+                            <div class="admin-actions-inner">
+                                @if (user.Id != currentUserId &&
+                                    !string.Equals(
+                                        user.UserName,
+                                        "admin12345",
+                                        StringComparison.OrdinalIgnoreCase))
+                                {
                                     @if (user.IsAdmin)
                                     {
                                         <button class="admin-btn admin-btn-role admin-btn-role-demote"
@@ -143,26 +176,37 @@ else
                                             disabled="@isActionInProgress">
                                         @(user.IsActive ? "Zablokuj" : "Odblokuj")
                                     </button>
-                                </div>
-                            }
-                            <div class="admin-actions-gap">
-                                <button class="admin-btn admin-btn-sm" @onclick="() => OpenEditModal(user)">
+                                }
+
+                                <button class="admin-btn admin-btn-sm"
+                                        @onclick="() => OpenEditModal(user)">
                                     Edytuj
                                 </button>
-
-                                @if (user.Id != currentUserId)
-                                {
-                                    <button class="admin-btn admin-btn-sm @(user.IsActive ? "admin-btn-danger" : "")"
-                                            @onclick="() => ToggleActive(user)">
-                                        @(user.IsActive ? "Zablokuj" : "Odblokuj")
-                                    </button>
-                                }
                             </div>
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
+    </div>
+
+    <div class="admin-table-footer">
+        <div class="admin-selected-info">
+            @if (selectedUserIds.Any())
+            {
+                <span>
+                    Zaznaczono:
+                    <strong>@selectedUserIds.Count</strong>
+                    z @FilteredDeletable.Count()
+                </span>
+            }
+        </div>
+
+        <button class="admin-btn admin-btn-danger-solid"
+                disabled="@(!selectedUserIds.Any() || isDeleting)"
+                @onclick="OpenDeleteConfirmation">
+            Usuń @(selectedUserIds.Any() ? $"({selectedUserIds.Count})" : "")
+        </button>
     </div>
 }
 
@@ -174,10 +218,17 @@ else
             <div class="admin-modal-header">
                 <div>
                     <h2 class="admin-modal-title">Dodaj użytkownika</h2>
-                    <p class="admin-modal-desc">Wprowadź dane nowego konta oraz wybierz jego rolę.</p>
+                    <p class="admin-modal-desc">
+                        Wprowadź dane nowego konta oraz wybierz jego rolę.
+                    </p>
                 </div>
-                <button type="button" class="admin-modal-close" @onclick="CloseAddModal" aria-label="Zamknij">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                <button type="button"
+                        class="admin-modal-close"
+                        @onclick="CloseAddModal"
+                        aria-label="Zamknij">
+                    <svg width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
@@ -186,10 +237,15 @@ else
 
             @if (!string.IsNullOrEmpty(modalError))
             {
-                <div class="admin-alert" style="margin: 0;">@modalError</div>
+                <div class="admin-alert" style="margin: 0;">
+                    @modalError
+                </div>
             }
 
-            <form @onsubmit="HandleCreateUser" style="display: flex; flex-direction: column; gap: 14px;">
+            <form @onsubmit="HandleCreateUser"
+                  @onsubmit:preventDefault="true"
+                  style="display: flex; flex-direction: column; gap: 14px;">
+
                 <div class="admin-form-group">
                     <label for="new-username">Nazwa użytkownika *</label>
                     <input id="new-username"
@@ -217,28 +273,43 @@ else
                            placeholder="Minimum 8 znaków"
                            @bind="newModel.Password"
                            required />
-                    <span class="admin-form-hint">Wymagane min. 8 znaków, wielka i mała litera oraz cyfra.</span>
+
+                    <span class="admin-form-hint">
+                        Wymagane min. 8 znaków, wielka i mała litera oraz cyfra.
+                    </span>
                 </div>
 
                 <div class="admin-form-group">
                     <label>Uprawnienia</label>
+
                     <label class="admin-role-card @(newModel.IsAdmin ? "selected" : "")">
                         <input type="checkbox" @bind="newModel.IsAdmin" />
+
                         <div class="admin-role-info">
                             <strong>
                                 Rola Administratora
                                 <span class="admin-badge admin-badge-admin">Admin</span>
                             </strong>
-                            <span>Zaznacz, aby nadać użytkownikowi pełne uprawnienia administratora i dostęp do panelu /admin.</span>
+
+                            <span>
+                                Zaznacz, aby nadać użytkownikowi pełne uprawnienia
+                                administratora i dostęp do panelu /admin.
+                            </span>
                         </div>
                     </label>
                 </div>
 
                 <div class="admin-modal-actions">
-                    <button type="button" class="admin-btn admin-btn-secondary" @onclick="CloseAddModal" disabled="@isSubmitting">
+                    <button type="button"
+                            class="admin-btn admin-btn-secondary"
+                            @onclick="CloseAddModal"
+                            disabled="@isSubmitting">
                         Anuluj
                     </button>
-                    <button type="submit" class="admin-btn admin-btn-primary" disabled="@isSubmitting">
+
+                    <button type="submit"
+                            class="admin-btn admin-btn-primary"
+                            disabled="@isSubmitting">
                         @if (isSubmitting)
                         {
                             <span>Tworzenie...</span>
@@ -258,17 +329,26 @@ else
 @if (roleConfirmUser != null)
 {
     <div class="admin-modal-backdrop" @onclick="CancelRoleChange">
-        <div class="admin-modal" @onclick:stopPropagation="true" style="max-width: 440px;">
+        <div class="admin-modal" @onclick:stopPropagation="true"
+             style="max-width: 440px;">
+
             <div class="admin-modal-header">
                 <div>
                     <h2 class="admin-modal-title">
-                        @(roleConfirmIsAdmin ? "Nadanie roli Administratora" : "Odebranie roli Administratora")
+                        @(roleConfirmIsAdmin
+                            ? "Nadanie roli Administratora"
+                            : "Odebranie roli Administratora")
                     </h2>
                 </div>
-                <button type="button" class="admin-modal-close" @onclick="CancelRoleChange" aria-label="Zamknij">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                <button type="button"
+                        class="admin-modal-close"
+                        @onclick="CancelRoleChange"
+                        aria-label="Zamknij">
+                    <svg width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                        <line x1="6" y1="18" x2="18" y2="6"></line>
                     </svg>
                 </button>
             </div>
@@ -276,34 +356,30 @@ else
             <p style="margin: 0; color: var(--ink); line-height: 1.5;">
                 @if (roleConfirmIsAdmin)
                 {
-                    <span>Czy na pewno chcesz nadać uprawnienia administratora użytkownikowi <strong>@roleConfirmUser.UserName</strong>? Użytkownik uzyska dostęp do panelu /admin.</span>
+                    <span>
+                        Czy na pewno chcesz nadać uprawnienia administratora
+                        użytkownikowi <strong>@roleConfirmUser.UserName</strong>?
+                        Użytkownik uzyska dostęp do panelu /admin.
+                    </span>
                 }
                 else
                 {
-                    <span>Czy na pewno chcesz odebrać uprawnienia administratora użytkownikowi <strong>@roleConfirmUser.UserName</strong>? Użytkownik straci uprawnienia i dostęp do panelu administracyjnego.</span>
+                    <span>
+                        Czy na pewno chcesz odebrać uprawnienia administratora
+                        użytkownikowi <strong>@roleConfirmUser.UserName</strong>?
+                        Użytkownik straci uprawnienia i dostęp do panelu administracyjnego.
+                    </span>
                 }
             </p>
 
-    <!-- Prawy dolny róg: przycisk usuwania zaznaczonych użytkowników -->
-    <div class="admin-table-footer">
-        <div class="admin-selected-info">
-            @if (selectedUserIds.Any())
-            {
-                <span>Zaznaczono: <strong>@selectedUserIds.Count</strong> z @FilteredDeletable.Count()</span>
-            }
-        </div>
-        <button class="admin-btn admin-btn-danger-solid"
-                disabled="@(!selectedUserIds.Any())"
-                @onclick="OpenDeleteConfirmation">
-            Usuń @(selectedUserIds.Any() ? $"({selectedUserIds.Count})" : "")
-        </button>
-    </div>
-}
-
             <div class="admin-modal-actions">
-                <button type="button" class="admin-btn admin-btn-secondary" @onclick="CancelRoleChange" disabled="@isActionInProgress">
+                <button type="button"
+                        class="admin-btn admin-btn-secondary"
+                        @onclick="CancelRoleChange"
+                        disabled="@isActionInProgress">
                     Anuluj
                 </button>
+
                 <button type="button"
                         class="admin-btn @(roleConfirmIsAdmin ? "admin-btn-primary" : "admin-btn-danger")"
                         @onclick="ExecuteRoleChange"
@@ -314,7 +390,11 @@ else
                     }
                     else
                     {
-                        <span>@(roleConfirmIsAdmin ? "Nadaj uprawnienia" : "Odbierz uprawnienia")</span>
+                        <span>
+                            @(roleConfirmIsAdmin
+                                ? "Nadaj uprawnienia"
+                                : "Odbierz uprawnienia")
+                        </span>
                     }
                 </button>
             </div>
@@ -322,42 +402,61 @@ else
     </div>
 }
 
-<!-- Modal potwierdzenia usunięcia na środku ekranu -->
+@* Modal potwierdzenia usunięcia *@
 @if (showDeleteConfirmation)
 {
     <div class="admin-modal-backdrop" @onclick="CloseDeleteConfirmation">
-        <div class="admin-modal-card admin-confirm-modal" @onclick:stopPropagation="true">
+        <div class="admin-modal-card admin-confirm-modal"
+             @onclick:stopPropagation="true">
+
             <div class="admin-modal-header">
                 <h2 class="admin-modal-title">Potwierdzenie usunięcia</h2>
-                <button type="button" class="admin-modal-close" @onclick="CloseDeleteConfirmation">✕</button>
+
+                <button type="button"
+                        class="admin-modal-close"
+                        @onclick="CloseDeleteConfirmation">
+                    ✕
+                </button>
             </div>
 
             <div class="admin-modal-body">
                 @if (SelectedUsersToDisplay.Count == 1)
                 {
                     <p class="admin-confirm-text">
-                        Czy na pewno chcesz usunąć użytkownika <strong>@SelectedUsersToDisplay.First().UserName</strong>?
+                        Czy na pewno chcesz usunąć użytkownika
+                        <strong>@SelectedUsersToDisplay.First().UserName</strong>?
                     </p>
                 }
                 else
                 {
                     <p class="admin-confirm-text">
-                        Czy na pewno chcesz usunąć zaznaczonych użytkowników (<strong>@SelectedUsersToDisplay.Count</strong>)?
+                        Czy na pewno chcesz usunąć zaznaczonych użytkowników
+                        (<strong>@SelectedUsersToDisplay.Count</strong>)?
                     </p>
+
                     <ul class="admin-confirm-list">
                         @foreach (var u in SelectedUsersToDisplay)
                         {
-                            <li><strong>@u.UserName</strong> (@u.Email)</li>
+                            <li>
+                                <strong>@u.UserName</strong> (@u.Email)
+                            </li>
                         }
                     </ul>
                 }
             </div>
 
             <div class="admin-modal-footer">
-                <button type="button" class="admin-btn" @onclick="CloseDeleteConfirmation" disabled="@isDeleting">
+                <button type="button"
+                        class="admin-btn"
+                        @onclick="CloseDeleteConfirmation"
+                        disabled="@isDeleting">
                     Anuluj
                 </button>
-                <button type="button" class="admin-btn admin-btn-danger-solid" @onclick="ConfirmSoftDelete" disabled="@isDeleting">
+
+                <button type="button"
+                        class="admin-btn admin-btn-danger-solid"
+                        @onclick="ConfirmSoftDelete"
+                        disabled="@isDeleting">
                     @(isDeleting ? "Usuwanie..." : "Tak, usuń")
                 </button>
             </div>
@@ -365,14 +464,21 @@ else
     </div>
 }
 
-<!-- Modal edycji użytkownika -->
+@* Modal edycji użytkownika *@
 @if (editingUser is not null)
 {
     <div class="admin-modal-backdrop" @onclick="CloseEditModal">
         <div class="admin-modal-card" @onclick:stopPropagation="true">
             <div class="admin-modal-header">
-                <h2 class="admin-modal-title">Edycja profilu: @editingUser.UserName</h2>
-                <button type="button" class="admin-modal-close" @onclick="CloseEditModal">✕</button>
+                <h2 class="admin-modal-title">
+                    Edycja profilu: @editingUser.UserName
+                </h2>
+
+                <button type="button"
+                        class="admin-modal-close"
+                        @onclick="CloseEditModal">
+                    ✕
+                </button>
             </div>
 
             <EditForm Model="@editModel" OnValidSubmit="SaveUserChanges">
@@ -381,36 +487,51 @@ else
                 <div class="admin-modal-body">
                     @if (!string.IsNullOrEmpty(editModalMessage))
                     {
-                        <div class="@(editModalMessageIsError ? "admin-alert" : "admin-alert-success")">
+                        <div class="@(editModalMessageIsError
+                             ? "admin-alert"
+                             : "admin-alert-success")">
                             @editModalMessage
                         </div>
                     }
 
-                    <!-- Sekcja zdjęcia profilowego -->
+                    @* Zdjęcie profilowe *@
                     <div class="admin-avatar-edit">
                         @if (!string.IsNullOrEmpty(DisplayedAvatar))
                         {
-                            <img class="admin-avatar-img" src="@DisplayedAvatar" alt="Avatar" />
+                            <img class="admin-avatar-img"
+                                 src="@DisplayedAvatar"
+                                 alt="Avatar" />
                         }
                         else
                         {
-                            <div class="admin-avatar-placeholder">@GetInitials(editModel.UserName)</div>
+                            <div class="admin-avatar-placeholder">
+                                @GetInitials(editModel.UserName)
+                            </div>
                         }
 
                         <div class="admin-avatar-actions">
                             <div class="admin-avatar-btns">
                                 <label class="admin-avatar-btn">
                                     Zmień zdjęcie
-                                    <InputFile OnChange="OnAvatarSelected" accept="image/png,image/jpeg,image/webp" hidden />
+                                    <InputFile OnChange="OnAvatarSelected"
+                                               accept="image/png,image/jpeg,image/webp"
+                                               hidden />
                                 </label>
+
                                 @if (!string.IsNullOrEmpty(DisplayedAvatar))
                                 {
-                                    <button type="button" class="admin-avatar-del" @onclick="RemoveAvatar">
+                                    <button type="button"
+                                            class="admin-avatar-del"
+                                            @onclick="RemoveAvatar">
                                         Usuń zdjęcie
                                     </button>
                                 }
                             </div>
-                            <span class="admin-avatar-hint">JPG, PNG lub WebP, maks. 2 MB.</span>
+
+                            <span class="admin-avatar-hint">
+                                JPG, PNG lub WebP, maks. 2 MB.
+                            </span>
+
                             @if (!string.IsNullOrEmpty(avatarError))
                             {
                                 <span class="admin-avatar-err">@avatarError</span>
@@ -418,60 +539,103 @@ else
                         </div>
                     </div>
 
-                    <!-- Dane profilu -->
+                    @* Dane profilu *@
                     <div class="admin-form-row">
                         <div class="admin-form-group">
-                            <label class="admin-form-label">Nazwa użytkownika *</label>
-                            <InputText class="admin-form-input" @bind-Value="editModel.UserName" />
+                            <label class="admin-form-label">
+                                Nazwa użytkownika *
+                            </label>
+
+                            <InputText class="admin-form-input"
+                                       @bind-Value="editModel.UserName" />
+
                             <ValidationMessage For="@(() => editModel.UserName)" />
                         </div>
+
                         <div class="admin-form-group">
-                            <label class="admin-form-label">Adres e-mail *</label>
-                            <InputText class="admin-form-input" @bind-Value="editModel.Email" />
+                            <label class="admin-form-label">
+                                Adres e-mail *
+                            </label>
+
+                            <InputText class="admin-form-input"
+                                       @bind-Value="editModel.Email" />
+
                             <ValidationMessage For="@(() => editModel.Email)" />
                         </div>
                     </div>
 
                     <div class="admin-form-row">
                         <div class="admin-form-group">
-                            <label class="admin-form-label">Numer telefonu</label>
-                            <InputText class="admin-form-input" @bind-Value="editModel.PhoneNumber" placeholder="np. +48 123 456 789" />
+                            <label class="admin-form-label">
+                                Numer telefonu
+                            </label>
+
+                            <InputText class="admin-form-input"
+                                       @bind-Value="editModel.PhoneNumber"
+                                       placeholder="np. +48 123 456 789" />
+
                             <ValidationMessage For="@(() => editModel.PhoneNumber)" />
                         </div>
+
                         <div class="admin-form-group">
-                            <label class="admin-form-label">Miejscowość</label>
-                            <InputText class="admin-form-input" @bind-Value="editModel.City" placeholder="np. Kraków" />
+                            <label class="admin-form-label">
+                                Miejscowość
+                            </label>
+
+                            <InputText class="admin-form-input"
+                                       @bind-Value="editModel.City"
+                                       placeholder="np. Kraków" />
+
                             <ValidationMessage For="@(() => editModel.City)" />
                         </div>
                     </div>
 
                     <div class="admin-form-group">
-                        <label class="admin-form-label">O mnie (opis profilu)</label>
-                        <InputTextArea class="admin-form-textarea" @bind-Value="editModel.Bio" placeholder="Krótki opis użytkownika..." rows="3" />
+                        <label class="admin-form-label">
+                            O mnie (opis profilu)
+                        </label>
+
+                        <InputTextArea class="admin-form-textarea"
+                                       @bind-Value="editModel.Bio"
+                                       placeholder="Krótki opis użytkownika..."
+                                       rows="3" />
+
                         <ValidationMessage For="@(() => editModel.Bio)" />
                     </div>
 
                     <div class="admin-form-group">
                         <label class="admin-form-checkbox">
-                            <InputCheckbox @bind-Value="editModel.IsActive" disabled="@(editingUser.Id == currentUserId)" />
+                            <InputCheckbox @bind-Value="editModel.IsActive"
+                                           disabled="@(editingUser.Id == currentUserId)" />
+
                             Konto aktywne
+
                             @if (editingUser.Id == currentUserId)
                             {
-                                <small class="admin-muted">(nie możesz zablokować własnego konta)</small>
+                                <small class="admin-muted">
+                                    (nie możesz zablokować własnego konta)
+                                </small>
                             }
                         </label>
                     </div>
 
                     <div class="admin-muted" style="font-size: .8rem;">
-                        Data rejestracji: @editingUser.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                        Data rejestracji:
+                        @editingUser.CreatedAt.ToString("dd.MM.yyyy HH:mm")
                     </div>
                 </div>
 
                 <div class="admin-modal-footer">
-                    <button type="button" class="admin-btn" @onclick="CloseEditModal" disabled="@isSavingUser">
+                    <button type="button"
+                            class="admin-btn"
+                            @onclick="CloseEditModal"
+                            disabled="@isSavingUser">
                         Anuluj
                     </button>
-                    <button type="submit" class="admin-btn admin-btn-primary" disabled="@isSavingUser">
+
+                    <button type="submit"
+                            class="admin-btn admin-btn-primary"
+                            disabled="@isSavingUser">
                         @(isSavingUser ? "Zapisywanie..." : "Zapisz zmiany")
                     </button>
                 </div>
@@ -482,13 +646,21 @@ else
 
 @code {
     private const long MaxAvatarBytes = 2 * 1024 * 1024;
-    private static readonly string[] AllowedTypes = { "image/png", "image/jpeg", "image/webp" };
+
+    private static readonly string[] AllowedTypes =
+    {
+        "image/png",
+        "image/jpeg",
+        "image/webp"
+    };
 
     private List<AdminUserDTO>? users;
     private string search = "";
+
     private string? errorMessage;
     private string? successMessage;
     private string? message;
+
     private bool messageIsError;
     private int currentUserId;
 
@@ -496,6 +668,7 @@ else
     private bool isAddModalOpen = false;
     private bool isSubmitting = false;
     private string? modalError;
+
     private AdminCreateUserRequest newModel = new();
 
     // Modal potwierdzenia roli
@@ -505,12 +678,14 @@ else
 
     // Zaznaczenia użytkowników do usunięcia
     private HashSet<int> selectedUserIds = new();
+
     private bool showDeleteConfirmation;
     private bool isDeleting;
 
     // Stan edycji użytkownika
     private AdminUserDTO? editingUser;
     private AdminUpdateUserDTO editModel = new();
+
     private string? editModalMessage;
     private bool editModalMessageIsError;
     private bool isSavingUser;
@@ -521,27 +696,38 @@ else
     private byte[]? pendingAvatarBytes;
     private string? pendingAvatarFileName;
     private string? pendingAvatarContentType;
+
     private bool removeAvatarRequested;
     private string? avatarError;
 
     private string? DisplayedAvatar =>
-        pendingAvatarPreview ?? (removeAvatarRequested ? null : currentAvatarUrl);
+        pendingAvatarPreview ??
+        (removeAvatarRequested ? null : currentAvatarUrl);
 
+    // Filtrowanie użytkowników
     private IEnumerable<AdminUserDTO> Filtered =>
-        (users ?? Enumerable.Empty<AdminUserDTO>()).Where(u =>
-            string.IsNullOrWhiteSpace(search)
-            || u.UserName.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || u.Email.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || (u.IsAdmin && "administrator admin".Contains(search, StringComparison.OrdinalIgnoreCase))
-            || (!u.IsAdmin && "użytkownik user".Contains(search, StringComparison.OrdinalIgnoreCase)));
-            || u.Email.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || (!string.IsNullOrEmpty(u.City) && u.City.Contains(search, StringComparison.OrdinalIgnoreCase)));
+        (users ?? Enumerable.Empty<AdminUserDTO>())
+            .Where(u =>
+                string.IsNullOrWhiteSpace(search)
+                || u.UserName.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || u.Email.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (!string.IsNullOrEmpty(u.City) &&
+                    u.City.Contains(search, StringComparison.OrdinalIgnoreCase))
+                || (u.IsAdmin &&
+                    "administrator admin".Contains(
+                        search,
+                        StringComparison.OrdinalIgnoreCase))
+                || (!u.IsAdmin &&
+                    "użytkownik user".Contains(
+                        search,
+                        StringComparison.OrdinalIgnoreCase)));
 
     private IEnumerable<AdminUserDTO> FilteredDeletable =>
         Filtered.Where(u => u.Id != currentUserId);
 
     private bool IsAllSelected =>
-        FilteredDeletable.Any() && FilteredDeletable.All(u => selectedUserIds.Contains(u.Id));
+        FilteredDeletable.Any() &&
+        FilteredDeletable.All(u => selectedUserIds.Contains(u.Id));
 
     private List<AdminUserDTO> SelectedUsersToDisplay =>
         users?.Where(u => selectedUserIds.Contains(u.Id)).ToList() ?? new();
@@ -549,68 +735,97 @@ else
     protected override async Task OnInitializedAsync()
     {
         var authState = await authStateProvider.GetAuthenticationStateAsync();
-        int.TryParse(authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out currentUserId);
+
+        int.TryParse(
+            authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+            out currentUserId);
 
         await LoadUsers();
     }
 
+    // Pobieranie użytkowników
     private async Task LoadUsers()
     {
         users = await adminApi.GetUsersAsync();
+
+        if (users != null)
+        {
+            var existingIds = users.Select(u => u.Id).ToHashSet();
+            selectedUserIds.RemoveWhere(id => !existingIds.Contains(id));
+        }
     }
 
+    // Otwieranie modala dodawania
     private void OpenAddModal()
     {
-        newModel = new AdminCreateUserRequest { IsAdmin = true };
+        newModel = new AdminCreateUserRequest
+        {
+            IsAdmin = true
+        };
+
         modalError = null;
         isAddModalOpen = true;
     }
 
     private void CloseAddModal()
     {
-        if (isSubmitting) return;
+        if (isSubmitting)
+            return;
+
         isAddModalOpen = false;
         modalError = null;
     }
 
+    // Tworzenie użytkownika
     private async Task HandleCreateUser()
     {
         modalError = null;
 
-        if (string.IsNullOrWhiteSpace(newModel.UserName) || newModel.UserName.Trim().Length < 3)
+        if (string.IsNullOrWhiteSpace(newModel.UserName) ||
+            newModel.UserName.Trim().Length < 3)
         {
             modalError = "Nazwa użytkownika musi mieć co najmniej 3 znaki.";
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(newModel.Email) || !newModel.Email.Contains("@"))
+        if (string.IsNullOrWhiteSpace(newModel.Email) ||
+            !newModel.Email.Contains("@"))
         {
             modalError = "Podaj poprawny adres e-mail.";
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(newModel.Password) || newModel.Password.Length < 8)
+        if (string.IsNullOrWhiteSpace(newModel.Password) ||
+            newModel.Password.Length < 8)
         {
             modalError = "Hasło musi mieć co najmniej 8 znaków.";
             return;
         }
 
         isSubmitting = true;
+
         try
         {
-            var (success, error, createdUser) = await adminApi.CreateUserAsync(newModel);
+            var (success, error, createdUser) =
+                await adminApi.CreateUserAsync(newModel);
+
             if (success && createdUser != null)
             {
                 isAddModalOpen = false;
                 errorMessage = null;
-                successMessage = $"Użytkownik '{createdUser.UserName}' został pomyślnie utworzony" +
-                                 (createdUser.IsAdmin ? " z rolą Administratora." : ".");
+
+                successMessage =
+                    $"Użytkownik '{createdUser.UserName}' został pomyślnie utworzony" +
+                    (createdUser.IsAdmin
+                        ? " z rolą Administratora."
+                        : ".");
 
                 await LoadUsers();
             }
             else
             {
-                modalError = error ?? "Wystąpił błąd podczas tworzenia użytkownika.";
+                modalError = error ??
+                    "Wystąpił błąd podczas tworzenia użytkownika.";
             }
         }
         catch (Exception ex)
@@ -623,6 +838,7 @@ else
         }
     }
 
+    // Potwierdzenie zmiany roli
     private void PromptToggleRole(AdminUserDTO user)
     {
         roleConfirmUser = user;
@@ -631,13 +847,17 @@ else
 
     private void CancelRoleChange()
     {
-        if (isActionInProgress) return;
+        if (isActionInProgress)
+            return;
+
         roleConfirmUser = null;
     }
 
+    // Zmiana roli użytkownika
     private async Task ExecuteRoleChange()
     {
-        if (roleConfirmUser == null || isActionInProgress) return;
+        if (roleConfirmUser == null || isActionInProgress)
+            return;
 
         isActionInProgress = true;
         errorMessage = null;
@@ -648,18 +868,24 @@ else
 
         try
         {
-            var (ok, error) = await adminApi.SetUserRoleAsync(targetUser.Id, newAdminState);
+            var (ok, error) = await adminApi.SetUserRoleAsync(
+                targetUser.Id,
+                newAdminState);
+
             if (ok)
             {
                 roleConfirmUser = null;
+
                 successMessage = newAdminState
                     ? $"Nadano rolę administratora użytkownikowi '{targetUser.UserName}'."
                     : $"Odebrano rolę administratora użytkownikowi '{targetUser.UserName}'.";
+
                 await LoadUsers();
             }
             else
             {
-                errorMessage = error ?? "Nie udało się zmienić roli użytkownika.";
+                errorMessage = error ??
+                    "Nie udało się zmienić roli użytkownika.";
             }
         }
         catch (Exception ex)
@@ -672,6 +898,7 @@ else
         }
     }
 
+    // Zaznaczanie pojedynczego użytkownika
     private void ToggleSelectUser(int userId, object? isChecked)
     {
         if (isChecked is true or "True" or "true")
@@ -684,9 +911,11 @@ else
         }
     }
 
+    // Zaznaczanie wszystkich użytkowników
     private void ToggleSelectAll(ChangeEventArgs e)
     {
         var selectAll = (bool)(e.Value ?? false);
+
         if (selectAll)
         {
             foreach (var u in FilteredDeletable)
@@ -703,69 +932,95 @@ else
         }
     }
 
+    // Otwieranie potwierdzenia usunięcia
     private void OpenDeleteConfirmation()
     {
-        if (!selectedUserIds.Any()) return;
+        if (!selectedUserIds.Any())
+            return;
+
         showDeleteConfirmation = true;
     }
 
     private void CloseDeleteConfirmation()
     {
-        if (isDeleting) return;
+        if (isDeleting)
+            return;
+
         showDeleteConfirmation = false;
     }
 
+    // Usuwanie zaznaczonych użytkowników
     private async Task ConfirmSoftDelete()
     {
-        if (!selectedUserIds.Any()) return;
+        if (!selectedUserIds.Any() || isDeleting)
+            return;
 
         isDeleting = true;
         message = null;
 
         var idsToDelete = selectedUserIds.ToList();
         var deletedCount = 0;
+
         var errorMessages = new List<string>();
 
-        foreach (var id in idsToDelete)
+        try
         {
-            var (ok, err) = await adminApi.DeleteUserAsync(id);
-            if (ok)
+            foreach (var id in idsToDelete)
             {
-                var userToRemove = users?.FirstOrDefault(u => u.Id == id);
-                if (userToRemove != null)
+                var (ok, err) = await adminApi.DeleteUserAsync(id);
+
+                if (ok)
                 {
-                    users?.Remove(userToRemove);
+                    var userToRemove = users?.FirstOrDefault(u => u.Id == id);
+
+                    if (userToRemove != null)
+                    {
+                        users?.Remove(userToRemove);
+                    }
+
+                    selectedUserIds.Remove(id);
+                    deletedCount++;
                 }
-                selectedUserIds.Remove(id);
-                deletedCount++;
+                else if (!string.IsNullOrEmpty(err))
+                {
+                    errorMessages.Add(err);
+                }
             }
-            else if (!string.IsNullOrEmpty(err))
+
+            if (deletedCount > 0)
             {
-                errorMessages.Add(err);
+                message = deletedCount == 1
+                    ? "Użytkownik został pomyślnie usunięty."
+                    : $"Pomyślnie usunięto {deletedCount} użytkowników.";
+
+                messageIsError = false;
+            }
+
+            if (errorMessages.Any())
+            {
+                message = (message != null ? message + " " : "") +
+                          string.Join(" ", errorMessages);
+
+                messageIsError = true;
             }
         }
-
-        isDeleting = false;
-        showDeleteConfirmation = false;
-
-        if (deletedCount > 0)
+        catch (Exception ex)
         {
-            message = deletedCount == 1
-                ? "Użytkownik został pomyślnie usunięty."
-                : $"Pomyślnie usunięto {deletedCount} użytkowników.";
-            messageIsError = false;
-        }
-
-        if (errorMessages.Any())
-        {
-            message = (message != null ? message + " " : "") + string.Join(" ", errorMessages);
+            message = $"Wystąpił błąd podczas usuwania: {ex.Message}";
             messageIsError = true;
+        }
+        finally
+        {
+            isDeleting = false;
+            showDeleteConfirmation = false;
         }
     }
 
+    // Otwieranie edycji użytkownika
     private void OpenEditModal(AdminUserDTO user)
     {
         editingUser = user;
+
         editModel = new AdminUpdateUserDTO
         {
             UserName = user.UserName,
@@ -777,31 +1032,40 @@ else
         };
 
         currentAvatarUrl = user.AvatarUrl;
+
         pendingAvatarPreview = null;
         pendingAvatarBytes = null;
         pendingAvatarFileName = null;
         pendingAvatarContentType = null;
+
         removeAvatarRequested = false;
         avatarError = null;
+
         editModalMessage = null;
         editModalMessageIsError = false;
     }
 
     private void CloseEditModal()
     {
-        if (isSavingUser) return;
+        if (isSavingUser)
+            return;
+
         editingUser = null;
     }
 
+    // Wybór zdjęcia profilowego
     private async Task OnAvatarSelected(InputFileChangeEventArgs e)
     {
         avatarError = null;
+
         var file = e.File;
+
         if (!AllowedTypes.Contains(file.ContentType))
         {
             avatarError = "Dozwolone formaty: JPG, PNG, WebP.";
             return;
         }
+
         if (file.Size > MaxAvatarBytes)
         {
             avatarError = "Zdjęcie jest za duże (maks. 2 MB).";
@@ -810,95 +1074,126 @@ else
 
         using var stream = file.OpenReadStream(MaxAvatarBytes);
         using var ms = new MemoryStream();
+
         await stream.CopyToAsync(ms);
 
         pendingAvatarBytes = ms.ToArray();
         pendingAvatarFileName = file.Name;
         pendingAvatarContentType = file.ContentType;
-        pendingAvatarPreview = $"data:{file.ContentType};base64,{Convert.ToBase64String(pendingAvatarBytes)}";
+
+        pendingAvatarPreview =
+            $"data:{file.ContentType};base64,{Convert.ToBase64String(pendingAvatarBytes)}";
+
         removeAvatarRequested = false;
     }
 
+    // Usuwanie zdjęcia z podglądu
     private void RemoveAvatar()
     {
         pendingAvatarPreview = null;
         pendingAvatarBytes = null;
         pendingAvatarFileName = null;
         pendingAvatarContentType = null;
+
         removeAvatarRequested = true;
         avatarError = null;
     }
 
+    // Zapisywanie zmian użytkownika
     private async Task SaveUserChanges()
     {
-        if (editingUser is null) return;
+        if (editingUser is null || isSavingUser)
+            return;
 
         isSavingUser = true;
         editModalMessage = null;
 
-        var (ok, error, updatedUser) = await adminApi.UpdateUserAsync(editingUser.Id, editModel);
-        if (!ok)
+        try
         {
-            editModalMessage = error ?? "Nie udało się zaktualizować profilu użytkownika.";
+            var (ok, error, _) =
+                await adminApi.UpdateUserAsync(editingUser.Id, editModel);
+
+            if (!ok)
+            {
+                editModalMessage = error ??
+                    "Nie udało się zaktualizować profilu użytkownika.";
+
+                editModalMessageIsError = true;
+                return;
+            }
+
+            // Aktualizacja zdjęcia profilowego
+            string? newAvatarUrl = editingUser.AvatarUrl;
+
+            if (pendingAvatarBytes is not null)
+            {
+                var (uploadOk, uploadErr, uploadedUrl) =
+                    await adminApi.UploadUserAvatarAsync(
+                        editingUser.Id,
+                        pendingAvatarBytes,
+                        pendingAvatarFileName!,
+                        pendingAvatarContentType!);
+
+                if (uploadOk)
+                {
+                    newAvatarUrl = uploadedUrl;
+                }
+                else
+                {
+                    editModalMessage = uploadErr ??
+                        "Zaktualizowano dane, ale nie udało się przesłać zdjęcia profilowego.";
+
+                    editModalMessageIsError = true;
+                    return;
+                }
+            }
+            else if (removeAvatarRequested)
+            {
+                var (delOk, delErr) =
+                    await adminApi.DeleteUserAvatarAsync(editingUser.Id);
+
+                if (delOk)
+                {
+                    newAvatarUrl = null;
+                }
+                else
+                {
+                    editModalMessage = delErr ??
+                        "Zaktualizowano dane, ale nie udało się usunąć zdjęcia profilowego.";
+
+                    editModalMessageIsError = true;
+                    return;
+                }
+            }
+
+            // Aktualizacja użytkownika na liście
+            editingUser.UserName = editModel.UserName;
+            editingUser.Email = editModel.Email;
+            editingUser.PhoneNumber = editModel.PhoneNumber;
+            editingUser.City = editModel.City;
+            editingUser.Bio = editModel.Bio;
+            editingUser.IsActive = editModel.IsActive;
+            editingUser.AvatarUrl = newAvatarUrl;
+
+            message =
+                $"Profil użytkownika '{editingUser.UserName}' został pomyślnie zaktualizowany.";
+
+            messageIsError = false;
+
+            editingUser = null;
+        }
+        catch (Exception ex)
+        {
+            editModalMessage = $"Wystąpił błąd: {ex.Message}";
             editModalMessageIsError = true;
+        }
+        finally
+        {
             isSavingUser = false;
-            return;
         }
-
-        // Obsługa aktualizacji zdjęcia profilowego
-        string? newAvatarUrl = editingUser.AvatarUrl;
-        if (pendingAvatarBytes is not null)
-        {
-            var (uploadOk, uploadErr, uploadedUrl) = await adminApi.UploadUserAvatarAsync(
-                editingUser.Id,
-                pendingAvatarBytes,
-                pendingAvatarFileName!,
-                pendingAvatarContentType!);
-
-            if (uploadOk)
-            {
-                newAvatarUrl = uploadedUrl;
-            }
-            else
-            {
-                editModalMessage = uploadErr ?? "Zaktualizowano dane, ale nie udało się przesłać zdjęcia profilowego.";
-                editModalMessageIsError = true;
-                isSavingUser = false;
-                return;
-            }
-        }
-        else if (removeAvatarRequested)
-        {
-            var (delOk, delErr) = await adminApi.DeleteUserAvatarAsync(editingUser.Id);
-            if (delOk)
-            {
-                newAvatarUrl = null;
-            }
-            else
-            {
-                editModalMessage = delErr ?? "Zaktualizowano dane, ale nie udało się usunąć zdjęcia profilowego.";
-                editModalMessageIsError = true;
-                isSavingUser = false;
-                return;
-            }
-        }
-
-        // Zaktualizuj użytkownika na liście
-        editingUser.UserName = editModel.UserName;
-        editingUser.Email = editModel.Email;
-        editingUser.PhoneNumber = editModel.PhoneNumber;
-        editingUser.City = editModel.City;
-        editingUser.Bio = editModel.Bio;
-        editingUser.IsActive = editModel.IsActive;
-        editingUser.AvatarUrl = newAvatarUrl;
-
-        message = $"Profil użytkownika '{editingUser.UserName}' został pomyślnie zaktualizowany.";
-        messageIsError = false;
-
-        isSavingUser = false;
-        editingUser = null;
     }
 
+    // Blokowanie i odblokowywanie użytkownika
     private async Task ToggleActive(AdminUserDTO user)
     {
         errorMessage = null;
@@ -907,17 +1202,24 @@ else
 
         try
         {
-            var ok = await adminApi.SetUserActiveAsync(user.Id, !user.IsActive);
+            var newStatus = !user.IsActive;
+
+            var ok = await adminApi.SetUserActiveAsync(
+                user.Id,
+                newStatus);
+
             if (ok)
             {
-                successMessage = !user.IsActive
+                successMessage = newStatus
                     ? $"Odblokowano użytkownika '{user.UserName}'."
                     : $"Zablokowano użytkownika '{user.UserName}'.";
+
                 await LoadUsers();
             }
             else
             {
-                errorMessage = "Nie udało się zmienić statusu użytkownika.";
+                errorMessage =
+                    "Nie udało się zmienić statusu użytkownika.";
             }
         }
         catch (Exception ex)
@@ -928,24 +1230,14 @@ else
         {
             isActionInProgress = false;
         }
-        message = null;
-        var ok = await adminApi.SetUserActiveAsync(user.Id, !user.IsActive);
-        if (ok)
-        {
-            user.IsActive = !user.IsActive;
-            message = $"Zmieniono status użytkownika '{user.UserName}' na: {(user.IsActive ? "aktywny" : "zablokowany")}.";
-            messageIsError = false;
-        }
-        else
-        {
-            message = "Nie udało się zmienić statusu użytkownika.";
-            messageIsError = true;
-        }
     }
 
+    // Generowanie inicjałów
     private string GetInitials(string? name)
     {
-        if (string.IsNullOrWhiteSpace(name)) return "?";
+        if (string.IsNullOrWhiteSpace(name))
+            return "?";
+
         return name[..Math.Min(2, name.Length)].ToUpper();
     }
 }
