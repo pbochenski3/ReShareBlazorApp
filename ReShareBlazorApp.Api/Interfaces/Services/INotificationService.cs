@@ -29,5 +29,10 @@ namespace ReShareBlazorApp.Api.Interfaces.Services
             int notificationId,
             int userId,
             CancellationToken cancellationToken = default);
+
+        Task<bool> DeleteAsync(
+            int notificationId,
+            int userId,
+            CancellationToken cancellationToken = default);
     }
 }

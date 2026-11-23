@@ -43,6 +43,18 @@ namespace ReShareBlazorApp.Web.ApiServices
             return response.IsSuccessStatusCode;
         }
 
+        public async Task<bool> DeleteAsync(int notificationId)
+        {
+            using var request = await CreateRequestAsync(
+                HttpMethod.Delete,
+                $"api/notification/{notificationId}");
+            if (request is null)
+                return false;
+
+            using var response = await _httpClient.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
         private async Task<HttpRequestMessage?> CreateRequestAsync(HttpMethod method, string url)
         {
             var authState = await _authStateProvider.GetAuthenticationStateAsync();

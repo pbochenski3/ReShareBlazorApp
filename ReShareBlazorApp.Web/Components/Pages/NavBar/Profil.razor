@@ -131,6 +131,10 @@ else if (exist)
                                                 Oznacz jako przeczytane
                                             </button>
                                         }
+                                        <button class="home-btn home-btn-outline" type="button"
+                                                @onclick="() => DeleteNotificationAsync(notification)">
+                                            Usuń
+                                        </button>
                                     </div>
                                 </article>
                             }
@@ -466,6 +470,19 @@ else
         catch (Exception ex)
         {
             Console.WriteLine($"Błąd podczas oznaczania powiadomienia jako przeczytane: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteNotificationAsync(NotificationDTO notification)
+    {
+        try
+        {
+            if (await notificationApi.DeleteAsync(notification.Id))
+                await LoadNotificationsAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Błąd podczas usuwania powiadomienia: {ex.Message}");
         }
     }
 

@@ -50,6 +50,18 @@ namespace ReShareBlazorApp.Api.Controllers
             return marked ? NoContent() : NotFound();
         }
 
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(
+            int id,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetUserId(out var userId))
+                return Unauthorized();
+
+            var deleted = await _notificationService.DeleteAsync(id, userId, cancellationToken);
+            return deleted ? NoContent() : NotFound();
+        }
+
         private bool TryGetUserId(out int userId)
         {
             return int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
