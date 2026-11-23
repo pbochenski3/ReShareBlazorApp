@@ -10,6 +10,7 @@ public class AdminUserDTO
     public string? Bio { get; set; }
     public string? AvatarUrl { get; set; }
     public bool IsActive { get; set; }
+    public bool IsAdmin { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTimeOffset? LockoutEnd { get; set; }
     public string? WarningMessage { get; set; }

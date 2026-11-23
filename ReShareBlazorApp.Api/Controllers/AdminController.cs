@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 ﻿
 using Microsoft.AspNetCore.Authorization;
+=======
+﻿using Microsoft.AspNetCore.Authorization;
+>>>>>>> origin/JHubisz
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +14,7 @@ using System.Security.Claims;
 
 namespace ReShareBlazorApp.Api.Controllers
 {
+<<<<<<< HEAD
     [ApiController]
     [Route("api/admin")]
     [Authorize(Roles = "Admin")]
@@ -23,6 +28,181 @@ namespace ReShareBlazorApp.Api.Controllers
             ReshareDbContext context,
             UserManager<User> userManager,
             IUserService userService)
+=======
+    private readonly ReshareDbContext _context;
+    private readonly UserManager<User> _userManager;
+    private readonly RoleManager<IdentityRole<int>> _roleManager;
+
+    public AdminController(
+        ReshareDbContext context,
+        UserManager<User> userManager,
+        RoleManager<IdentityRole<int>> roleManager)
+    {
+        _context = context;
+        _userManager = userManager;
+        _roleManager = roleManager;
+    }
+
+    [HttpGet("users")]
+    public async Task<ActionResult<List<AdminUserDTO>>> GetUsers()
+    {
+        var users = await _context.Users
+            .OrderBy(u => u.Id)
+            .ToListAsync();
+
+        var adminRole = await _roleManager.FindByNameAsync("Admin")
+            ?? await _context.Roles.FirstOrDefaultAsync(r => r.NormalizedName == "ADMIN" || r.Name == "Admin");
+
+        var adminRoleId = adminRole?.Id ?? 0;
+        var adminUserIds = adminRoleId > 0
+            ? await _context.UserRoles
+                .Where(ur => ur.RoleId == adminRoleId)
+                .Select(ur => ur.UserId)
+                .ToHashSetAsync()
+            : new HashSet<int>();
+
+        var result = users.Select(u => new AdminUserDTO
+        {
+            Id = u.Id,
+            UserName = u.UserName ?? "",
+            Email = u.Email ?? "",
+            IsActive = u.IsActive,
+            IsAdmin = adminUserIds.Contains(u.Id)
+        }).ToList();
+
+        return Ok(result);
+    }
+
+    [HttpPost("users")]
+    public async Task<IActionResult> CreateUser([FromBody] AdminCreateUserRequest request)
+    {
+        if (request == null)
+            return BadRequest(new { message = "Brak danych użytkownika." });
+
+        if (string.IsNullOrWhiteSpace(request.UserName) || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+            return BadRequest(new { message = "Nazwa użytkownika, e-mail i hasło są wymagane." });
+
+        var normalizedEmail = request.Email.Trim();
+        var normalizedUserName = request.UserName.Trim();
+
+        if (await _userManager.FindByEmailAsync(normalizedEmail) != null)
+            return BadRequest(new { message = "Użytkownik o podanym adresie e-mail już istnieje." });
+
+        if (await _userManager.FindByNameAsync(normalizedUserName) != null)
+            return BadRequest(new { message = "Użytkownik o podanej nazwie już istnieje." });
+
+        var user = new User
+        {
+            UserName = normalizedUserName,
+            Email = normalizedEmail,
+            EmailConfirmed = true,
+            CreatedAt = DateTime.Now,
+            IsActive = true
+        };
+
+        var result = await _userManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(" ", result.Errors.Select(e => e.Description));
+            return BadRequest(new { message = errors });
+        }
+
+        if (request.IsAdmin)
+        {
+            if (!await _roleManager.RoleExistsAsync("Admin"))
+            {
+                await _roleManager.CreateAsync(new IdentityRole<int>("Admin"));
+            }
+            var roleResult = await _userManager.AddToRoleAsync(user, "Admin");
+            if (!roleResult.Succeeded)
+            {
+                var errors = string.Join(" ", roleResult.Errors.Select(e => e.Description));
+                return BadRequest(new { message = errors });
+            }
+        }
+
+        return Ok(new AdminUserDTO
+        {
+            Id = user.Id,
+            UserName = user.UserName,
+            Email = user.Email,
+            IsActive = user.IsActive,
+            IsAdmin = request.IsAdmin
+        });
+    }
+
+    [HttpPost("users/{id:int}/role")]
+    public async Task<IActionResult> SetUserRole(int id, [FromQuery] bool isAdmin)
+    {
+        var currentUserIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (currentUserIdStr == id.ToString() && !isAdmin)
+        {
+            return BadRequest(new { message = "Nie możesz odebrać sobie uprawnień administratora." });
+        }
+
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user == null) return NotFound(new { message = "Nie znaleziono użytkownika." });
+
+        // Ochrona głównego konta administratora
+        if (string.Equals(user.UserName, "admin12345", StringComparison.OrdinalIgnoreCase) && !isAdmin)
+        {
+            return BadRequest(new { message = "Główny administrator (admin12345) nie może zostać pozbawiony uprawnień." });
+        }
+
+        if (!await _roleManager.RoleExistsAsync("Admin"))
+        {
+            await _roleManager.CreateAsync(new IdentityRole<int>("Admin"));
+        }
+
+        var adminRole = await _roleManager.FindByNameAsync("Admin")
+            ?? await _context.Roles.FirstOrDefaultAsync(r => r.NormalizedName == "ADMIN" || r.Name == "Admin");
+
+        if (isAdmin)
+        {
+            if (!await _userManager.IsInRoleAsync(user, "Admin"))
+            {
+                var addResult = await _userManager.AddToRoleAsync(user, "Admin");
+                if (!addResult.Succeeded)
+                {
+                    return BadRequest(new { message = string.Join(" ", addResult.Errors.Select(e => e.Description)) });
+                }
+            }
+        }
+        else
+        {
+            // Sprawdzenie, czy nie usuwamy ostatniego administratora
+            var adminRoleId = adminRole?.Id ?? 0;
+            var adminCount = adminRoleId > 0
+                ? await _context.UserRoles.CountAsync(ur => ur.RoleId == adminRoleId)
+                : 0;
+
+            if (adminCount <= 1 && await _userManager.IsInRoleAsync(user, "Admin"))
+            {
+                return BadRequest(new { message = "W systemie musi pozostać co najmniej jeden administrator." });
+            }
+
+            if (await _userManager.IsInRoleAsync(user, "Admin"))
+            {
+                var removeResult = await _userManager.RemoveFromRoleAsync(user, "Admin");
+                if (!removeResult.Succeeded)
+                {
+                    return BadRequest(new { message = string.Join(" ", removeResult.Errors.Select(e => e.Description)) });
+                }
+            }
+        }
+
+        // Aktualizacja SecurityStamp, aby unieważnić stare sesje
+        await _userManager.UpdateSecurityStampAsync(user);
+
+        return Ok();
+    }
+
+    [HttpGet("stats")]
+    public async Task<ActionResult<AdminStatsDTO>> GetStats()
+    {
+        var weekAgo = DateTime.Now.AddDays(-7);
+        return Ok(new AdminStatsDTO
+>>>>>>> origin/JHubisz
         {
             _context = context;
             _userManager = userManager;
@@ -57,12 +237,24 @@ namespace ReShareBlazorApp.Api.Controllers
             return Ok(users);
         }
 
+<<<<<<< HEAD
         // Pobieranie użytkownika po ID
         [HttpGet("users/{id:int}")]
         public async Task<ActionResult<AdminUserDTO>> GetUser(int id)
         {
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+=======
+        if (string.Equals(user.UserName, "admin12345", StringComparison.OrdinalIgnoreCase) && !value)
+        {
+            return BadRequest(new { message = "Główny administrator nie może zostać zablokowany." });
+        }
+
+        user.IsActive = value;
+        await _context.SaveChangesAsync();
+        return Ok();
+    }
+>>>>>>> origin/JHubisz
 
             if (user == null)
                 return NotFound(new { message = "Nie znaleziono użytkownika." });
