@@ -8,6 +8,23 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
+namespace ReShareBlazorApp.Web.ApiServices
+{
+    public class ProductApiService
+    {
+        private readonly HttpClient _httpClient;
+        private readonly AuthenticationStateProvider _authStateProvider;
+        public ProductApiService(HttpClient httpClient, AuthenticationStateProvider authStateProvider)
+        {
+            _httpClient = httpClient;
+            _authStateProvider = authStateProvider;
+        }
+        public async Task<(bool Success, string Message)> AddProductAsync(ProductModel productModel)
+        {
+            var authState = await _authStateProvider.GetAuthenticationStateAsync();
+            var token = authState.User.FindFirst("access_token")?.Value;
+            if (string.IsNullOrEmpty(token))
+                return (false, "Brak tokenu uwierzytelniającego!");
 namespace ReShareBlazorApp.Web.ApiServices;
 
 public class ProductApiService
@@ -143,6 +160,20 @@ public class ProductApiService
             ?? new List<ProductDTO>();
     }
 
+
+        public async Task<ProductDTO> GetProductByIdAsync(int id)
+        {
+            var response = await _httpClient.GetAsync($"api/product/{id}");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<ProductDTO>()
+                ?? new ProductDTO();
+        }
+        public async Task<List<LocationDTO>> SearchLocationsAsync(string query)
+        {
+            var url = $"api/product/searchLocations?query={Uri.EscapeDataString(query)}";
+
+			var response = await _httpClient.GetAsync(url);
+			response.EnsureSuccessStatusCode();
     public async Task<ProductDTO?> GetProductByIdAsync(int id)
     {
         using var response = await _httpClient.GetAsync($"api/product/{id}");
