@@ -4871,6 +4871,16 @@ textarea.details-report-input {
         .home-section-action a:hover {
             color: #075858;
         }
+/* ---- Tryb ciemny: zgłoszenia i okienko potwierdzenia ---- */
+:where([data-theme="dark"]) :is(.report-item, .confirm-modal, .details-report) {
+    background-color: var(--surface);
+}
+
+:where([data-theme="dark"]) .details-report-input {
+    background-color: var(--surface);
+    color: var(--ink);
+}
+        }
 
 /* Ekran blokady użytkownika */
 .user-blocked-screen {
