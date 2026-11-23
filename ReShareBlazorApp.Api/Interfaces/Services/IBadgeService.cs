@@ -10,5 +10,7 @@ namespace ReShareBlazorApp.Api.Interfaces.Services
         Task<List<BadgeDTO>> GetAllBadgesAsync();
 
         Task<bool> AddBadgeAsync(BadgeDTO badge);
+
+        Task<bool> AwardBadgeAsync(int userId, string badgeName);
     }
 }

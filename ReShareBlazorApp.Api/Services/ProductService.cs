@@ -17,17 +17,20 @@ namespace ReShareBlazorApp.Api.Services
         private readonly IProductRepository _productRepository;
         private readonly IImageStorage _imageStorage;
         private readonly INotificationService _notificationService;
+        private readonly IBadgeService _badgeService;
         private readonly ILogger<ProductService> _logger;
 
         public ProductService(
             IProductRepository productRepository,
             IImageStorage imageStorage,
             INotificationService notificationService,
+            IBadgeService badgeService,
             ILogger<ProductService> logger)
         {
             _productRepository = productRepository;
             _imageStorage = imageStorage;
             _notificationService = notificationService;
+            _badgeService = badgeService;
             _logger = logger;
         }
 
@@ -120,6 +123,8 @@ namespace ReShareBlazorApp.Api.Services
                             "Nie udało się utworzyć powiadomień dla nowego ogłoszenia {ProductId}",
                             productModel.Id);
                     }
+
+                    await AwardProductBadgesAsync(productModel.UserId);
                 }
 
                 return result;
@@ -128,6 +133,29 @@ namespace ReShareBlazorApp.Api.Services
             {
                 DeleteFiles(savedFiles);
                 throw;
+            }
+        }
+
+        private async Task AwardProductBadgesAsync(int userId)
+        {
+            try
+            {
+                var productCount = await _productRepository.CountUserProductsAsync(userId);
+
+                if (productCount == 1)
+                {
+                    await _badgeService.AwardBadgeAsync(userId, "Pierwsze ogłoszenie");
+                }
+
+                if (productCount >= 5)
+                {
+                    await _badgeService.AwardBadgeAsync(userId, "Aktywny sprzedawca");
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception,
+                    "Nie udało się przyznać odznak za ogłoszenia użytkownikowi {UserId}", userId);
             }
         }
 

@@ -9,10 +9,12 @@ namespace ReShareBlazorApp.Api.Services
     public class BadgeService : IBadgeService
     {
         private readonly IBadgeRepository _badgeRepository;
+        private readonly ILogger<BadgeService> _logger;
 
-        public BadgeService(IBadgeRepository badgeRepository)
+        public BadgeService(IBadgeRepository badgeRepository, ILogger<BadgeService> logger)
         {
             _badgeRepository = badgeRepository;
+            _logger = logger;
         }
 
         // Pobieranie odznak konkretnego użytkownika
@@ -60,6 +62,18 @@ namespace ReShareBlazorApp.Api.Services
             };
 
             return await _badgeRepository.AddBadgeAsync(newBadge);
+        }
+
+        public async Task<bool> AwardBadgeAsync(int userId, string badgeName)
+        {
+            var awarded = await _badgeRepository.AwardBadgeAsync(userId, badgeName);
+
+            if (!awarded)
+            {
+                _logger.LogWarning("Nie udało się przyznać odznaki {BadgeName} użytkownikowi {UserId}.", badgeName, userId);
+            }
+
+            return awarded;
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Services;
@@ -44,64 +43,6 @@ namespace ReShareBlazorApp.Api.Controllers
             if (!result)
                 return BadRequest();
 
-            var userProductsCount = await _context.Products
-                .IgnoreQueryFilters()
-                .CountAsync(p => p.UserId == id);
-
-            if (userProductsCount == 1)
-            {
-                var badge = await _context.Badges
-                    .FirstOrDefaultAsync(b => b.Name == "Pierwsze ogłoszenie");
-
-                if (badge != null)
-                {
-                    var alreadyEarned = await _context.UserBadges
-                        .AnyAsync(ub =>
-                            ub.UserId == id &&
-                            ub.BadgeId == badge.Id);
-
-                    if (!alreadyEarned)
-                    {
-                        _context.UserBadges.Add(new UserBadge
-                        {
-                            UserId = id,
-                            BadgeId = badge.Id,
-                            IsEarned = true,
-                            EarnedAt = DateTime.Now
-                        });
-
-                        await _context.SaveChangesAsync();
-                    }
-                }
-            }
-
-            var userProductsCountFor5Badge = await _context.Products
-                .CountAsync(p => p.UserId == id);
-
-            if (userProductsCountFor5Badge >= 5)
-            {
-                var badge = await _context.Badges
-                    .FirstOrDefaultAsync(b => b.Name == "Aktywny sprzedawca");
-
-                if (badge != null)
-                {
-                    var alreadyEarned = await _context.UserBadges
-                        .AnyAsync(ub => ub.UserId == id && ub.BadgeId == badge.Id);
-
-                    if (!alreadyEarned)
-                    {
-                        _context.UserBadges.Add(new UserBadge
-                        {
-                            UserId = id,
-                            BadgeId = badge.Id,
-                            IsEarned = true,
-                            EarnedAt = DateTime.Now
-                        });
-
-                        await _context.SaveChangesAsync();
-                    }
-                }
-            }
             await _activityLogger.LogAsync(User, ActivityActions.ProductAdded,
                 $"Dodano ogłoszenie „{product.Name}”", "Product");
             return Ok();

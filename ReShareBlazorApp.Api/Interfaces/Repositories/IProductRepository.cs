@@ -22,6 +22,7 @@ namespace ReShareBlazorApp.Api.Interfaces.Repositories
 
         Task<bool> UpdateProductAsync(int productId, int userId, ProductUpdateDTO product);
         Task<bool> DeleteProductAsync(int productId, int userId);
+        Task<int> CountUserProductsAsync(int userId);
         Task<List<LocationDTO>> GetLocationsAsync(string query);
 
         Task<Product?> GetProductById(int id);

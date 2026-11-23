@@ -34,6 +34,13 @@ namespace ReShareBlazorApp.Api.Controllers
             return Ok(badges);
         }
 
+        [HttpGet("user/{userId:int}")]
+        public async Task<IActionResult> GetUserBadges(int userId)
+        {
+            var badges = await _badgeService.GetUserBadgesAsync(userId);
+            return Ok(badges);
+        }
+
         // Pobieranie wszystkich odznak - tylko Admin
         [HttpGet("all")]
         [Authorize(Roles = "Admin")]

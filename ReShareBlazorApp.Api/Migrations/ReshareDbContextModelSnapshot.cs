@@ -202,6 +202,31 @@ namespace ReShareBlazorApp.Api.Migrations
                     b.ToTable("ActivityLogs");
                 });
 
+            modelBuilder.Entity("ReShareBlazorApp.Api.Date.Badge", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Badges");
+                });
+
             modelBuilder.Entity("ReShareBlazorApp.Api.Date.ContactMessage", b =>
                 {
                     b.Property<int>("Id")

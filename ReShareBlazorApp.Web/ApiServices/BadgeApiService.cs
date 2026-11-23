@@ -53,6 +53,25 @@ namespace ReShareBlazorApp.Web.ApiServices
                    ?? new List<BadgeDTO>();
         }
 
+        public async Task<List<BadgeDTO>> GetUserBadgesAsync(int userId)
+        {
+            var token = await GetTokenAsync();
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"api/badge/user/{userId}"
+            );
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content.ReadFromJsonAsync<List<BadgeDTO>>()
+                   ?? new List<BadgeDTO>();
+        }
+
         // Pobieranie wszystkich odznak - administrator
         public async Task<List<BadgeDTO>> GetAllBadgesAsync()
         {

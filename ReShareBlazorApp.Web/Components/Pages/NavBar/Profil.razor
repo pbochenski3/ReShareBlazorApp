@@ -150,8 +150,8 @@ else if (exist)
                 </div>
 
                 <div class="profile-stat">
-                    <strong>9</strong>
-                    <span>Transakcje</span>
+                    <strong>@badges.Count(b => b.IsEarned)</strong>
+                    <span>Zdobyte odznaki</span>
                 </div>
 
                 <div class="profile-stat">
@@ -184,11 +184,11 @@ else if (exist)
                     Ulubione
                 </button>
 
-                <button class="profile-tab @(activeTab == ProfileTab.Transactions ? "active" : "")"
+                <button class="profile-tab @(activeTab == ProfileTab.Badges ? "active" : "")"
                         type="button"
                         role="tab"
-                        @onclick="() => activeTab = ProfileTab.Transactions">
-                    Transakcje
+                        @onclick="() => activeTab = ProfileTab.Badges">
+                    Odznaki
                 </button>
 
                 <button class="profile-tab @(activeTab == ProfileTab.Reviews ? "active" : "")"
@@ -216,11 +216,42 @@ else if (exist)
                     Brak danych o ulubionych ogłoszeniach.
                 </p>
             }
-            else if (activeTab == ProfileTab.Transactions)
+            else if (activeTab == ProfileTab.Badges)
             {
-                <p class="text-muted">
-                    Brak danych o transakcjach.
-                </p>
+                @if (isLoadingBadges)
+                {
+                    <p class="text-muted">Ładowanie odznak...</p>
+                }
+                else if (badges.Count == 0)
+                {
+                    <p class="text-muted">Ten użytkownik nie ma jeszcze żadnych odznak.</p>
+                }
+                else
+                {
+                    <div class="badges-summary">
+                        <span>Zdobyte odznaki:</span>
+                        <strong>@badges.Count(b => b.IsEarned) / @badges.Count</strong>
+                    </div>
+
+                    <div class="badges-grid">
+                        @foreach (var badge in badges)
+                        {
+                            <div class="badge-card @(badge.IsEarned ? "earned" : "locked")">
+                                <div class="badge-icon">@badge.Icon</div>
+                                <h3>@badge.Name</h3>
+                                <p>@badge.Description</p>
+                                @if (badge.IsEarned)
+                                {
+                                    <span class="earned-label">✓ Zdobyta</span>
+                                }
+                                else
+                                {
+                                    <span class="locked-label">🔒 Nie zdobyto</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
             }
             else if (activeTab == ProfileTab.Reviews)
             {
@@ -293,6 +324,8 @@ else
     private List<ProductDTO> products = new();
     private List<ProductDTO> lookingForProducts = new();
     private List<NotificationDTO> notifications = new();
+    private List<BadgeDTO> badges = new();
+    private bool isLoadingBadges = true;
 
     private ProfileTab activeTab = ProfileTab.Listings;
 
@@ -328,6 +361,7 @@ else
         lookingForProducts.Clear();
         userReviews.Clear();
         notifications.Clear();
+        badges.Clear();
 
         avatarUrl = null;
 
@@ -373,6 +407,9 @@ else
                 await LoadNotificationsAsync();
             }
 
+            isLoadingBadges = true;
+            badges = await BadgeApiService.GetUserBadgesAsync(profile.UserId);
+
             // Pobieranie opinii użytkownika
             await LoadUserReviews();
         }
@@ -384,6 +421,7 @@ else
         {
             isLoadingProfile = false;
             isLoadingReviews = false;
+            isLoadingBadges = false;
         }
     }
 
@@ -447,6 +485,7 @@ else
         LookingFor,
         Favorites,
         Transactions,
+        Badges,
         Reviews
     }
 }

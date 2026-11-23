@@ -78,6 +78,20 @@ namespace ReShareBlazorApp.Api.Repositories
             }
         }
 
+        public async Task<int> CountUserProductsAsync(int userId)
+        {
+            try
+            {
+                return await _context.Products
+                    .CountAsync(p => p.UserId == userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred in CountUserProductsAsync for user {UserId}", userId);
+                throw;
+            }
+        }
+
         public async Task<List<Product>> GetProducts(
     int number = 5,
     ProductCategory? category = null,
