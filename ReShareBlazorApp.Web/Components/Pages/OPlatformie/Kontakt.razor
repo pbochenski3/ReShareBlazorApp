@@ -1,9 +1,12 @@
 ﻿@page "/kontakt"
 @rendermode InteractiveServer
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Web.ApiServices
 @inject ContactApiService contactApi
 @inject NotificationService notify
+@inject AuthenticationStateProvider authStateProvider
 
 <PageTitle>Kontakt – ODDAJ DALEJ</PageTitle>
 
@@ -31,37 +34,66 @@
             <div class="info-contact-box">
                 <h3>Szybka wiadomość</h3>
 
-                <EditForm Model="@contactModel" OnValidSubmit="HandleSubmit" class="auth-form">
-                    <DataAnnotationsValidator />
+                <AuthorizeView>
+                    <Authorized Context="authContext">
+                        <EditForm Model="@contactModel" OnValidSubmit="HandleSubmit" class="auth-form">
+                            <DataAnnotationsValidator />
 
-                    <label class="home-field">
-                        <span>Twoje imię</span>
-                        <InputText @bind-Value="contactModel.Name" placeholder="np. Jan Kowalski" />
-                        <ValidationMessage For="@(() => contactModel.Name)" />
-                    </label>
+                            <label class="home-field">
+                                <span>Twoje imię</span>
+                                <InputText @bind-Value="contactModel.Name" readonly />
+                                <ValidationMessage For="@(() => contactModel.Name)" />
+                            </label>
 
-                    <label class="home-field">
-                        <span>Adres e-mail</span>
-                        <InputText @bind-Value="contactModel.Email" placeholder="nazwa@domena.pl" />
-                        <ValidationMessage For="@(() => contactModel.Email)" />
-                    </label>
+                            <label class="home-field">
+                                <span>Adres e-mail</span>
+                                <InputText @bind-Value="contactModel.Email" readonly />
+                                <ValidationMessage For="@(() => contactModel.Email)" />
+                            </label>
 
-                    <label class="home-field">
-                        <span>Tytuł wiadomości</span>
-                        <InputText @bind-Value="contactModel.Subject" placeholder="np. Pytanie o ogłoszenie / Błąd na stronie" />
-                        <ValidationMessage For="@(() => contactModel.Subject)" />
-                    </label>
+                            <label class="home-field">
+                                <span>Tytuł wiadomości</span>
+                                <InputSelect @bind-Value="selectedTopic" @bind-Value:after="OnTopicChanged">
+                                    <option value="">-- Wybierz temat --</option>
+                                    @foreach (var topic in CommonTopics)
+                                    {
+                                        <option value="@topic">@topic</option>
+                                    }
+                                    <option value="@OtherOption">Inne</option>
+                                </InputSelect>
+                            </label>
 
-                    <label class="home-field">
-                        <span>Treść wiadomości</span>
-                        <InputTextArea @bind-Value="contactModel.Message" rows="4" placeholder="Wpisz swoją wiadomość..." />
-                        <ValidationMessage For="@(() => contactModel.Message)" />
-                    </label>
+                            @if (selectedTopic == OtherOption)
+                            {
+                                <label class="home-field">
+                                    <span>Wpisz własny tytuł</span>
+                                    <InputText @bind-Value="customSubject" placeholder="Wpisz tytuł wiadomości..." />
+                                </label>
+                            }
 
-                    <button type="submit" class="home-btn home-btn-primary" disabled="@isSending">
-                        @(isSending ? "Wysyłanie..." : "Wyślij wiadomość")
-                    </button>
-                </EditForm>
+                            @if (!string.IsNullOrEmpty(subjectError))
+                            {
+                                <div class="validation-message">@subjectError</div>
+                            }
+
+                            <label class="home-field">
+                                <span>Treść wiadomości</span>
+                                <InputTextArea @bind-Value="contactModel.Message" rows="4" placeholder="Wpisz swoją wiadomość..." />
+                                <ValidationMessage For="@(() => contactModel.Message)" />
+                            </label>
+
+                            <button type="submit" class="home-btn home-btn-primary" disabled="@isSending">
+                                @(isSending ? "Wysyłanie..." : "Wyślij wiadomość")
+                            </button>
+                        </EditForm>
+                    </Authorized>
+                    <NotAuthorized>
+                        <p class="admin-muted">
+                            Aby wysłać szybką wiadomość, zaloguj się na swoje konto.
+                        </p>
+                        <a class="home-btn home-btn-primary" href="/login">Zaloguj się</a>
+                    </NotAuthorized>
+                </AuthorizeView>
             </div>
 
         </div>
@@ -69,11 +101,78 @@
 </section>
 
 @code {
+    private const string OtherOption = "__OTHER__";
+
+    private static readonly string[] CommonTopics =
+    [
+        "Pytanie o ogłoszenie",
+        "Problem z kontem lub logowaniem",
+        "Zgłoszenie błędu na stronie",
+        "Sugestia nowej funkcji",
+        "Współpraca / partnerstwo",
+        "Pytanie o regulamin i zasady",
+        "Problem z dodawaniem ogłoszenia",
+        "Inne pytanie do administracji"
+    ];
+
     private ContactRequest contactModel = new();
+    private string selectedTopic = "";
+    private string customSubject = "";
+    private string? subjectError;
     private bool isSending = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            contactModel.Name =
+                user.FindFirst(ClaimTypes.Name)?.Value
+                ?? user.FindFirst("name")?.Value
+                ?? user.FindFirst("unique_name")?.Value
+                ?? user.Identity.Name
+                ?? "";
+
+            contactModel.Email =
+                user.FindFirst(ClaimTypes.Email)?.Value
+                ?? user.FindFirst("email")?.Value
+                ?? "";
+        }
+    }
+
+    private void OnTopicChanged()
+    {
+        subjectError = null;
+        if (selectedTopic != OtherOption)
+        {
+            customSubject = "";
+            contactModel.Subject = selectedTopic;
+        }
+        else
+        {
+            contactModel.Subject = customSubject;
+        }
+    }
 
     private async Task HandleSubmit()
     {
+        subjectError = null;
+
+        var finalSubject = selectedTopic == OtherOption
+            ? customSubject.Trim()
+            : selectedTopic.Trim();
+
+        if (string.IsNullOrWhiteSpace(finalSubject))
+        {
+            subjectError = selectedTopic == OtherOption
+                ? "Wpisz własny tytuł wiadomości."
+                : "Wybierz tytuł wiadomości z listy.";
+            return;
+        }
+
+        contactModel.Subject = finalSubject;
         isSending = true;
 
         var success = await contactApi.SendContactMessageAsync(contactModel);
@@ -81,7 +180,15 @@
         if (success)
         {
             notify.AddNotification("Kontakt", "Wiadomość została wysłana! Odpowiemy najszybciej jak to możliwe.");
-            contactModel = new ContactRequest();
+            var keptName = contactModel.Name;
+            var keptEmail = contactModel.Email;
+            contactModel = new ContactRequest
+            {
+                Name = keptName,
+                Email = keptEmail
+            };
+            selectedTopic = "";
+            customSubject = "";
         }
         else
         {
