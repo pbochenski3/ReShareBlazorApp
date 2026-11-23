@@ -15,10 +15,9 @@ namespace ReShareBlazorApp.Api.Controllers
     {
         private readonly IUserService _userService;
         private readonly IActivityLogger _activityLogger;
-        public UserController(IUserService userService, IActivityLogger activityLogger)
         private readonly UserManager<User> _userManager;
 
-        public UserController(IUserService userService, UserManager<User> userManager)
+        public UserController(IUserService userService, IActivityLogger activityLogger, UserManager<User> userManager)
         {
             _userService = userService;
             _activityLogger = activityLogger;

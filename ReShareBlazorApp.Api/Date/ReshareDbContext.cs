@@ -4,17 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ReShareBlazorApp.Api.Date
 {
-    public class ReshareDbContext : IdentityDbContext<User, IdentityRole<int>, int>
-    {
-        public DbSet<User> Users { get; set; }
-        public DbSet<Product> Products { get; set; }
-        public DbSet<ProductImage> ProductImages { get; set; }
-        public DbSet<Location> Locations { get; set; }
-        public DbSet<UserFollow> UserFollows { get; set; }
-        public DbSet<Review> Reviews { get; set; }
-        public DbSet<Report> Reports { get; set; }
-        public DbSet<RecentlyViewedProduct> RecentlyViewedProducts { get; set; }
-        public DbSet<ActivityLog> ActivityLogs { get; set; }
+
 	public class ReshareDbContext : IdentityDbContext<User, IdentityRole<int>, int>
 	{
 		public DbSet<User> Users { get; set; }
@@ -26,8 +16,10 @@ namespace ReShareBlazorApp.Api.Date
 		public DbSet<Report> Reports { get; set; }
 		public DbSet<RecentlyViewedProduct> RecentlyViewedProducts { get; set; }
 		public DbSet<PromoBanner> PromoBanners { get; set; }
+        public DbSet<ActivityLog> ActivityLogs { get; set; }
 
-		public ReshareDbContext(DbContextOptions<ReshareDbContext> options)
+
+        public ReshareDbContext(DbContextOptions<ReshareDbContext> options)
 			: base(options)
 		{
 		}

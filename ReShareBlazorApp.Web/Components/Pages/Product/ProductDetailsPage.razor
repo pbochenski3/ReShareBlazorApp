@@ -5,7 +5,9 @@
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Shared.Enums
 @using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Models
 
 @inject ProductApiService productApi
 @inject HttpClient Http
@@ -13,6 +15,7 @@
 @inject NavigationManager Navigation
 @inject ReviewApiService ReviewApiService
 @inject RecentlyViewedApiService RecentlyViewedApiService
+@inject ReportApiService ReportApiService
 @inject AuthenticationStateProvider AuthStateProvider
 
 <div class="details-page">
@@ -301,6 +304,15 @@
                                     @onclick="WriteMessage">
                                 ✉ Napisz wiadomość
                             </button>
+
+                         @if (isAuthenticated)
+                         {
+                             <button type="button"
+                                     class="btn btn-outline-danger w-100 mb-3"
+                                     @onclick="ToggleReportForm">
+                                 ⚑ Zgłoś ogłoszenie
+                             </button>
+                         }
                         }
 
                         <a href="/" class="details-primary-button">
@@ -328,6 +340,62 @@
                         </div>
                     </div>
 
+                     @if (showReportForm)
+                     {
+                         <div class="card border-danger mt-3 p-3">
+                             <h3 class="h5">Zgłoś ogłoszenie</h3>
+
+                             <EditForm Model="reportModel" OnValidSubmit="SubmitReport">
+                                 <DataAnnotationsValidator />
+                                 <ValidationSummary />
+
+                                 <div class="mb-3">
+                                     <label class="form-label" for="report-category">Powód zgłoszenia</label>
+                                     <InputSelect id="report-category"
+                                                  class="form-select"
+                                                  @bind-Value="reportModel.Category">
+                                         <option value="">Wybierz powód</option>
+                                         @foreach (var category in Enum.GetValues<ReportCategory>())
+                                         {
+                                             <option value="@category">@GetReportCategoryName(category)</option>
+                                         }
+                                     </InputSelect>
+                                     <ValidationMessage For="@(() => reportModel.Category)" />
+                                 </div>
+
+                                 <div class="mb-3">
+                                     <label class="form-label" for="report-description">Opis</label>
+                                     <InputTextArea id="report-description"
+                                                    class="form-control"
+                                                    rows="4"
+                                                    @bind-Value="reportModel.Description" />
+                                     <ValidationMessage For="@(() => reportModel.Description)" />
+                                 </div>
+
+                                 @if (!string.IsNullOrWhiteSpace(reportMessage))
+                                 {
+                                     <div class="alert @(reportSubmitted ? "alert-success" : "alert-danger")">
+                                         @reportMessage
+                                     </div>
+                                 }
+
+                                 <div class="d-flex gap-2">
+                                     <button type="submit"
+                                             class="btn btn-danger"
+                                             disabled="@isReportSubmitting">
+                                         @(isReportSubmitting ? "Wysyłanie..." : "Wyślij zgłoszenie")
+                                     </button>
+                                     <button type="button"
+                                             class="btn btn-outline-secondary"
+                                             @onclick="ToggleReportForm"
+                                             disabled="@isReportSubmitting">
+                                         Anuluj
+                                     </button>
+                                 </div>
+                             </EditForm>
+                         </div>
+                     }
+
                 </aside>
 
             </div>
@@ -354,6 +422,11 @@
 
     private string? errorMessage;
     private bool isSubmitting;
+    private bool showReportForm;
+    private bool isReportSubmitting;
+    private bool reportSubmitted;
+    private string? reportMessage;
+    private ReportModel reportModel = new();
 
     private List<ReviewDTO>? reviews;
 
@@ -391,6 +464,10 @@
         showAddForm = false;
         errorMessage = null;
         followMessage = null;
+        showReportForm = false;
+        reportMessage = null;
+        reportSubmitted = false;
+        reportModel = new ReportModel();
         isFollowing = false;
         currentUserIdInt = null;
 
@@ -526,6 +603,72 @@
             return;
 
         showAddForm = !showAddForm;
+    }
+
+    private void ToggleReportForm()
+    {
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        if (Product == null || IsOwner)
+            return;
+
+        showReportForm = !showReportForm;
+        reportMessage = null;
+        reportSubmitted = false;
+    }
+
+    private async Task SubmitReport()
+    {
+        if (Product == null || !isAuthenticated || IsOwner || isReportSubmitting)
+            return;
+
+        isReportSubmitting = true;
+        reportMessage = null;
+        reportSubmitted = false;
+
+        try
+        {
+            var success = await ReportApiService.AddReportAsync(
+                Product.ProductId,
+                reportModel);
+
+            if (success)
+            {
+                reportSubmitted = true;
+                reportMessage = "Dziękujemy. Zgłoszenie zostało wysłane do moderacji.";
+                reportModel = new ReportModel();
+            }
+            else
+            {
+                reportMessage = "Nie udało się wysłać zgłoszenia. Sprawdź, czy sesja logowania jest aktywna.";
+            }
+        }
+        catch (Exception ex)
+        {
+            reportMessage = $"Wystąpił błąd podczas wysyłania zgłoszenia: {ex.Message}";
+        }
+        finally
+        {
+            isReportSubmitting = false;
+        }
+    }
+
+    private static string GetReportCategoryName(ReportCategory category)
+    {
+        return category switch
+        {
+            ReportCategory.Spam => "Spam lub reklama",
+            ReportCategory.Fraud => "Oszustwo",
+            ReportCategory.Inappropriate => "Nieodpowiednia treść",
+            ReportCategory.Prohibited => "Zabroniony przedmiot lub usługa",
+            ReportCategory.Duplicate => "Duplikat ogłoszenia",
+            ReportCategory.Other => "Inne",
+            _ => category.ToString()
+        };
     }
 
     // Dodawanie opinii

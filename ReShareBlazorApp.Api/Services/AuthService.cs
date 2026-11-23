@@ -17,13 +17,13 @@ namespace ReShareBlazorApp.Api.Services
         private readonly UserManager<User> _userManager;
         private readonly IConfiguration _configuration;
         private readonly IActivityLogger _activityLogger;
-        public AuthService(UserManager<User> userManager, IConfiguration configuration, IActivityLogger activityLogger)
         private readonly IAppEmailSender _emailSender;
         private readonly ILogger<AuthService> _logger;
 
         public AuthService(
             UserManager<User> userManager,
             IConfiguration configuration,
+            IActivityLogger activityLogger,
             IAppEmailSender emailSender,
             ILogger<AuthService> logger)
         {
@@ -49,8 +49,15 @@ namespace ReShareBlazorApp.Api.Services
             {
                 return null;
             }
-            await _activityLogger.LogAsync(user.Id, user.UserName, ActivityActions.UserRegistered,
-                "Utworzono konto", "User", user.Id);
+
+            await _activityLogger.LogAsync(
+                user.Id,
+                user.UserName ?? "",
+                ActivityActions.UserRegistered,
+                "Utworzono konto",
+                "User",
+                user.Id);
+
             return new RegisterResponse
             {
                 Message = "Konto zostało pomyślnie utworzone."
@@ -114,7 +121,6 @@ namespace ReShareBlazorApp.Api.Services
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null || !user.IsActive || string.IsNullOrEmpty(user.Email))
             {
-                // Celowo nic nie zdradzamy - odpowiedź jest taka sama dla każdego adresu.
                 return;
             }
 
@@ -126,8 +132,6 @@ namespace ReShareBlazorApp.Api.Services
                        $"?email={Uri.EscapeDataString(user.Email)}&token={encodedToken}";
             var body = EmailStyle.ResetPassword(user.UserName, link);
 
-            var userName = WebUtility.HtmlEncode(user.UserName ?? "");
-           
             try
             {
                 await _emailSender.SendAsync(user.Email, "Zmiana hasła - ODDAJ DALEJ", body);

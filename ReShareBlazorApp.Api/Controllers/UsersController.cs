@@ -27,15 +27,11 @@ namespace ReShareBlazorApp.Api.Controllers
         public async Task<IActionResult> IsFollowing(int targetUserId)
         {
             var currentUserIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (currentUserIdClaim == null) return Unauthorized();
+            if (!int.TryParse(currentUserIdClaim, out var currentUserId))
+                return Unauthorized();
 
-            var currentUserId = int.Parse(currentUserIdClaim);
             var exists = await _context.UserFollows
                 .AnyAsync(f => f.FollowerId == currentUserId && f.FollowingId == targetUserId);
-			if (!int.TryParse(currentUserIdClaim, out var currentUserId))
-				return Unauthorized();
-			var exists = await _context.UserFollows
-				.AnyAsync(f => f.FollowerId == currentUserId && f.FollowingId == targetUserId);
 
             return Ok(exists);
         }
@@ -46,11 +42,8 @@ namespace ReShareBlazorApp.Api.Controllers
         public async Task<IActionResult> ToggleFollow(int targetUserId)
         {
             var currentUserIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (currentUserIdClaim == null) return Unauthorized();
-
-            var currentUserId = int.Parse(currentUserIdClaim);
-			if (!int.TryParse(currentUserIdClaim, out var currentUserId))
-				return Unauthorized();
+            if (!int.TryParse(currentUserIdClaim, out var currentUserId))
+                return Unauthorized();
 
             if (currentUserId == targetUserId)
                 return BadRequest("Nie możesz obserwować samego siebie.");
@@ -62,21 +55,31 @@ namespace ReShareBlazorApp.Api.Controllers
             {
                 _context.UserFollows.Add(new UserFollow { FollowerId = currentUserId, FollowingId = targetUserId });
                 await _context.SaveChangesAsync();
-                var followedName = await _context.Users.Where(u => u.Id == targetUserId)
-                    .Select(u => u.UserName).FirstOrDefaultAsync();
+
+                var followedName = await _context.Users
+                    .Where(u => u.Id == targetUserId)
+                    .Select(u => u.UserName)
+                    .FirstOrDefaultAsync();
+
                 await _activityLogger.LogAsync(User, ActivityActions.UserFollowed,
                     $"Zaczął obserwować użytkownika {followedName} (id: {targetUserId})", "User", targetUserId);
+
                 return Ok(new { isFollowing = true, message = "Zaczęto obserwować użytkownika." });
             }
             else
             {
                 _context.UserFollows.Remove(follow);
                 await _context.SaveChangesAsync();
-                var unfollowedName = await _context.Users.Where(u => u.Id == targetUserId)
-                    .Select(u => u.UserName).FirstOrDefaultAsync();
+
+                var unfollowedName = await _context.Users
+                    .Where(u => u.Id == targetUserId)
+                    .Select(u => u.UserName)
+                    .FirstOrDefaultAsync();
+
                 await _activityLogger.LogAsync(User, ActivityActions.UserUnfollowed,
                     $"Przestał obserwować użytkownika {unfollowedName} (id: {targetUserId})", "User", targetUserId);
-                return Ok(new { isFollowing = false, message = "Przestałoby się obserwować użytkownika." });
+
+                return Ok(new { isFollowing = false, message = "Przestał obserwować użytkownika." });
             }
         }
     }

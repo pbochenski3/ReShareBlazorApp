@@ -12,6 +12,7 @@ using ReShareBlazorApp.Api.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
 builder.Services.AddDbContext<ReshareDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
@@ -23,6 +24,7 @@ builder.Services.AddDbContext<ReshareDbContext>(options =>
                 maxRetryDelay: TimeSpan.FromSeconds(10),
                 errorNumbersToAdd: null);
         }));
+
 builder.Services
     .AddIdentity<User, IdentityRole<int>>(options =>
     {
@@ -36,8 +38,10 @@ builder.Services
     })
     .AddEntityFrameworkStores<ReshareDbContext>()
     .AddDefaultTokenProviders();
+
 builder.Services.Configure<DataProtectionTokenProviderOptions>(
     options => options.TokenLifespan = TimeSpan.FromHours(1));
+
 builder.Services
     .AddAuthentication(options =>
     {
@@ -59,11 +63,12 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(
                     builder.Configuration["Jwt:Key"]!
-                    )
                 )
+            )
         };
     });
-//Services
+
+// Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IUserService, UserService>();
@@ -71,7 +76,8 @@ builder.Services.AddSingleton<IImageStorage, DiskImageStorage>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
 builder.Services.AddScoped<IAppEmailSender, SmtpEmailSender>();
-//Repositories
+
+// Repositories
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
@@ -80,6 +86,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
+
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider
@@ -92,15 +99,22 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseHttpsRedirection();
+
 var imageStorage = app.Services.GetRequiredService<IImageStorage>();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(imageStorage.GetFolderPath("avatars")),
     RequestPath = "/avatars"
 });
+
 app.UseAuthentication();
-app.UseAuthorization();
+
+// NAPRAWIONE: Middleware sprawdzaj¹ce blokadê u¿ytkownika musi byæ uruchomione 
+// PO Uwierzytelnieniu (¿eby znaæ User.Identity), ale PRZED Autoryzacj¹.
 app.UseMiddleware<UserBlockCheckMiddleware>();
+
+app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
