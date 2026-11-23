@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.IdentityModel.Tokens;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
@@ -15,6 +16,8 @@ namespace ReShareBlazorApp.Api.Services
     {
         private readonly UserManager<User> _userManager;
         private readonly IConfiguration _configuration;
+        private readonly IActivityLogger _activityLogger;
+        public AuthService(UserManager<User> userManager, IConfiguration configuration, IActivityLogger activityLogger)
         private readonly IAppEmailSender _emailSender;
         private readonly ILogger<AuthService> _logger;
 
@@ -26,6 +29,7 @@ namespace ReShareBlazorApp.Api.Services
         {
             _userManager = userManager;
             _configuration = configuration;
+            _activityLogger = activityLogger;
             _emailSender = emailSender;
             _logger = logger;
         }
@@ -45,6 +49,8 @@ namespace ReShareBlazorApp.Api.Services
             {
                 return null;
             }
+            await _activityLogger.LogAsync(user.Id, user.UserName, ActivityActions.UserRegistered,
+                "Utworzono konto", "User", user.Id);
             return new RegisterResponse
             {
                 Message = "Konto zostało pomyślnie utworzone."

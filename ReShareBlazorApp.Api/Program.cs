@@ -69,6 +69,7 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSingleton<IImageStorage, DiskImageStorage>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
 builder.Services.AddScoped<IAppEmailSender, SmtpEmailSender>();
 //Repositories
 builder.Services.AddScoped<IProductRepository, ProductRepository>();

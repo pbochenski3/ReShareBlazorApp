@@ -4,6 +4,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ReShareBlazorApp.Api.Date
 {
+    public class ReshareDbContext : IdentityDbContext<User, IdentityRole<int>, int>
+    {
+        public DbSet<User> Users { get; set; }
+        public DbSet<Product> Products { get; set; }
+        public DbSet<ProductImage> ProductImages { get; set; }
+        public DbSet<Location> Locations { get; set; }
+        public DbSet<UserFollow> UserFollows { get; set; }
+        public DbSet<Review> Reviews { get; set; }
+        public DbSet<Report> Reports { get; set; }
+        public DbSet<RecentlyViewedProduct> RecentlyViewedProducts { get; set; }
+        public DbSet<ActivityLog> ActivityLogs { get; set; }
 	public class ReshareDbContext : IdentityDbContext<User, IdentityRole<int>, int>
 	{
 		public DbSet<User> Users { get; set; }
@@ -25,6 +36,17 @@ namespace ReShareBlazorApp.Api.Date
 		{
 			base.OnModelCreating(builder);
 
+            builder.Entity<ActivityLog>(entity =>
+            {
+                entity.Property(x => x.CreatedAt).HasColumnType("datetime2");
+                // Szukanie po użytkowniku i sortowanie po dacie.
+                entity.HasIndex(x => x.UserName);
+                entity.HasIndex(x => x.UserId);
+                entity.HasIndex(x => x.CreatedAt);
+            });
+
+            builder.Entity<UserFollow>()
+                .HasKey(f => new { f.FollowerId, f.FollowingId });
 			builder.Entity<UserFollow>()
 				.HasKey(f => new { f.FollowerId, f.FollowingId });
 
