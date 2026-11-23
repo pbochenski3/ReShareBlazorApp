@@ -89,8 +89,8 @@ namespace ReShareBlazorApp.Api.Repositories
                 if (product == null)
                     return false;
 
-                // Usunięcie ogłoszenia usuwa kaskadowo wszystkie jego zgłoszenia.
-                _context.Products.Remove(product);
+                // Ogłoszenia są usuwane logicznie, tak samo jak w zwykłym endpointcie.
+                product.isDeleted = true;
                 await _context.SaveChangesAsync();
                 return true;
             }

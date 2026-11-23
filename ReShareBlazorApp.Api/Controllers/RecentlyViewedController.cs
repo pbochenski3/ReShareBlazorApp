@@ -52,51 +52,57 @@ public class RecentlyViewedController : ControllerBase
 		if (!exists)
 			return NotFound("Ogłoszenie nie istnieje.");
 
-		// Chroni operację przed równoczesnym zapisem
-		// kilku odwiedzanych ogłoszeń przez tego samego użytkownika.
-		await using var transaction =
-			await _db.Database.BeginTransactionAsync(
-				IsolationLevel.Serializable,
-				cancellationToken);
-
-		var existing = await _db.RecentlyViewedProducts
-			.FirstOrDefaultAsync(
-				x => x.UserId == userId.Value
-				  && x.ProductId == productId,
-				cancellationToken);
-
-		if (existing == null)
+		// Cała transakcja jest wykonywana przez strategię retry EF Core.
+		// Serializable blokuje również zakres dla nieistniejącego jeszcze wpisu.
+		// Dzięki temu dwa równoczesne żądania nie wykonają jednocześnie INSERT-u
+		// dla tej samej pary UserId/ProductId.
+		var executionStrategy = _db.Database.CreateExecutionStrategy();
+		await executionStrategy.ExecuteAsync(async () =>
 		{
-			_db.RecentlyViewedProducts.Add(
-				new RecentlyViewedProduct
-				{
-					UserId = userId.Value,
-					ProductId = productId,
-					ViewedAt = DateTime.UtcNow
-				});
-		}
-		else
-		{
-			// Ponowne odwiedzenie przenosi produkt na początek.
-			existing.ViewedAt = DateTime.UtcNow;
-		}
+			await using var transaction =
+				await _db.Database.BeginTransactionAsync(
+					IsolationLevel.Serializable,
+					cancellationToken);
 
-		await _db.SaveChangesAsync(cancellationToken);
+			var existing = await _db.RecentlyViewedProducts
+				.FirstOrDefaultAsync(
+					x => x.UserId == userId.Value
+					  && x.ProductId == productId,
+					cancellationToken);
 
-		var oldest = await _db.RecentlyViewedProducts
-			.Where(x => x.UserId == userId.Value)
-			.OrderByDescending(x => x.ViewedAt)
-			.ThenByDescending(x => x.Id)
-			.Skip(MaxItems)
-			.ToListAsync(cancellationToken);
+			if (existing == null)
+			{
+				_db.RecentlyViewedProducts.Add(
+					new RecentlyViewedProduct
+					{
+						UserId = userId.Value,
+						ProductId = productId,
+						ViewedAt = DateTime.UtcNow
+					});
+			}
+			else
+			{
+				// Ponowne odwiedzenie przenosi produkt na początek.
+				existing.ViewedAt = DateTime.UtcNow;
+			}
 
-		if (oldest.Count > 0)
-		{
-			_db.RecentlyViewedProducts.RemoveRange(oldest);
 			await _db.SaveChangesAsync(cancellationToken);
-		}
 
-		await transaction.CommitAsync(cancellationToken);
+			var oldest = await _db.RecentlyViewedProducts
+				.Where(x => x.UserId == userId.Value)
+				.OrderByDescending(x => x.ViewedAt)
+				.ThenByDescending(x => x.Id)
+				.Skip(MaxItems)
+				.ToListAsync(cancellationToken);
+
+			if (oldest.Count > 0)
+			{
+				_db.RecentlyViewedProducts.RemoveRange(oldest);
+				await _db.SaveChangesAsync(cancellationToken);
+			}
+
+			await transaction.CommitAsync(cancellationToken);
+		});
 
 		return NoContent();
 	}

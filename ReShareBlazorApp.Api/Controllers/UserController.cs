@@ -34,7 +34,7 @@ namespace ReShareBlazorApp.Api.Controllers
                 Id = user.Id,
                 IsActive = user.IsActive,
                 LockoutEnd = user.LockoutEnd,
-                WarningMessage = user.PhoneNumber
+                WarningMessage = user.WarningMessage
             });
         }
 

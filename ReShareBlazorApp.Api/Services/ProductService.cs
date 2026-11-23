@@ -27,6 +27,22 @@ namespace ReShareBlazorApp.Api.Services
 
         public async Task<bool> AddProductAsync(ProductDTO product)
         {
+            if (product == null ||
+                string.IsNullOrWhiteSpace(product.Name) ||
+                product.Name.Trim().Length is < 3 or > 50 ||
+                string.IsNullOrWhiteSpace(product.Description) ||
+                product.Description.Trim().Length > 5000 ||
+                string.IsNullOrWhiteSpace(product.City) ||
+                product.City.Trim().Length > 60 ||
+                product.Price < 0 ||
+                product.Price > 100000 ||
+                !Enum.IsDefined(product.Type) ||
+                !Enum.IsDefined(product.Category) ||
+                product.ExpiresAt <= DateTime.UtcNow)
+            {
+                return false;
+            }
+
             var images = new List<ProductImage>();
             var savedFiles = new List<string>();
 
@@ -136,6 +152,22 @@ namespace ReShareBlazorApp.Api.Services
             int userId,
             ProductUpdateDTO product)
         {
+            if (product == null ||
+                string.IsNullOrWhiteSpace(product.Name) ||
+                product.Name.Trim().Length is < 3 or > 50 ||
+                string.IsNullOrWhiteSpace(product.Description) ||
+                product.Description.Trim().Length > 5000 ||
+                string.IsNullOrWhiteSpace(product.City) ||
+                product.City.Trim().Length > 60 ||
+                product.Price < 0 ||
+                product.Price > 100000 ||
+                !Enum.IsDefined(product.Type) ||
+                !Enum.IsDefined(product.Category) ||
+                product.ExpiresAt <= DateTime.UtcNow)
+            {
+                return false;
+            }
+
             return await _productRepository.UpdateProductAsync(
                 productId,
                 userId,

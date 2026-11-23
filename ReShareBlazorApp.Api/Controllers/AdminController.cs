@@ -1,5 +1,6 @@
 
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -93,16 +94,20 @@ namespace ReShareBlazorApp.Api.Controllers
             var normalizedUserName = request.UserName.Trim();
 
             if (await _userManager.FindByEmailAsync(normalizedEmail) != null)
+            {
                 return BadRequest(new
                 {
                     message = "Użytkownik o podanym adresie e-mail już istnieje."
                 });
+            }
 
             if (await _userManager.FindByNameAsync(normalizedUserName) != null)
+            {
                 return BadRequest(new
                 {
                     message = "Użytkownik o podanej nazwie już istnieje."
                 });
+            }
 
             var user = new User
             {
@@ -127,31 +132,33 @@ namespace ReShareBlazorApp.Api.Controllers
             {
                 if (!await _roleManager.RoleExistsAsync("Admin"))
                 {
-                    var roleResult1 = await _roleManager.CreateAsync(
+                    var roleResult = await _roleManager.CreateAsync(
                         new IdentityRole<int>("Admin"));
 
-                    if (!roleResult1.Succeeded)
+                    if (!roleResult.Succeeded)
                     {
                         await _userManager.DeleteAsync(user);
 
                         return BadRequest(new
                         {
                             message = string.Join(" ",
-                                roleResult1.Errors.Select(e => e.Description))
+                                roleResult.Errors.Select(e => e.Description))
                         });
                     }
                 }
 
-                var roleResult = await _userManager.AddToRoleAsync(user, "Admin");
+                var addRoleResult = await _userManager.AddToRoleAsync(
+                    user,
+                    "Admin");
 
-                if (!roleResult.Succeeded)
+                if (!addRoleResult.Succeeded)
                 {
                     await _userManager.DeleteAsync(user);
 
                     return BadRequest(new
                     {
                         message = string.Join(" ",
-                            roleResult.Errors.Select(e => e.Description))
+                            addRoleResult.Errors.Select(e => e.Description))
                     });
                 }
             }
@@ -175,10 +182,12 @@ namespace ReShareBlazorApp.Api.Controllers
                 .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
             if (user == null)
+            {
                 return NotFound(new
                 {
                     message = "Nie znaleziono użytkownika."
                 });
+            }
 
             var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
 
@@ -221,10 +230,12 @@ namespace ReShareBlazorApp.Api.Controllers
             var user = await _userManager.FindByIdAsync(id.ToString());
 
             if (user == null || user.IsDeleted)
+            {
                 return NotFound(new
                 {
                     message = "Nie znaleziono użytkownika."
                 });
+            }
 
             if (string.Equals(
                 user.UserName,
@@ -239,8 +250,17 @@ namespace ReShareBlazorApp.Api.Controllers
 
             if (!await _roleManager.RoleExistsAsync("Admin"))
             {
-                await _roleManager.CreateAsync(
+                var createRoleResult = await _roleManager.CreateAsync(
                     new IdentityRole<int>("Admin"));
+
+                if (!createRoleResult.Succeeded)
+                {
+                    return BadRequest(new
+                    {
+                        message = string.Join(" ",
+                            createRoleResult.Errors.Select(e => e.Description))
+                    });
+                }
             }
 
             if (isAdmin)
@@ -307,14 +327,19 @@ namespace ReShareBlazorApp.Api.Controllers
             int id,
             [FromBody] AdminUpdateUserDTO request)
         {
+            if (request == null)
+                return BadRequest(new { message = "Brak danych użytkownika." });
+
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
             if (user == null)
+            {
                 return NotFound(new
                 {
                     message = "Nie znaleziono użytkownika."
                 });
+            }
 
             if (!string.Equals(
                 user.UserName,
@@ -439,16 +464,20 @@ namespace ReShareBlazorApp.Api.Controllers
                 .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
             if (user == null)
+            {
                 return NotFound(new
                 {
                     message = "Nie znaleziono użytkownika."
                 });
+            }
 
             if (file == null || file.Length == 0)
+            {
                 return BadRequest(new
                 {
                     message = "Nie wybrano pliku."
                 });
+            }
 
             await using var stream = file.OpenReadStream();
 
@@ -479,10 +508,12 @@ namespace ReShareBlazorApp.Api.Controllers
                 .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
             if (user == null)
+            {
                 return NotFound(new
                 {
                     message = "Nie znaleziono użytkownika."
                 });
+            }
 
             var error = await _userService.RemoveAvatarAsync(id);
 
@@ -509,10 +540,12 @@ namespace ReShareBlazorApp.Api.Controllers
                 .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
             if (user == null)
+            {
                 return NotFound(new
                 {
                     message = "Nie znaleziono użytkownika."
                 });
+            }
 
             if (string.Equals(
                 user.UserName,
@@ -553,10 +586,12 @@ namespace ReShareBlazorApp.Api.Controllers
                 .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
             if (user == null)
+            {
                 return NotFound(new
                 {
                     message = "Nie znaleziono użytkownika."
                 });
+            }
 
             if (string.Equals(
                 user.UserName,
@@ -604,10 +639,12 @@ namespace ReShareBlazorApp.Api.Controllers
                 .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
             if (user == null)
+            {
                 return NotFound(new
                 {
                     message = "Nie znaleziono użytkownika."
                 });
+            }
 
             user.IsActive = true;
             user.LockoutEnd = null;
@@ -627,10 +664,12 @@ namespace ReShareBlazorApp.Api.Controllers
                 .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
             if (user == null)
+            {
                 return NotFound(new
                 {
                     message = "Nie znaleziono użytkownika."
                 });
+            }
 
             user.WarningMessage = string.IsNullOrWhiteSpace(request.Message)
                 ? "Twoje konto narusza zasady serwisu. W przypadku dalszych naruszeń regulaminu zostanie zablokowane."
@@ -649,10 +688,12 @@ namespace ReShareBlazorApp.Api.Controllers
                 .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
             if (user == null)
+            {
                 return NotFound(new
                 {
                     message = "Nie znaleziono użytkownika."
                 });
+            }
 
             user.WarningMessage = null;
 
@@ -677,10 +718,12 @@ namespace ReShareBlazorApp.Api.Controllers
                 .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
             if (user == null)
+            {
                 return NotFound(new
                 {
                     message = "Nie znaleziono użytkownika."
                 });
+            }
 
             if (string.Equals(
                 user.UserName,
@@ -744,59 +787,72 @@ namespace ReShareBlazorApp.Api.Controllers
                 .FirstOrDefaultAsync(p => p.Id == id && !p.isDeleted);
 
             if (product == null)
+            {
                 return NotFound(new
                 {
                     message = "Nie znaleziono ogłoszenia."
                 });
+            }
 
             product.isDeleted = true;
 
-        _context.Products.Remove(product);
-        await _context.SaveChangesAsync();
-        return NoContent();
-    }
+            await _context.SaveChangesAsync();
 
-    [HttpGet("reviews")]
-    public async Task<ActionResult<List<ReviewDTO>>> GetReviews()
-    {
-        var reviews = await _context.Reviews
-            .OrderByDescending(r => r.CreatedAt)
-            .Select(r => new AdminReviewDTO
-            {
-                Id = r.Id,
-                ProductId = r.ProductId,
-                AuthorName = r.AuthorName,
-                Rating = r.Rating,
-                Comment = r.Comment,
-                CreatedAt = r.CreatedAt,
-                IsHidden = r.IsHidden
-            })
-            .ToListAsync();
-        return Ok(reviews);
-    }
+            return NoContent();
+        }
 
-    [HttpPost("reviews/{id:int}/hidden")]
-    public async Task<IActionResult> SetReviewHidden(int id, [FromQuery] bool value)
-    {
-        var review = await _context.Reviews.FirstOrDefaultAsync(r => r.Id == id);
-        if (review == null) return NotFound();
+        // Pobieranie opinii
+        [HttpGet("reviews")]
+        public async Task<ActionResult<List<AdminReviewDTO>>> GetReviews()
+        {
+            var reviews = await _context.Reviews
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new AdminReviewDTO
+                {
+                    Id = r.Id,
+                    ProductId = r.ProductId,
+                    AuthorName = r.AuthorName,
+                    Rating = r.Rating,
+                    Comment = r.Comment,
+                    CreatedAt = r.CreatedAt,
+                    IsHidden = r.IsHidden
+                })
+                .ToListAsync();
 
-        review.IsHidden = value;
-        await _context.SaveChangesAsync();
-        return Ok();
-    }
+            return Ok(reviews);
+        }
 
-    [HttpDelete("reviews/{id:int}")]
-    public async Task<IActionResult> DeleteReview(int id)
-    {
-        var review = await _context.Reviews.FirstOrDefaultAsync(r => r.Id == id);
-        if (review == null) return NotFound();
+        // Ukrywanie lub przywracanie opinii
+        [HttpPost("reviews/{id:int}/hidden")]
+        public async Task<IActionResult> SetReviewHidden(
+            int id,
+            [FromQuery] bool value)
+        {
+            var review = await _context.Reviews
+                .FirstOrDefaultAsync(r => r.Id == id);
 
-        _context.Reviews.Remove(review);
-        await _context.SaveChangesAsync();
-        return NoContent();
-    }
-}
+            if (review == null)
+                return NotFound();
+
+            review.IsHidden = value;
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        // Usuwanie opinii
+        [HttpDelete("reviews/{id:int}")]
+        public async Task<IActionResult> DeleteReview(int id)
+        {
+            var review = await _context.Reviews
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (review == null)
+                return NotFound();
+
+            _context.Reviews.Remove(review);
+
             await _context.SaveChangesAsync();
 
             return NoContent();

@@ -53,7 +53,10 @@ public class ContactController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, $"Błąd wysyłania wiadomości: {ex.Message}");
+            HttpContext.RequestServices
+                .GetRequiredService<ILogger<ContactController>>()
+                .LogError(ex, "Błąd wysyłania wiadomości kontaktowej.");
+            return StatusCode(500, "Nie udało się wysłać wiadomości.");
         }
     }
 }

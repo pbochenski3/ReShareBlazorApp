@@ -54,8 +54,8 @@ namespace ReShareBlazorApp.Api.Services
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
         {
             var user = await _userManager.FindByEmailAsync(request.Email);
-            if (user == null || !user.IsActive || (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow))
-            if (user == null || !user.IsActive || user.IsDeleted)
+            if (user == null || !user.IsActive || user.IsDeleted ||
+                (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow))
             {
                 return null;
             }

@@ -34,11 +34,6 @@ namespace ReShareBlazorApp.Api.Date
             builder.Entity<User>()
                 .HasQueryFilter(u => !u.IsDeleted);
 
-            builder.Entity<Report>()
-                .HasOne(r => r.Product)
-                .WithMany()
-                .HasForeignKey(r => r.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
 			builder.Entity<Report>()
 				.HasOne(r => r.Product)
 				.WithMany()

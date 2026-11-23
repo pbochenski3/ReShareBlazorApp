@@ -16,7 +16,7 @@ namespace ReShareBlazorApp.Shared.DTOs
         public string City { get; set; } = "";
         public decimal Price { get; set; }
 
-        public DateTime AddedAt { get; set; } = DateTime.Now;
+        public DateTime AddedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime ExpiresAt { get; set; }
         public ProductType Type { get; set; }

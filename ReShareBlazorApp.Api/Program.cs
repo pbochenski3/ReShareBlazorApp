@@ -18,6 +18,10 @@ builder.Services.AddDbContext<ReshareDbContext>(options =>
         sqlOptions =>
         {
             sqlOptions.CommandTimeout(180);
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorNumbersToAdd: null);
         }));
 builder.Services
     .AddIdentity<User, IdentityRole<int>>(options =>

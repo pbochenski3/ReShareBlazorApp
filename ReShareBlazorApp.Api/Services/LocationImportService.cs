@@ -66,7 +66,7 @@ namespace ReShareBlazorApp.Api.Services
                 await _context.Locations.AddRangeAsync(batch);
                 await _context.SaveChangesAsync();
             }
-            Console.WriteLine($"$\"Zaimportowano {{locationList.Count}} miejscowości.\");");
+            Console.WriteLine($"Zaimportowano {locationList.Count} miejscowości.");
 
         }
     }

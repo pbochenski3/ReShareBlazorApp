@@ -346,6 +346,7 @@
     private bool isAuthenticated;
     private string? currentUserName;
     private int? currentUserIdInt;
+    private int? recentlyViewedProductId;
 
     private bool isFollowing;
     private bool isFollowLoading;
@@ -367,12 +368,8 @@
             if (!isAuthenticated || Product == null)
                 return false;
 
-            return !string.IsNullOrEmpty(currentUserName) &&
-                   !string.IsNullOrEmpty(Product.AddedBy) &&
-                   string.Equals(
-                       currentUserName,
-                       Product.AddedBy,
-                       StringComparison.OrdinalIgnoreCase);
+            return currentUserIdInt.HasValue &&
+                   currentUserIdInt.Value == Product.UserId;
         }
     }
 
@@ -420,9 +417,18 @@
 
             if (Product != null)
             {
-                if (isAuthenticated)
+                if (isAuthenticated && recentlyViewedProductId != Product.ProductId)
                 {
-                    await RecentlyViewedApiService.RecordViewAsync(Product.ProductId);
+                    // OnParametersSetAsync może zostać wywołane ponownie dla tego
+                    // samego adresu. Nie wysyłamy wtedy drugiego żądania POST.
+                    recentlyViewedProductId = Product.ProductId;
+
+                    var recorded = await RecentlyViewedApiService
+                        .RecordViewAsync(Product.ProductId);
+
+                    // Pozwól na ponowną próbę, jeśli żądanie nie powiodło się.
+                    if (!recorded)
+                        recentlyViewedProductId = null;
                 }
 
                 await LoadReviews();
@@ -462,52 +468,23 @@
         HttpMethod method,
         string url)
     {
-        var request = new HttpRequestMessage(method, url);
-
         try
         {
-            var keys = new[]
-            {
-                "authToken",
-                "token",
-                "jwt",
-                "jwtToken",
-                "accessToken"
-            };
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            var token = state.User.FindFirst("access_token")?.Value;
+            if (string.IsNullOrWhiteSpace(token))
+                return new HttpRequestMessage(method, url);
 
-            string? token = null;
-
-            foreach (var key in keys)
-            {
-                token = await JS.InvokeAsync<string?>(
-                    "localStorage.getItem",
-                    key);
-
-                if (string.IsNullOrWhiteSpace(token))
-                {
-                    token = await JS.InvokeAsync<string?>(
-                        "sessionStorage.getItem",
-                        key);
-                }
-
-                if (!string.IsNullOrWhiteSpace(token))
-                    break;
-            }
-
-            if (!string.IsNullOrWhiteSpace(token))
-            {
-                token = token.Trim('"');
-
-                request.Headers.Authorization =
-                    new AuthenticationHeaderValue("Bearer", token);
-            }
+            var request = new HttpRequestMessage(method, url);
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+            return request;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Nie udało się pobrać tokenu: {ex.Message}");
+            return new HttpRequestMessage(method, url);
         }
-
-        return request;
     }
 
     // Sprawdzanie, czy aktualny użytkownik obserwuje wystawiającego

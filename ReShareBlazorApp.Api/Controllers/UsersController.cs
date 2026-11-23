@@ -25,7 +25,8 @@ namespace ReShareBlazorApp.Api.Controllers
 			var currentUserIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 			if (currentUserIdClaim == null) return Unauthorized();
 
-			var currentUserId = int.Parse(currentUserIdClaim);
+			if (!int.TryParse(currentUserIdClaim, out var currentUserId))
+				return Unauthorized();
 			var exists = await _context.UserFollows
 				.AnyAsync(f => f.FollowerId == currentUserId && f.FollowingId == targetUserId);
 
@@ -40,7 +41,8 @@ namespace ReShareBlazorApp.Api.Controllers
 			var currentUserIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 			if (currentUserIdClaim == null) return Unauthorized();
 
-			var currentUserId = int.Parse(currentUserIdClaim);
+			if (!int.TryParse(currentUserIdClaim, out var currentUserId))
+				return Unauthorized();
 
 			if (currentUserId == targetUserId)
 				return BadRequest("Nie możesz obserwować samego siebie.");

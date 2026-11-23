@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Shared.DTOs;
+using System.Security.Claims;
 
 namespace ReShareBlazorApp.Api.Controllers
 {
@@ -74,6 +75,7 @@ namespace ReShareBlazorApp.Api.Controllers
         }
 
         [HttpPost]
+        [Microsoft.AspNetCore.Authorization.Authorize]
         public async Task<IActionResult> AddReview([FromBody] CreateReviewRequest request)
         {
             if (request.ProductId <= 0 || request.Rating < 1 || request.Rating > 5)
@@ -86,15 +88,24 @@ namespace ReShareBlazorApp.Api.Controllers
                 return BadRequest("Treść opinii jest wymagana.");
             }
 
-            var productExists = await _context.Products.AnyAsync(p => p.Id == request.ProductId);
-            if (!productExists)
-            {
-                return NotFound("Nie znaleziono ogłoszenia.");
-            }
+            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdValue, out var userId))
+                return Unauthorized();
 
-            var authorName = !string.IsNullOrWhiteSpace(User.Identity?.Name)
-                ? User.Identity.Name.Trim()
-                : (string.IsNullOrWhiteSpace(request.AuthorName) ? "Anonim" : request.AuthorName.Trim());
+            var product = await _context.Products
+                .Where(p => p.Id == request.ProductId)
+                .Select(p => new { p.UserId })
+                .FirstOrDefaultAsync();
+
+            if (product == null)
+                return NotFound("Nie znaleziono ogłoszenia.");
+
+            if (product.UserId == userId)
+                return BadRequest("Nie możesz dodać opinii do własnego ogłoszenia.");
+
+            var authorName = User.FindFirstValue(ClaimTypes.Name)
+                ?? User.Identity?.Name
+                ?? "Użytkownik";
 
             var review = new Review
             {

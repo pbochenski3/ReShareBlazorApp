@@ -69,7 +69,6 @@ namespace ReShareBlazorApp.Api.Repositories
             {
                 await _context.Products.Where(p => p.Id == productId && p.UserId == userId)
                     .ExecuteUpdateAsync(p => p.SetProperty(p => p.isDeleted, true));
-                await _context.SaveChangesAsync();
                 return true;
             }
             catch (Exception ex)

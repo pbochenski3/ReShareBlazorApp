@@ -11,7 +11,7 @@ namespace ReShareBlazorApp.Api.Date
         public required string Description { get; set; }
 
         public decimal Price { get; set; }
-        public DateTime AddedAt { get; set; } = DateTime.Now;
+        public DateTime AddedAt { get; set; } = DateTime.UtcNow;
         public DateTime ExpiresAt { get; set; }
         public ProductType Type { get; set; }
         public ProductCategory Category { get; set; }
