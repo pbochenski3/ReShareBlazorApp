@@ -20,7 +20,7 @@ namespace ReShareBlazorApp.Api.Controllers
         public async Task<ActionResult<IEnumerable<ReviewDTO>>> GetReviewsForProduct(int productId)
         {
             var reviews = await _context.Reviews
-                .Where(r => r.ProductId == productId)
+                .Where(r => r.ProductId == productId && !r.IsHidden)
                 .OrderByDescending(r => r.CreatedAt)
                 .Select(r => new ReviewDTO
                 {

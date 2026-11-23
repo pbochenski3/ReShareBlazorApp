@@ -751,6 +751,52 @@ namespace ReShareBlazorApp.Api.Controllers
 
             product.isDeleted = true;
 
+        _context.Products.Remove(product);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpGet("reviews")]
+    public async Task<ActionResult<List<ReviewDTO>>> GetReviews()
+    {
+        var reviews = await _context.Reviews
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new AdminReviewDTO
+            {
+                Id = r.Id,
+                ProductId = r.ProductId,
+                AuthorName = r.AuthorName,
+                Rating = r.Rating,
+                Comment = r.Comment,
+                CreatedAt = r.CreatedAt,
+                IsHidden = r.IsHidden
+            })
+            .ToListAsync();
+        return Ok(reviews);
+    }
+
+    [HttpPost("reviews/{id:int}/hidden")]
+    public async Task<IActionResult> SetReviewHidden(int id, [FromQuery] bool value)
+    {
+        var review = await _context.Reviews.FirstOrDefaultAsync(r => r.Id == id);
+        if (review == null) return NotFound();
+
+        review.IsHidden = value;
+        await _context.SaveChangesAsync();
+        return Ok();
+    }
+
+    [HttpDelete("reviews/{id:int}")]
+    public async Task<IActionResult> DeleteReview(int id)
+    {
+        var review = await _context.Reviews.FirstOrDefaultAsync(r => r.Id == id);
+        if (review == null) return NotFound();
+
+        _context.Reviews.Remove(review);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+}
             await _context.SaveChangesAsync();
 
             return NoContent();

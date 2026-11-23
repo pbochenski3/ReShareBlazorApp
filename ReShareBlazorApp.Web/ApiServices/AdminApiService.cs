@@ -224,6 +224,30 @@ namespace ReShareBlazorApp.Web.ApiServices
             return response.IsSuccessStatusCode;
         }
 
+        public async Task<List<AdminReviewDTO>> GetReviewsAsync()
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Get, "api/admin/reviews");
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return new();
+            return await response.Content.ReadFromJsonAsync<List<AdminReviewDTO>>() ?? new();
+        }
+
+        public async Task<bool> SetReviewHiddenAsync(int reviewId, bool isHidden)
+        {
+            using var request = await CreateRequestAsync(
+                HttpMethod.Post,
+                $"api/admin/reviews/{reviewId}/hidden?value={isHidden.ToString().ToLower()}");
+            var response = await _httpClient.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> DeleteReviewAsync(int reviewId)
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Delete, $"api/admin/reviews/{reviewId}");
+            var response = await _httpClient.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
         private static async Task<string?> ReadErrorAsync(HttpResponseMessage response)
         {
             if (response.IsSuccessStatusCode) return null;
