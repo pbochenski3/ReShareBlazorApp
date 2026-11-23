@@ -18,6 +18,7 @@ namespace ReShareBlazorApp.Api.Date
 		public DbSet<PromoBanner> PromoBanners { get; set; }
         public DbSet<ActivityLog> ActivityLogs { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<ContactMessage> ContactMessages { get; set; }
 
 
         public ReshareDbContext(DbContextOptions<ReshareDbContext> options)

@@ -1,0 +1,153 @@
+﻿@page "/admin/messages"
+@layout AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@attribute [Authorize(Roles = "Admin")]
+@inject ContactApiService contactApi
+
+<h1 class="admin-title">Wiadomości kontaktowe</h1>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="admin-alert">@message</div>
+}
+
+@if (messages is null)
+{
+    <p class="admin-muted">Ładowanie...</p>
+}
+else if (!messages.Any())
+{
+    <p class="admin-muted">Brak wiadomości z formularza kontaktowego.</p>
+}
+else
+{
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Nadawca</th>
+                    <th>E-mail</th>
+                    <th>Tytuł</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in messages)
+                {
+                    <tr>
+                        <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>@item.Name</td>
+                        <td>@item.Email</td>
+                        <td><strong>@item.Subject</strong></td>
+                        <td>
+                            @if (item.IsRead)
+                            {
+                                <span class="admin-badge admin-badge-ok">przeczytana</span>
+                            }
+                            else
+                            {
+                                <span class="admin-badge admin-badge-info">nowa</span>
+                            }
+                        </td>
+                        <td class="admin-actions">
+                            <button type="button" class="admin-btn" @onclick="() => OpenMessage(item)">
+                                Pokaż wiadomość
+                            </button>
+                            @if (!item.IsRead)
+                            {
+                                <button type="button" class="admin-btn" @onclick="() => MarkRead(item)">
+                                    Oznacz jako przeczytaną
+                                </button>
+                            }
+                            <button type="button" class="admin-btn admin-btn-danger" @onclick="() => Delete(item)">
+                                Usuń
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (selectedMessage is not null)
+{
+    <div style="position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:20px; z-index:999;"
+         @onclick="CloseMessage">
+        <div style="background:#fff; border-radius:12px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; padding:24px; box-shadow:0 12px 32px rgba(0,0,0,.2);"
+             @onclick:stopPropagation="true">
+            <h2 style="margin:0 0 12px; font-size:1.35rem;">@selectedMessage.Subject</h2>
+
+            <p style="margin:0 0 6px; font-size:.9rem; color:#555;">
+                <strong>Nadawca:</strong> @selectedMessage.Name (@selectedMessage.Email)
+            </p>
+            <p style="margin:0 0 16px; font-size:.9rem; color:#555;">
+                <strong>Data:</strong> @selectedMessage.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+            </p>
+
+            <div style="background:#f8f9fa; border:1px solid #e5e7eb; border-radius:8px; padding:16px; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; font-size:1rem;">
+                @selectedMessage.Message
+            </div>
+
+            <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="admin-btn admin-btn-danger" @onclick="() => Delete(selectedMessage)">
+                    Usuń
+                </button>
+                <button type="button" class="admin-btn" @onclick="CloseMessage">
+                    Zamknij
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<ContactMessageDTO>? messages;
+    private ContactMessageDTO? selectedMessage;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        messages = await contactApi.GetContactMessagesAsync() ?? new List<ContactMessageDTO>();
+    }
+
+    private async Task OpenMessage(ContactMessageDTO item)
+    {
+        selectedMessage = item;
+        if (!item.IsRead)
+        {
+            await MarkRead(item);
+        }
+    }
+
+    private void CloseMessage()
+    {
+        selectedMessage = null;
+    }
+
+    private async Task MarkRead(ContactMessageDTO item)
+    {
+        message = null;
+        if (await contactApi.MarkContactMessageAsReadAsync(item.Id))
+            item.IsRead = true;
+        else
+            message = "Nie udało się zaktualizować statusu wiadomości.";
+    }
+
+    private async Task Delete(ContactMessageDTO item)
+    {
+        message = null;
+        if (await contactApi.DeleteContactMessageAsync(item.Id))
+        {
+            messages!.Remove(item);
+            if (selectedMessage?.Id == item.Id)
+                selectedMessage = null;
+        }
+        else
+            message = "Nie udało się usunąć wiadomości.";
+    }
+}
