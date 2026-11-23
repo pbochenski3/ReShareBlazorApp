@@ -17,11 +17,14 @@ public class LockdownController : ControllerBase
     [AllowAnonymous]
     public async Task<LockdownDTO> Get()
     {
-        var rows = await _db.Database
-            .SqlQueryRaw<bool>("SELECT IsLocked AS Value FROM LockdownSettings WHERE Id = 1")
-            .ToListAsync();
+        var settings = await _db.LockdownSettings
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == 1);
 
-        return new LockdownDTO { IsLocked = rows.FirstOrDefault() };
+        return new LockdownDTO
+        {
+            IsLocked = settings?.IsLocked ?? false
+        };
     }
 
     // Tylko admin – zmienia wartość w bazie.
@@ -29,8 +32,24 @@ public class LockdownController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Set([FromBody] LockdownDTO dto)
     {
-        await _db.Database.ExecuteSqlInterpolatedAsync(
-            $"UPDATE LockdownSettings SET IsLocked = {dto.IsLocked} WHERE Id = 1");
+        var settings = await _db.LockdownSettings
+            .SingleOrDefaultAsync(x => x.Id == 1);
+
+        if (settings == null)
+        {
+            settings = new LockdownSettings
+            {
+                IsLocked = dto.IsLocked
+            };
+
+            await _db.LockdownSettings.AddAsync(settings);
+        }
+        else
+        {
+            settings.IsLocked = dto.IsLocked;
+        }
+
+        await _db.SaveChangesAsync();
 
         return NoContent();
     }

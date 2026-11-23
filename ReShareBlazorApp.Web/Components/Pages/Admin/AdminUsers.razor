@@ -743,7 +743,6 @@ else
         await LoadUsers();
     }
 
-    // Pobieranie użytkowników
     private async Task LoadUsers()
     {
         users = await adminApi.GetUsersAsync();
@@ -755,7 +754,6 @@ else
         }
     }
 
-    // Otwieranie modala dodawania
     private void OpenAddModal()
     {
         newModel = new AdminCreateUserRequest
@@ -776,7 +774,6 @@ else
         modalError = null;
     }
 
-    // Tworzenie użytkownika
     private async Task HandleCreateUser()
     {
         modalError = null;
@@ -838,7 +835,6 @@ else
         }
     }
 
-    // Potwierdzenie zmiany roli
     private void PromptToggleRole(AdminUserDTO user)
     {
         roleConfirmUser = user;
@@ -853,7 +849,6 @@ else
         roleConfirmUser = null;
     }
 
-    // Zmiana roli użytkownika
     private async Task ExecuteRoleChange()
     {
         if (roleConfirmUser == null || isActionInProgress)
@@ -884,8 +879,46 @@ else
             }
             else
             {
-                errorMessage = error ??
-                    "Nie udało się zmienić roli użytkownika.";
+                errorMessage = error ?? "Nie udało się zmienić roli użytkownika.";
+                roleConfirmUser = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił błąd: {ex.Message}";
+            roleConfirmUser = null;
+        }
+        finally
+        {
+            isActionInProgress = false;
+        }
+    }
+
+    private async Task ToggleActive(AdminUserDTO user)
+    {
+        if (user.Id == currentUserId || isActionInProgress)
+            return;
+
+        isActionInProgress = true;
+        errorMessage = null;
+        successMessage = null;
+
+        var newState = !user.IsActive;
+
+        try
+        {
+            var ok = await adminApi.SetUserActiveAsync(user.Id, newState);
+            if (ok)
+            {
+                successMessage = newState
+                    ? $"Odblokowano użytkownika '{user.UserName}'."
+                    : $"Zablokowano użytkownika '{user.UserName}'.";
+
+                await LoadUsers();
+            }
+            else
+            {
+                errorMessage = "Nie udało się zmienić statusu aktywacji użytkownika.";
             }
         }
         catch (Exception ex)
@@ -898,25 +931,9 @@ else
         }
     }
 
-    // Zaznaczanie pojedynczego użytkownika
-    private void ToggleSelectUser(int userId, object? isChecked)
-    {
-        if (isChecked is true or "True" or "true")
-        {
-            selectedUserIds.Add(userId);
-        }
-        else
-        {
-            selectedUserIds.Remove(userId);
-        }
-    }
-
-    // Zaznaczanie wszystkich użytkowników
     private void ToggleSelectAll(ChangeEventArgs e)
     {
-        var selectAll = (bool)(e.Value ?? false);
-
-        if (selectAll)
+        if (e.Value is bool isChecked && isChecked)
         {
             foreach (var u in FilteredDeletable)
             {
@@ -932,7 +949,17 @@ else
         }
     }
 
-    // Otwieranie potwierdzenia usunięcia
+    private void ToggleSelectUser(int userId, object? value)
+    {
+        if (value is bool isChecked)
+        {
+            if (isChecked)
+                selectedUserIds.Add(userId);
+            else
+                selectedUserIds.Remove(userId);
+        }
+    }
+
     private void OpenDeleteConfirmation()
     {
         if (!selectedUserIds.Any())
@@ -949,78 +976,45 @@ else
         showDeleteConfirmation = false;
     }
 
-    // Usuwanie zaznaczonych użytkowników
     private async Task ConfirmSoftDelete()
     {
         if (!selectedUserIds.Any() || isDeleting)
             return;
 
         isDeleting = true;
-        message = null;
-
-        var idsToDelete = selectedUserIds.ToList();
-        var deletedCount = 0;
-
-        var errorMessages = new List<string>();
+        errorMessage = null;
+        successMessage = null;
 
         try
         {
-            foreach (var id in idsToDelete)
+            int deletedCount = 0;
+            foreach (var id in selectedUserIds.ToList())
             {
-                var (ok, err) = await adminApi.DeleteUserAsync(id);
-
-                if (ok)
+                var (success, error) = await adminApi.DeleteUserAsync(id);
+                if (success)
                 {
-                    var userToRemove = users?.FirstOrDefault(u => u.Id == id);
-
-                    if (userToRemove != null)
-                    {
-                        users?.Remove(userToRemove);
-                    }
-
-                    selectedUserIds.Remove(id);
                     deletedCount++;
                 }
-                else if (!string.IsNullOrEmpty(err))
-                {
-                    errorMessages.Add(err);
-                }
             }
 
-            if (deletedCount > 0)
-            {
-                message = deletedCount == 1
-                    ? "Użytkownik został pomyślnie usunięty."
-                    : $"Pomyślnie usunięto {deletedCount} użytkowników.";
-
-                messageIsError = false;
-            }
-
-            if (errorMessages.Any())
-            {
-                message = (message != null ? message + " " : "") +
-                          string.Join(" ", errorMessages);
-
-                messageIsError = true;
-            }
+            successMessage = $"Pomyślnie usunięto {deletedCount} użytkowników.";
+            selectedUserIds.Clear();
+            showDeleteConfirmation = false;
+            await LoadUsers();
         }
         catch (Exception ex)
         {
-            message = $"Wystąpił błąd podczas usuwania: {ex.Message}";
-            messageIsError = true;
+            errorMessage = $"Wystąpił błąd podczas usuwania: {ex.Message}";
         }
         finally
         {
             isDeleting = false;
-            showDeleteConfirmation = false;
         }
     }
 
-    // Otwieranie edycji użytkownika
     private void OpenEditModal(AdminUserDTO user)
     {
         editingUser = user;
-
         editModel = new AdminUpdateUserDTO
         {
             UserName = user.UserName,
@@ -1032,17 +1026,13 @@ else
         };
 
         currentAvatarUrl = user.AvatarUrl;
-
         pendingAvatarPreview = null;
         pendingAvatarBytes = null;
         pendingAvatarFileName = null;
         pendingAvatarContentType = null;
-
         removeAvatarRequested = false;
         avatarError = null;
-
         editModalMessage = null;
-        editModalMessageIsError = false;
     }
 
     private void CloseEditModal()
@@ -1053,56 +1043,58 @@ else
         editingUser = null;
     }
 
-    // Wybór zdjęcia profilowego
     private async Task OnAvatarSelected(InputFileChangeEventArgs e)
     {
         avatarError = null;
-
         var file = e.File;
+        if (file == null) return;
 
         if (!AllowedTypes.Contains(file.ContentType))
         {
-            avatarError = "Dozwolone formaty: JPG, PNG, WebP.";
+            avatarError = "Dozwolone formaty to tylko JPG, PNG lub WebP.";
             return;
         }
 
         if (file.Size > MaxAvatarBytes)
         {
-            avatarError = "Zdjęcie jest za duże (maks. 2 MB).";
+            avatarError = "Plik jest za duży (maksymalnie 2 MB).";
             return;
         }
 
-        using var stream = file.OpenReadStream(MaxAvatarBytes);
-        using var ms = new MemoryStream();
+        try
+        {
+            using var stream = file.OpenReadStream(MaxAvatarBytes);
+            var buffer = new byte[file.Size];
+            await stream.ReadAsync(buffer);
 
-        await stream.CopyToAsync(ms);
+            pendingAvatarBytes = buffer;
+            pendingAvatarFileName = file.Name;
+            pendingAvatarContentType = file.ContentType;
 
-        pendingAvatarBytes = ms.ToArray();
-        pendingAvatarFileName = file.Name;
-        pendingAvatarContentType = file.ContentType;
-
-        pendingAvatarPreview =
-            $"data:{file.ContentType};base64,{Convert.ToBase64String(pendingAvatarBytes)}";
-
-        removeAvatarRequested = false;
+            using var memStream = new MemoryStream();
+            await file.OpenReadStream(MaxAvatarBytes).CopyToAsync(memStream);
+            var base64 = Convert.ToBase64String(memStream.ToArray());
+            pendingAvatarPreview = $"data:{file.ContentType};base64,{base64}";
+            removeAvatarRequested = false;
+        }
+        catch (Exception ex)
+        {
+            avatarError = $"Nie udało się wczytać pliku: {ex.Message}";
+        }
     }
 
-    // Usuwanie zdjęcia z podglądu
     private void RemoveAvatar()
     {
         pendingAvatarPreview = null;
         pendingAvatarBytes = null;
         pendingAvatarFileName = null;
         pendingAvatarContentType = null;
-
         removeAvatarRequested = true;
-        avatarError = null;
     }
 
-    // Zapisywanie zmian użytkownika
     private async Task SaveUserChanges()
     {
-        if (editingUser is null || isSavingUser)
+        if (editingUser == null || isSavingUser)
             return;
 
         isSavingUser = true;
@@ -1110,77 +1102,43 @@ else
 
         try
         {
-            var (ok, error, _) =
-                await adminApi.UpdateUserAsync(editingUser.Id, editModel);
-
-            if (!ok)
+            var (success, error, updatedUser) = await adminApi.UpdateUserAsync(editingUser.Id, editModel);
+            if (!success)
             {
-                editModalMessage = error ??
-                    "Nie udało się zaktualizować profilu użytkownika.";
-
+                editModalMessage = error ?? "Nie udało się zapisać zmian.";
                 editModalMessageIsError = true;
                 return;
             }
 
-            // Aktualizacja zdjęcia profilowego
-            string? newAvatarUrl = editingUser.AvatarUrl;
-
-            if (pendingAvatarBytes is not null)
+            if (removeAvatarRequested && !string.IsNullOrEmpty(currentAvatarUrl))
             {
-                var (uploadOk, uploadErr, uploadedUrl) =
-                    await adminApi.UploadUserAvatarAsync(
-                        editingUser.Id,
-                        pendingAvatarBytes,
-                        pendingAvatarFileName!,
-                        pendingAvatarContentType!);
-
-                if (uploadOk)
+                var (delOk, delErr) = await adminApi.DeleteUserAvatarAsync(editingUser.Id);
+                if (!delOk)
                 {
-                    newAvatarUrl = uploadedUrl;
-                }
-                else
-                {
-                    editModalMessage = uploadErr ??
-                        "Zaktualizowano dane, ale nie udało się przesłać zdjęcia profilowego.";
-
+                    editModalMessage = delErr ?? "Nie udało się usunąć avatara.";
                     editModalMessageIsError = true;
                     return;
                 }
             }
-            else if (removeAvatarRequested)
+            else if (pendingAvatarBytes != null && pendingAvatarFileName != null && pendingAvatarContentType != null)
             {
-                var (delOk, delErr) =
-                    await adminApi.DeleteUserAvatarAsync(editingUser.Id);
+                var (upOk, upErr, newUrl) = await adminApi.UploadUserAvatarAsync(
+                    editingUser.Id,
+                    pendingAvatarBytes,
+                    pendingAvatarFileName,
+                    pendingAvatarContentType);
 
-                if (delOk)
+                if (!upOk)
                 {
-                    newAvatarUrl = null;
-                }
-                else
-                {
-                    editModalMessage = delErr ??
-                        "Zaktualizowano dane, ale nie udało się usunąć zdjęcia profilowego.";
-
+                    editModalMessage = upErr ?? "Nie udało się wgrać nowego avatara.";
                     editModalMessageIsError = true;
                     return;
                 }
             }
 
-            // Aktualizacja użytkownika na liście
-            editingUser.UserName = editModel.UserName;
-            editingUser.Email = editModel.Email;
-            editingUser.PhoneNumber = editModel.PhoneNumber;
-            editingUser.City = editModel.City;
-            editingUser.Bio = editModel.Bio;
-            editingUser.IsActive = editModel.IsActive;
-            editingUser.AvatarUrl = newAvatarUrl;
-
-            message =
-                $"Profil użytkownika '{editingUser.UserName}' został pomyślnie zaktualizowany.";
-
-            messageIsError = false;
-
+            successMessage = $"Zaktualizowano profil użytkownika '{editModel.UserName}'.";
             editingUser = null;
+            await LoadUsers();
         }
         catch (Exception ex)
         {
@@ -1193,51 +1151,9 @@ else
         }
     }
 
-    // Blokowanie i odblokowywanie użytkownika
-    private async Task ToggleActive(AdminUserDTO user)
-    {
-        errorMessage = null;
-        successMessage = null;
-        isActionInProgress = true;
-
-        try
-        {
-            var newStatus = !user.IsActive;
-
-            var ok = await adminApi.SetUserActiveAsync(
-                user.Id,
-                newStatus);
-
-            if (ok)
-            {
-                successMessage = newStatus
-                    ? $"Odblokowano użytkownika '{user.UserName}'."
-                    : $"Zablokowano użytkownika '{user.UserName}'.";
-
-                await LoadUsers();
-            }
-            else
-            {
-                errorMessage =
-                    "Nie udało się zmienić statusu użytkownika.";
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Wystąpił błąd: {ex.Message}";
-        }
-        finally
-        {
-            isActionInProgress = false;
-        }
-    }
-
-    // Generowanie inicjałów
     private string GetInitials(string? name)
     {
-        if (string.IsNullOrWhiteSpace(name))
-            return "?";
-
+        if (string.IsNullOrWhiteSpace(name)) return "?";
         return name[..Math.Min(2, name.Length)].ToUpper();
     }
 }

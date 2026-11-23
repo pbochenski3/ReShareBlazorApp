@@ -21,7 +21,8 @@ namespace ReShareBlazorApp.Api.Middleware
                 // Pozwalamy na sprawdzanie własnego statusu oraz endpointy admina
                 if (!path.StartsWithSegments("/api/user/my-status") && !path.StartsWithSegments("/api/admin"))
                 {
-                    var userIdClaim = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    var userIdClaim = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                                      ?? context.User.FindFirstValue("sub");
                     if (int.TryParse(userIdClaim, out var userId))
                     {
                         var user = await dbContext.Users

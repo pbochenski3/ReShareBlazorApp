@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace ReShareBlazorApp.Web.ApiServices
 {
@@ -61,7 +62,9 @@ namespace ReShareBlazorApp.Web.ApiServices
 
                 var error = response.StatusCode == HttpStatusCode.BadRequest
                     ? (await response.Content.ReadAsStringAsync()).Trim('"')
-                    : "";
+                    : response.StatusCode == HttpStatusCode.Forbidden
+                        ? await ReadApiMessageAsync(response)
+                        : "";
 
                 return (false, string.IsNullOrWhiteSpace(error)
                     ? "Nie udało się dodać produktu!"
@@ -209,6 +212,27 @@ namespace ReShareBlazorApp.Web.ApiServices
                 new AuthenticationHeaderValue("Bearer", token);
 
             return request;
+        }
+
+        private static async Task<string> ReadApiMessageAsync(HttpResponseMessage response)
+        {
+            try
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiErrorResponse>();
+                if (!string.IsNullOrWhiteSpace(body?.Message))
+                    return body.Message;
+            }
+            catch (JsonException)
+            {
+                // API może zwrócić również zwykły tekst zamiast JSON.
+            }
+
+            return "Twoje konto jest zablokowane i nie może dodawać ogłoszeń.";
+        }
+
+        private sealed class ApiErrorResponse
+        {
+            public string? Message { get; set; }
         }
     }
 }

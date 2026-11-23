@@ -19,6 +19,7 @@ namespace ReShareBlazorApp.Api.Date
         public DbSet<ActivityLog> ActivityLogs { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<ContactMessage> ContactMessages { get; set; }
+		public DbSet<LockdownSettings> LockdownSettings { get; set; }
 
 
         public ReshareDbContext(DbContextOptions<ReshareDbContext> options)

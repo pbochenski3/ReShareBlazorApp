@@ -11,10 +11,12 @@ namespace ReShareBlazorApp.Api.Controllers;
 public class ContactController : ControllerBase
 {
     private readonly ReshareDbContext _context;
+    private readonly ILogger<ContactController> _logger;
 
-    public ContactController(ReshareDbContext context)
+    public ContactController(ReshareDbContext context, ILogger<ContactController> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     [HttpPost]
@@ -23,20 +25,28 @@ public class ContactController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var entity = new ContactMessage
+        try
         {
-            Name = request.Name.Trim(),
-            Email = request.Email.Trim(),
-            Subject = request.Subject.Trim(),
-            Message = request.Message.Trim(),
-            CreatedAt = DateTime.UtcNow,
-            IsRead = false
-        };
+            var entity = new ContactMessage
+            {
+                Name = request.Name.Trim(),
+                Email = request.Email.Trim(),
+                Subject = request.Subject.Trim(),
+                Message = request.Message.Trim(),
+                CreatedAt = DateTime.UtcNow,
+                IsRead = false
+            };
 
-        _context.ContactMessages.Add(entity);
-        await _context.SaveChangesAsync();
+            _context.ContactMessages.Add(entity);
+            await _context.SaveChangesAsync();
 
-        return Ok();
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Błąd wysyłania wiadomości kontaktowej.");
+            return StatusCode(500, "Nie udało się wysłać wiadomości.");
+        }
     }
 
     [Authorize(Roles = "Admin")]
@@ -65,19 +75,12 @@ public class ContactController : ControllerBase
     public async Task<IActionResult> MarkAsRead(int id)
     {
         var msg = await _context.ContactMessages.FindAsync(id);
-        if (msg is null) return NotFound();
+        if (msg is null)
+            return NotFound();
 
-            return Ok();
-        }
-        catch (Exception ex)
-        {
-            HttpContext.RequestServices
-                .GetRequiredService<ILogger<ContactController>>()
-                .LogError(ex, "Błąd wysyłania wiadomości kontaktowej.");
-            return StatusCode(500, "Nie udało się wysłać wiadomości.");
-        }
         msg.IsRead = true;
         await _context.SaveChangesAsync();
+
         return NoContent();
     }
 
@@ -86,10 +89,12 @@ public class ContactController : ControllerBase
     public async Task<IActionResult> DeleteMessage(int id)
     {
         var msg = await _context.ContactMessages.FindAsync(id);
-        if (msg is null) return NotFound();
+        if (msg is null)
+            return NotFound();
 
         _context.ContactMessages.Remove(msg);
         await _context.SaveChangesAsync();
+
         return NoContent();
     }
 }
