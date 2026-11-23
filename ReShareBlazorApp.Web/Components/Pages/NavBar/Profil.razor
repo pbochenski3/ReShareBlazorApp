@@ -175,7 +175,8 @@ else
         {
             avatarUrl = userApi.GetAvatarUrl(profile?.AvatarUrl);
             var state = await AuthStateProvider.GetAuthenticationStateAsync();
-            isOwner = string.Equals(state.User.FindFirst(ClaimTypes.Name)?.Value, Username, StringComparison.OrdinalIgnoreCase);
+            var loggedUserName = state.User.Identity?.Name ?? state.User.FindFirst(ClaimTypes.Name)?.Value;
+            isOwner = string.Equals(loggedUserName, Username, StringComparison.OrdinalIgnoreCase);
 
             isLoadingReviews = true;
             userReviews = await reviewApi.GetReviewsForUserAsync(Username);

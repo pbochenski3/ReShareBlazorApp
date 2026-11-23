@@ -1,20 +1,11 @@
-﻿
-@page "/details/{ProductId:int}"
+﻿@page "/details/{ProductId:int}"
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReShareBlazorApp.Shared.DTOs
-@using ReShareBlazorApp.Shared.Enums
 @using ReShareBlazorApp.Web.ApiServices
-@using ReShareBlazorApp.Web.Models
 @inject ProductApiService productApi
-@inject HttpClient Http
-@inject NavigationManager Navigation
 @inject ReviewApiService ReviewApiService
 @inject AuthenticationStateProvider AuthStateProvider
-@inject ReportApiService reportApi
-@inject NotificationService notify
-@inject RecentlyViewedApiService RecentlyViewedApi
-@inject IJSRuntime JS
 
 <div class="details-page">
     <div class="details-container">
@@ -36,9 +27,7 @@
                 <div class="details-empty-icon">!</div>
                 <h2>Nie znaleziono ogłoszenia</h2>
                 <p>Ogłoszenie mogło zostać usunięte lub nie istnieje.</p>
-                <a href="/" class="details-primary-button">
-                    Wróć na stronę główną
-                </a>
+                <a href="/" class="details-primary-button">Wróć na stronę główną</a>
             </div>
         }
         else
@@ -46,31 +35,6 @@
             <div class="details-layout">
 
                 <main class="details-main">
-
-                    @if (Product.ImageIds.Count > 0)
-                    {
-                        <div class="details-gallery">
-                            <div class="details-gallery-main">
-                                <img src="@GetImageUrl(Product.ImageIds[selectedImageIndex])" alt="@Product.Name" />
-                            </div>
-
-                            @if (Product.ImageIds.Count > 1)
-                            {
-                                <div class="details-gallery-thumbs">
-                                    @for (var i = 0; i < Product.ImageIds.Count; i++)
-                                    {
-                                        var index = i;
-                                        <button type="button"
-                                                class="details-gallery-thumb @(index == selectedImageIndex ? "active" : "")"
-                                                aria-label="Pokaż zdjęcie @(index + 1)"
-                                                @onclick="() => selectedImageIndex = index">
-                                            <img src="@GetImageUrl(Product.ImageIds[index])" alt="Zdjęcie @(index + 1)" loading="lazy" />
-                                        </button>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
 
                     <div class="details-category">
                         @Product.Category
@@ -93,7 +57,6 @@
                             {
                                 <span>Brak opisu ogłoszenia.</span>
                             }
-
                             else
                             {
                                 @Product.Description
@@ -129,7 +92,13 @@
                                 </div>
                             </div>
 
-                            @if (IsOwner)
+                            @if (!isAuthenticated)
+                            {
+                                <a href="/login" class="btn btn-sm rounded-pill px-4 py-2 fw-semibold shadow-sm text-white" style="background-color: #0f766e;">
+                                    Zaloguj się, aby dodać opinię
+                                </a>
+                            }
+                            else if (IsOwner)
                             {
                                 <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill">
                                     To Twoje ogłoszenie – nie możesz go oceniać
@@ -143,8 +112,15 @@
                             }
                         </div>
 
+                        @if (!string.IsNullOrWhiteSpace(errorMessage))
+                        {
+                            <div class="alert alert-danger rounded-3 py-2 px-3 mb-3">
+                                @errorMessage
+                            </div>
+                        }
+
                         <!-- Formularz dodawania opinii -->
-                        @if (showAddForm && !IsOwner)
+                        @if (showAddForm && isAuthenticated && !IsOwner)
                         {
                             <div class="card border-0 shadow-sm p-4 mb-4 rounded-4 bg-white" style="border-left: 4px solid #0f766e !important;">
                                 <h5 class="fw-bold mb-3 text-dark">Wystaw opinię do tego ogłoszenia</h5>
@@ -169,7 +145,12 @@
                                     <label class="form-label small fw-semibold text-muted">Treść opinii / komentarz:</label>
                                     <textarea class="form-control rounded-3" rows="3" @bind="newComment" placeholder="Napisz kilka słów o przedmiocie lub transakcji..."></textarea>
                                 </div>
-                                <button class="btn px-4 rounded-pill fw-semibold text-white" @onclick="SubmitReview" style="background-color: #0f766e;">Zapisz opinię</button>
+                                <button class="btn px-4 rounded-pill fw-semibold text-white"
+                                        disabled="@isSubmitting"
+                                        @onclick="SubmitReview"
+                                        style="background-color: #0f766e;">
+                                    @(isSubmitting ? "Zapisywanie..." : "Zapisz opinię")
+                                </button>
                             </div>
                         }
 
@@ -181,7 +162,7 @@
                         else if (!reviews.Any())
                         {
                             <div class="card border-0 shadow-sm p-4 rounded-4 text-center text-muted bg-white">
-                                Brak opinii dla tego ogłoszenia. @(IsOwner ? "" : "Bądź pierwszy i oceń ten przedmiot!")
+                                Brak opinii dla tego ogłoszenia. @((!isAuthenticated || IsOwner) ? "" : "Bądź pierwszy i oceń ten przedmiot!")
                             </div>
                         }
                         else
@@ -237,86 +218,14 @@
                             </div>
                         </div>
 
-                        <div class="details-user-id mb-3">
+                        <div class="details-user-id">
                             ID użytkownika: @Product.UserId
                         </div>
-
-                        <!-- PRZYCISK OBSERWUJ W STYLU VINTED -->
-                        <button class="btn w-100 mb-3 @(isFollowing ? "btn-outline-secondary" : "btn-success")" style="font-weight: 600; padding: 10px;" @onclick="ToggleFollowUser">
-                            @(isFollowing ? "✓ Obserwujesz" : "+ Obserwuj użytkownika")
-                        </button>
 
                         <a href="/" class="details-primary-button">
                             Przeglądaj inne ogłoszenia
                         </a>
-
-                        @if (IsOwner)
-                        {
-                            <a href="/edit-product/@Product.ProductId" class="details-secondary-button d-block text-center mt-2">
-                                Edytuj ogłoszenie
-                            </a>
-                            <button type="button" class="details-danger-button w-100 mt-2" @onclick="OpenDeleteDialog">
-                                Usuń ogłoszenie
-                            </button>
-                        }
                     </div>
-
-                    <AuthorizeView>
-                        <Authorized Context="auth">
-                            <div class="details-report">
-                                @if (!isReporting)
-                                {
-                                    <button type="button"
-                                            class="details-report-toggle"
-                                            @onclick="() => isReporting = true">
-                                        🚩 Zgłoś ogłoszenie
-                                    </button>
-                                }
-                                else
-                                {
-                                    <EditForm Model="@reportModel" OnValidSubmit="SendReport">
-                                        <DataAnnotationsValidator />
-
-                                        <h3>Zgłoś ogłoszenie</h3>
-
-                                        <div class="details-report-field">
-                                            <label>Kategoria zgłoszenia</label>
-                                            <InputSelect @bind-Value="reportModel.Category"
-                                                         class="details-report-input">
-                                                <option value="">Wybierz kategorię</option>
-                                                @foreach (var category in Enum.GetValues<ReportCategory>())
-                                                {
-                                                    <option value="@category">@GetReportCategoryName(category)</option>
-                                                }
-                                            </InputSelect>
-                                            <ValidationMessage For="@(() => reportModel.Category)" />
-                                        </div>
-
-                                        <div class="details-report-field">
-                                            <label>Treść zgłoszenia</label>
-                                            <InputTextArea @bind-Value="reportModel.Description"
-                                                           class="details-report-input"
-                                                           placeholder="Opisz, co jest nie tak z tym ogłoszeniem" />
-                                            <ValidationMessage For="@(() => reportModel.Description)" />
-                                        </div>
-
-                                        <div class="details-report-actions">
-                                            <button type="submit"
-                                                    class="details-report-submit"
-                                                    disabled="@isSendingReport">
-                                                Wyślij zgłoszenie
-                                            </button>
-                                            <button type="button"
-                                                    class="details-report-cancel"
-                                                    @onclick="CancelReport">
-                                                Anuluj
-                                            </button>
-                                        </div>
-                                    </EditForm>
-                                }
-                            </div>
-                        </Authorized>
-                    </AuthorizeView>
 
                     <div class="details-safety">
                         <span>🛡️</span>
@@ -331,26 +240,6 @@
             </div>
         }
 
-        @if (IsDeleteDialogVisible)
-        {
-            <div class="delete-dialog-backdrop">
-                <div class="delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
-                    <div class="delete-dialog-icon">!</div>
-                    <h2 id="delete-dialog-title">Usunąć ogłoszenie?</h2>
-                    <p>Tej operacji nie można cofnąć. Ogłoszenie zostanie trwale usunięte.</p>
-
-                    <div class="delete-dialog-actions">
-                        <button type="button" class="delete-dialog-cancel" @onclick="CloseDeleteDialog" disabled="@IsDeleting">
-                            Anuluj
-                        </button>
-                        <button type="button" class="delete-dialog-confirm" @onclick="ConfirmDeleteAsync" disabled="@IsDeleting">
-                            @(IsDeleting ? "Usuwanie..." : "Usuń ogłoszenie")
-                        </button>
-                    </div>
-                </div>
-            </div>
-        }
-
     </div>
 </div>
 
@@ -360,25 +249,21 @@
 
     public ProductDTO? Product { get; set; }
     public bool IsLoading { get; set; } = true;
-    private bool isFollowing = false;
-    private bool IsDeleteDialogVisible { get; set; }
-    private bool IsDeleting { get; set; }
 
+    private bool isAuthenticated = false;
     private string? currentUserName;
-    private int? currentUserIdInt;
+    private string? errorMessage;
+    private bool isSubmitting = false;
 
     private bool IsOwner
     {
         get
         {
-            if (Product == null) return false;
+            if (!isAuthenticated || Product == null) return false;
 
-            bool matchById = currentUserIdInt.HasValue && Product.UserId == currentUserIdInt.Value;
-            bool matchByName = !string.IsNullOrEmpty(currentUserName) &&
-                               !string.IsNullOrEmpty(Product.AddedBy) &&
-                               string.Equals(currentUserName, Product.AddedBy, StringComparison.OrdinalIgnoreCase);
-
-            return matchById || matchByName;
+            return !string.IsNullOrEmpty(currentUserName) &&
+                   !string.IsNullOrEmpty(Product.AddedBy) &&
+                   string.Equals(currentUserName, Product.AddedBy, StringComparison.OrdinalIgnoreCase);
         }
     }
 
@@ -390,84 +275,24 @@
     private double AverageRating => (reviews != null && reviews.Any()) ? reviews.Average(r => (double)r.Rating) : 0.0;
     private int TotalReviews => reviews != null ? reviews.Count : 0;
 
-    private int selectedImageIndex;
-
-    private static string GetImageUrl(int imageId) => $"/images/{imageId}";
-
-    private bool isReporting;
-    private bool isSendingReport;
-    private ReportModel reportModel = new();
-
-    private int _lastRecordedProductId;
-
     protected override async Task OnParametersSetAsync()
     {
         IsLoading = true;
-        selectedImageIndex = 0;
-        isReporting = false;
-        reportModel = new ReportModel();
+        showAddForm = false;
+        errorMessage = null;
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        if (user.Identity?.IsAuthenticated == true)
-        {
-            currentUserName = user.Identity.Name;
-
-            var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirst("nameid")?.Value;
-            if (int.TryParse(userIdClaim, out var parsedId))
-            {
-                currentUserIdInt = parsedId;
-            }
-        }
+        isAuthenticated = user.Identity?.IsAuthenticated == true;
+        currentUserName = isAuthenticated ? user.Identity?.Name : null;
 
         Product = await productApi.GetProductByIdAsync(ProductId);
         if (Product != null)
         {
             await LoadReviews();
-            await CheckFollowStatus();
         }
 
         IsLoading = false;
-    }
-
-    private async Task CheckFollowStatus()
-    {
-        try
-        {
-            var response = await Http.GetAsync($"api/users/{Product!.UserId}/is-following");
-            if (response.IsSuccessStatusCode)
-            {
-                isFollowing = await response.Content.ReadFromJsonAsync<bool>();
-            }
-        }
-        catch
-        {
-            isFollowing = false;
-        }
-    }
-
-    private async Task ToggleFollowUser()
-    {
-        try
-        {
-            var response = await Http.PostAsync($"api/users/{Product!.UserId}/toggle-follow", null);
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content.ReadFromJsonAsync<ToggleResult>();
-                if (result != null)
-                {
-                    isFollowing = result.IsFollowing;
-                }
-            }
-            else
-            {
-                Navigation.NavigateTo("/login");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Błąd: {ex.Message}");
-        }
     }
 
     private async Task LoadReviews()
@@ -477,31 +302,62 @@
 
     private void ToggleForm()
     {
-        if (IsOwner) return;
+        errorMessage = null;
+        if (!isAuthenticated || IsOwner) return;
         showAddForm = !showAddForm;
     }
 
     private async Task SubmitReview()
     {
-        if (IsOwner || string.IsNullOrWhiteSpace(newComment)) return;
+        errorMessage = null;
 
-        var author = !string.IsNullOrWhiteSpace(currentUserName) ? currentUserName : "Anonim";
-
-        var request = new CreateReviewRequest
+        if (!isAuthenticated)
         {
-            ProductId = ProductId,
-            AuthorName = author,
-            Rating = newRating,
-            Comment = newComment
-        };
+            errorMessage = "Musisz być zalogowany, aby dodać opinię.";
+            return;
+        }
 
-        var success = await ReviewApiService.AddReviewAsync(request);
-        if (success)
+        if (IsOwner)
         {
-            newComment = "";
-            newRating = 5;
-            showAddForm = false;
-            await LoadReviews();
+            errorMessage = "Nie możesz dodać opinii do własnego ogłoszenia.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newComment))
+        {
+            errorMessage = "Wpisz treść opinii przed zapisaniem.";
+            return;
+        }
+
+        isSubmitting = true;
+        try
+        {
+            var author = !string.IsNullOrWhiteSpace(currentUserName) ? currentUserName : "Anonim";
+
+            var request = new CreateReviewRequest
+            {
+                ProductId = ProductId,
+                AuthorName = author,
+                Rating = newRating,
+                Comment = newComment
+            };
+
+            var success = await ReviewApiService.AddReviewAsync(request);
+            if (success)
+            {
+                newComment = "";
+                newRating = 5;
+                showAddForm = false;
+                await LoadReviews();
+            }
+            else
+            {
+                errorMessage = "Nie udało się zapisać opinii. Sprawdź, czy sesja logowania jest aktywna w API.";
+            }
+        }
+        finally
+        {
+            isSubmitting = false;
         }
     }
 
@@ -513,84 +369,5 @@
             stars += i <= rating ? "★" : "☆";
         }
         return stars;
-    }
-
-    private void OpenDeleteDialog()
-    {
-        if (Product == null || !IsOwner)
-            return;
-
-        IsDeleteDialogVisible = true;
-    }
-
-    private void CloseDeleteDialog()
-    {
-        if (!IsDeleting)
-            IsDeleteDialogVisible = false;
-    }
-
-    private async Task ConfirmDeleteAsync()
-    {
-        if (Product == null || !IsOwner || IsDeleting)
-            return;
-
-        IsDeleting = true;
-
-        var result = await productApi.DeleteProductAsync(Product.ProductId);
-        notify.AddNotification("Ogłoszenie", result);
-
-        if (result == "Ogłoszenie zostało usunięte!")
-        {
-            Navigation.NavigateTo("/");
-        }
-        else
-        {
-            IsDeleting = false;
-            IsDeleteDialogVisible = false;
-        }
-    }
-
-    private async Task SendReport()
-    {
-        isSendingReport = true;
-        var result = await reportApi.AddReportAsync(ProductId, reportModel);
-        isSendingReport = false;
-
-        if (result)
-        {
-            notify.AddNotification("Zgłoszenie", "Dziękujemy! Zgłoszenie zostało wysłane.");
-            reportModel = new ReportModel();
-            isReporting = false;
-        }
-        else
-        {
-            notify.AddNotification("Zgłoszenie", "Nie udało się wysłać zgłoszenia.");
-        }
-    }
-
-    private void CancelReport()
-    {
-        reportModel = new ReportModel();
-        isReporting = false;
-    }
-
-    private string GetReportCategoryName(ReportCategory category)
-    {
-        return category switch
-        {
-            ReportCategory.Spam => "Spam lub reklama",
-            ReportCategory.Fraud => "Oszustwo",
-            ReportCategory.Inappropriate => "Nieodpowiednia treść",
-            ReportCategory.Prohibited => "Zabroniony przedmiot lub usługa",
-            ReportCategory.Duplicate => "Duplikat ogłoszenia",
-            ReportCategory.Other => "Inne",
-            _ => category.ToString()
-        };
-    }
-
-    private class ToggleResult
-    {
-        public bool IsFollowing { get; set; }
-        public string Message { get; set; } = "";
     }
 }

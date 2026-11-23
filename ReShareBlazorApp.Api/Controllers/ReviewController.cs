@@ -19,22 +19,19 @@ namespace ReShareBlazorApp.Api.Controllers
         [HttpGet("product/{productId:int}")]
         public async Task<ActionResult<IEnumerable<ReviewDTO>>> GetReviewsForProduct(int productId)
         {
-            var reviews = await (
-                from r in _context.Reviews
-                join p in _context.Products on r.ProductId equals p.Id
-                where r.ProductId == productId
-                orderby r.CreatedAt descending
-                select new ReviewDTO
+            var reviews = await _context.Reviews
+                .Where(r => r.ProductId == productId)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new ReviewDTO
                 {
                     Id = r.Id,
                     ProductId = r.ProductId,
-                    ProductName = p.Name,
                     AuthorName = r.AuthorName,
                     Rating = r.Rating,
                     Comment = r.Comment,
                     CreatedAt = r.CreatedAt
-                }
-            ).ToListAsync();
+                })
+                .ToListAsync();
 
             return Ok(reviews);
         }
@@ -42,30 +39,36 @@ namespace ReShareBlazorApp.Api.Controllers
         [HttpGet("user/{username}")]
         public async Task<ActionResult<IEnumerable<ReviewDTO>>> GetReviewsForUser(string username)
         {
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                return Ok(new List<ReviewDTO>());
+            }
+
+            var normalized = username.Trim();
+
+            // Szukamy użytkownika o podanym loginie, aby pobrać opinie z jego ogłoszeń
             var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.UserName != null && u.UserName.ToLower() == username.ToLower());
+                .FirstOrDefaultAsync(u => u.UserName == normalized);
 
             if (user == null)
             {
-                return NotFound("Nie znaleziono użytkownika.");
+                return Ok(new List<ReviewDTO>());
             }
 
-            var reviews = await (
-                from r in _context.Reviews
-                join p in _context.Products on r.ProductId equals p.Id
-                where p.UserId == user.Id
-                orderby r.CreatedAt descending
-                select new ReviewDTO
-                {
-                    Id = r.Id,
-                    ProductId = r.ProductId,
-                    ProductName = p.Name,
-                    AuthorName = r.AuthorName,
-                    Rating = r.Rating,
-                    Comment = r.Comment,
-                    CreatedAt = r.CreatedAt
-                }
-            ).ToListAsync();
+            var reviews = await (from r in _context.Reviews
+                                 join p in _context.Products on r.ProductId equals p.Id
+                                 where p.UserId == user.Id
+                                 orderby r.CreatedAt descending
+                                 select new ReviewDTO
+                                 {
+                                     Id = r.Id,
+                                     ProductId = r.ProductId,
+                                     ProductName = p.Name,
+                                     AuthorName = r.AuthorName,
+                                     Rating = r.Rating,
+                                     Comment = r.Comment,
+                                     CreatedAt = r.CreatedAt
+                                 }).ToListAsync();
 
             return Ok(reviews);
         }
@@ -78,16 +81,25 @@ namespace ReShareBlazorApp.Api.Controllers
                 return BadRequest("Nieprawidłowe dane opinii.");
             }
 
+            if (string.IsNullOrWhiteSpace(request.Comment))
+            {
+                return BadRequest("Treść opinii jest wymagana.");
+            }
+
             var productExists = await _context.Products.AnyAsync(p => p.Id == request.ProductId);
             if (!productExists)
             {
                 return NotFound("Nie znaleziono ogłoszenia.");
             }
 
+            var authorName = !string.IsNullOrWhiteSpace(User.Identity?.Name)
+                ? User.Identity.Name.Trim()
+                : (string.IsNullOrWhiteSpace(request.AuthorName) ? "Anonim" : request.AuthorName.Trim());
+
             var review = new Review
             {
                 ProductId = request.ProductId,
-                AuthorName = string.IsNullOrWhiteSpace(request.AuthorName) ? "Anonim" : request.AuthorName.Trim(),
+                AuthorName = authorName,
                 Rating = request.Rating,
                 Comment = request.Comment.Trim(),
                 CreatedAt = DateTime.UtcNow
