@@ -41,6 +41,7 @@ namespace ReShareBlazorApp.Web.ApiServices
                 Price = productModel.Price,
                 ExpiresAt = productModel.ExpiresAt,
                 Category = productModel.Category,
+                Condition = productModel.Condition,
                 City = productModel.City,
                 Type = productModel.Type,
                 Images = productModel.Images.Select(image => new ProductImageDTO
@@ -91,7 +92,8 @@ namespace ReShareBlazorApp.Web.ApiServices
                     ExpiresAt = productModel.ExpiresAt,
                     Category = productModel.Category,
                     City = productModel.City,
-                    Type = productModel.Type
+                    Type = productModel.Type,
+                    Condition = productModel.Condition
                 });
 
                 using var response = await _httpClient.SendAsync(request);

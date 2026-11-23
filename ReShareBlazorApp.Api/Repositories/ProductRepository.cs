@@ -47,6 +47,7 @@ namespace ReShareBlazorApp.Api.Repositories
                 existingProduct.ExpiresAt = product.ExpiresAt;
                 existingProduct.Type = product.Type;
                 existingProduct.Category = product.Category;
+                existingProduct.Condition = product.Condition;
                 existingProduct.City = product.City;
 
                 await _context.SaveChangesAsync();

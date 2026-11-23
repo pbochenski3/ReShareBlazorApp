@@ -83,7 +83,10 @@
                                 <span class="details-info-label">Data dodania</span>
                                 <strong>@Product.AddedAt.ToString("dd.MM.yyyy HH:mm")</strong>
                             </div>
-
+                            <div class="details-info-item">
+                                <span class="details-info-label">Stan produktu</span>
+                                <strong>@GetConditionName(Product.Condition)</strong>
+                            </div>
                             <div class="details-info-item">
                                 <span class="details-info-label">Wygasa</span>
                                 <strong>@Product.ExpiresAt.ToString("dd.MM.yyyy HH:mm")</strong>
@@ -684,6 +687,16 @@
             ReportCategory.Duplicate => "Duplikat ogłoszenia",
             ReportCategory.Other => "Inne",
             _ => category.ToString()
+        };
+    }
+    private string GetConditionName(ProductCondition condition)
+    {
+        return condition switch
+        {
+            ProductCondition.New => "Nowy",
+            ProductCondition.Used => "Używany",
+            ProductCondition.Damaged => "Uszkodzony",
+            _ => condition.ToString()
         };
     }
 
