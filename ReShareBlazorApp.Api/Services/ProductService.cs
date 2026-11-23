@@ -1,4 +1,5 @@
-﻿using ReShareBlazorApp.Api.Date;
+﻿using Microsoft.Extensions.Logging;
+using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Api.Interfaces.Services;
@@ -94,8 +95,8 @@ namespace ReShareBlazorApp.Api.Services
                     AddedAt = product.AddedAt,
                     ExpiresAt = product.ExpiresAt,
                     Category = product.Category,
-                    Type = product.Type,
                     Condition = product.Condition,
+                    Type = product.Type,
                     City = product.City,
                     UserId = product.UserId,
                     Images = images
@@ -310,8 +311,6 @@ namespace ReShareBlazorApp.Api.Services
                 TopCategoryCount = counts.GetValueOrDefault(ProductCategory.Tickets)
             };
 
-            // Bilety są domyślnym zwycięzcą - zmieniają się dopiero, gdy inna kategoria
-            // ma ściśle więcej sprzedanych ogłoszeń (przy remisie zostają bilety).
             foreach (var (category, count) in counts.OrderBy(c => c.Key))
             {
                 if (count > stats.TopCategoryCount)
@@ -465,6 +464,5 @@ namespace ReShareBlazorApp.Api.Services
 
             return null;
         }
-
     }
 }

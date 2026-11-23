@@ -104,7 +104,7 @@ namespace ReShareBlazorApp.Web.ApiServices
             }
         }
 
-        public async Task<string> DeleteProductAsync(int productId)
+        public async Task<string> DeleteProductAsync(int productId, int? userId = null)
         {
             var request = await CreateAuthorizedRequestAsync(
                 HttpMethod.Delete,
@@ -122,7 +122,7 @@ namespace ReShareBlazorApp.Web.ApiServices
             }
         }
 
-        public async Task<string> MarkAsSoldAsync(int productId)
+        public async Task<string> MarkAsSoldAsync(int productId, int? userId = null)
         {
             var authState = await _authStateProvider.GetAuthenticationStateAsync();
             var token = authState.User.FindFirst("access_token")?.Value;
@@ -315,23 +315,6 @@ namespace ReShareBlazorApp.Web.ApiServices
                 ?? new List<LocationDTO>();
         }
 
-        private async Task<HttpRequestMessage?> CreateAuthorizedRequestAsync(
-            HttpMethod method,
-            string url)
-        {
-            var state = await _authStateProvider.GetAuthenticationStateAsync();
-            var token = state.User.FindFirst("access_token")?.Value;
-
-            if (string.IsNullOrWhiteSpace(token))
-                return null;
-
-            var request = new HttpRequestMessage(method, url);
-
-            request.Headers.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
-
-            return request;
-        }
 
         private static async Task<string> ReadApiMessageAsync(HttpResponseMessage response)
         {

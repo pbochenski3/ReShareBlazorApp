@@ -23,12 +23,12 @@ namespace ReShareBlazorApp.Api.Interfaces.Services
         Task<bool> DeleteProductAsync(int productId, int userId);
         Task<bool> MarkAsSoldAsync(int productId, int userId);
         Task<CompletedStatsDTO> GetCompletedStatsAsync();
+        Task<bool?> ToggleFavoriteAsync(int userId, int productId);
+        Task<List<int>> GetFavoriteIdsAsync(int userId);
+        Task<List<ProductDTO>> GetFavoritesAsync(int userId);
         Task<List<LocationDTO>> GetLocationsAsync(string query);
         Task<ProductDTO?> GetProductById(int id);
         string? ValidateImages(IReadOnlyList<ProductImageDTO>? images);
         Task<ProductImageDTO?> GetImageAsync(int imageId);
-        Task<bool?> ToggleFavoriteAsync(int userId, int productId);
-        Task<List<int>> GetFavoriteIdsAsync(int userId);
-        Task<List<ProductDTO>> GetFavoritesAsync(int userId);
     }
 }

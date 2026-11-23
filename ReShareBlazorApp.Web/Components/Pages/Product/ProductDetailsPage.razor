@@ -9,6 +9,7 @@
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Models
 
+@inject AuthenticationStateProvider AuthStateProvider
 @inject ProductApiService productApi
 @inject HttpClient Http
 @inject IJSRuntime JS
@@ -16,8 +17,6 @@
 @inject ReviewApiService ReviewApiService
 @inject RecentlyViewedApiService RecentlyViewedApiService
 @inject ReportApiService ReportApiService
-@inject AuthenticationStateProvider AuthStateProvider
-@inject ReportApiService reportApi
 @inject NotificationService notify
 @inject FavoritesState Favorites
 @implements IDisposable
@@ -42,6 +41,12 @@
                 <div class="details-empty-icon">!</div>
                 <h2>Nie znaleziono ogłoszenia</h2>
                 <p>Ogłoszenie mogło zostać usunięte lub nie istnieje.</p>
+
+                @if (!string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    <p class="text-danger">@errorMessage</p>
+                }
+
                 <a href="/" class="details-primary-button">Wróć na stronę główną</a>
             </div>
         }
@@ -275,7 +280,7 @@
                                 {
                                     <p class="profile-rating">
                                         ★ @userRating.AverageRating.ToString("0.0",
-                                                                                    System.Globalization.CultureInfo.GetCultureInfo("pl-PL"))
+                                                                                                                            System.Globalization.CultureInfo.GetCultureInfo("pl-PL"))
                                         <span>(@userRating.TotalReviews @GetReviewLabel(userRating.TotalReviews))</span>
                                     </p>
                                 }
@@ -304,6 +309,26 @@
                         @if (!IsOwner)
                         {
                             <button type="button"
+                                    class="btn w-100 mb-3"
+                                    style="font-weight: 600; padding: 10px; background-color: #0f766e; color: #fff;"
+                                    @onclick="WriteMessage">
+                                ✉ Napisz wiadomość
+                            </button>
+
+                            <!-- ULUBIONE: żółta gwiazdka -->
+                            <button type="button"
+                                    class="details-fav-button @(IsFavorite ? "is-active" : "")"
+                                    aria-pressed="@(IsFavorite ? "true" : "false")"
+                                    disabled="@isTogglingFavorite"
+                                    @onclick="ToggleFavoriteAsync">
+                                <svg class="fav-star" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                </svg>
+                                <span>@(IsFavorite ? "Usuń z ulubionych" : "Dodaj do ulubionych")</span>
+                            </button>
+
+                            <!-- PRZYCISK OBSERWUJ -->
+                            <button type="button"
                                     class="btn w-100 mb-3 @(isFollowing ? "btn-outline-secondary" : "btn-success")"
                                     style="font-weight: 600; padding: 10px;"
                                     @onclick="ToggleFollowUser"
@@ -319,29 +344,6 @@
                                     </span>
                                 }
                             </button>
-
-                            <button type="button"
-                                    class="btn w-100 mb-3"
-                                    style="font-weight: 600; padding: 10px; background-color: #0f766e; color: #fff;"
-                                    @onclick="WriteMessage">
-                                ✉ Napisz wiadomość
-                            </button>
-                        <!-- ULUBIONE: żółta gwiazdka (pełna = w ulubionych, pusta z obrysem = nie) -->
-                        <button type="button"
-                                class="details-fav-button @(IsFavorite ? "is-active" : "")"
-                                aria-pressed="@(IsFavorite ? "true" : "false")"
-                                disabled="@isTogglingFavorite"
-                                @onclick="ToggleFavoriteAsync">
-                            <svg class="fav-star" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                            </svg>
-                            <span>@(IsFavorite ? "Usuń z ulubionych" : "Dodaj do ulubionych")</span>
-                        </button>
-
-                        <!-- PRZYCISK OBSERWUJ W STYLU VINTED -->
-                        <button class="btn w-100 mb-3 @(isFollowing ? "btn-outline-secondary" : "btn-success")" style="font-weight: 600; padding: 10px;" @onclick="ToggleFollowUser">
-                            @(isFollowing ? "✓ Obserwujesz" : "+ Obserwuj użytkownika")
-                        </button>
 
                             @if (isAuthenticated)
                             {
@@ -497,11 +499,6 @@
     public ProductDTO? Product { get; set; }
 
     public bool IsLoading { get; set; } = true;
-    private bool isFollowing = false;
-    private bool IsDeleteDialogVisible { get; set; }
-    private bool IsDeleting { get; set; }
-    private bool IsSoldDialogVisible { get; set; }
-    private bool IsMarkingSold { get; set; }
 
     private bool isAuthenticated;
     private string? currentUserName;
@@ -528,6 +525,14 @@
 
     private UserRatingDTO userRating = new();
 
+    private bool IsDeleteDialogVisible { get; set; }
+    private bool IsDeleting { get; set; }
+    private bool IsSoldDialogVisible { get; set; }
+    private bool IsMarkingSold { get; set; }
+
+    private bool isTogglingFavorite;
+    private bool IsFavorite => Product != null && Favorites.IsFavorite(Product.ProductId);
+
     private bool IsOwner
     {
         get
@@ -547,8 +552,6 @@
 
     private int TotalReviews =>
         reviews?.Count ?? 0;
-    private bool isTogglingFavorite;
-    private bool IsFavorite => Product != null && Favorites.IsFavorite(Product.ProductId);
 
     protected override void OnInitialized()
     {
@@ -565,7 +568,6 @@
         if (Product == null || isTogglingFavorite)
             return;
 
-        // Ulubione tylko dla zalogowanych - reszta trafia na logowanie
         if (!await Favorites.IsLoggedInAsync())
         {
             Navigation.NavigateTo("/login");
@@ -590,14 +592,13 @@
         Favorites.Changed -= OnFavoritesChanged;
     }
 
-    private static string GetImageUrl(int imageId) => $"/images/{imageId}";
-
     protected override async Task OnParametersSetAsync()
     {
         IsLoading = true;
 
         Product = null;
         reviews = null;
+        userRating = new UserRatingDTO();
 
         showAddForm = false;
         errorMessage = null;
@@ -607,6 +608,8 @@
         reportSubmitted = false;
         reportModel = new ReportModel();
         isFollowing = false;
+        isFollowLoading = false;
+        isTogglingFavorite = false;
         currentUserIdInt = null;
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -648,16 +651,11 @@
                 if (isAuthenticated)
                 {
                     await CheckFollowStatus();
+                    await Favorites.EnsureLoadedAsync();
                 }
-        Product = await productApi.GetProductByIdAsync(ProductId);
-        if (Product != null)
-        {
-            await LoadReviews();
-            await CheckFollowStatus();
-            await Favorites.EnsureLoadedAsync();
-        }
 
-                userRating = await ReviewApiService.GetUserRatingAsync(Product.UserId);
+                userRating = await ReviewApiService.GetUserRatingAsync(Product.UserId)
+                             ?? new UserRatingDTO();
             }
         }
         catch (Exception ex)
@@ -670,12 +668,11 @@
         }
     }
 
-    // Pobieranie opinii dla ogłoszenia
     private async Task LoadReviews()
     {
         try
         {
-            reviews = await ReviewApiService.GetReviewsForProductAsync(ProductId);
+            reviews = await ReviewApiService.GetReviewsForProductAsync(ProductId) ?? new();
         }
         catch (Exception ex)
         {
@@ -684,7 +681,6 @@
         }
     }
 
-    // Tworzenie zapytania z tokenem autoryzacyjnym
     private async Task<HttpRequestMessage> CreateAuthorizedRequest(
         HttpMethod method,
         string url)
@@ -708,7 +704,6 @@
         }
     }
 
-    // Sprawdzanie, czy aktualny użytkownik obserwuje wystawiającego
     private async Task CheckFollowStatus()
     {
         if (Product == null || !isAuthenticated)
@@ -738,7 +733,6 @@
         }
     }
 
-    // Zmiana widoczności formularza opinii
     private void ToggleForm()
     {
         errorMessage = null;
@@ -814,18 +808,7 @@
             _ => category.ToString()
         };
     }
-    private string GetConditionName(ProductCondition condition)
-    {
-        return condition switch
-        {
-            ProductCondition.New => "Nowy",
-            ProductCondition.Used => "Używany",
-            ProductCondition.Damaged => "Uszkodzony",
-            _ => condition.ToString()
-        };
-    }
 
-    // Dodawanie opinii
     private async Task SubmitReview()
     {
         errorMessage = null;
@@ -898,44 +881,7 @@
         }
     }
 
-    // Obserwowanie lub przestanie obserwowania użytkownika
     private async Task ToggleFollowUser()
-    private void OpenSoldDialog()
-    {
-        if (Product == null || !IsOwner)
-            return;
-
-        IsSoldDialogVisible = true;
-    }
-
-    private void CloseSoldDialog()
-    {
-        if (!IsMarkingSold)
-            IsSoldDialogVisible = false;
-    }
-
-    private async Task ConfirmSoldAsync()
-    {
-        if (Product == null || !IsOwner || IsMarkingSold)
-            return;
-
-        IsMarkingSold = true;
-
-        var result = await productApi.MarkAsSoldAsync(Product.ProductId);
-        notify.AddNotification("Ogłoszenie", result);
-
-        if (result == "Ogłoszenie zostało oznaczone jako sprzedane!")
-        {
-            Navigation.NavigateTo("/");
-        }
-        else
-        {
-            IsMarkingSold = false;
-            IsSoldDialogVisible = false;
-        }
-    }
-
-    private void OpenDeleteDialog()
     {
         followMessage = null;
 
@@ -986,7 +932,7 @@
             }
             else
             {
-                followMessage = await response.Content.ReadAsStringAsync();
+                followMessage = "Nie udało się zmienić obserwowania. Spróbuj ponownie.";
             }
         }
         catch (Exception ex)
@@ -999,7 +945,6 @@
         }
     }
 
-    // Przejście do tworzenia wiadomości
     private void WriteMessage()
     {
         if (Product == null || IsOwner)
@@ -1014,6 +959,61 @@
         Navigation.NavigateTo(
             $"/wiadomosci/nowa/{currentUserIdInt.Value}/{Product.UserId}/{Product.ProductId}");
     }
+
+    private void OpenDeleteDialog() => IsDeleteDialogVisible = true;
+    private void CloseDeleteDialog() => IsDeleteDialogVisible = false;
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (Product == null || IsDeleting) return;
+        IsDeleting = true;
+        try
+        {
+            if (currentUserIdInt.HasValue)
+            {
+                var result = await productApi.DeleteProductAsync(Product.ProductId, currentUserIdInt.Value);
+                if (result == "Ogłoszenie zostało usunięte!")
+                    Navigation.NavigateTo("/");
+            }
+        }
+        finally
+        {
+            IsDeleting = false;
+            IsDeleteDialogVisible = false;
+        }
+    }
+
+    private void OpenSoldDialog() => IsSoldDialogVisible = true;
+    private void CloseSoldDialog() => IsSoldDialogVisible = false;
+
+    private async Task ConfirmSoldAsync()
+    {
+        if (Product == null || IsMarkingSold) return;
+        IsMarkingSold = true;
+        try
+        {
+            if (currentUserIdInt.HasValue)
+            {
+                var result = await productApi.MarkAsSoldAsync(Product.ProductId, currentUserIdInt.Value);
+                if (result == "Ogłoszenie zostało oznaczone jako sprzedane!")
+                    Navigation.NavigateTo("/");
+            }
+        }
+        finally
+        {
+            IsMarkingSold = false;
+            IsSoldDialogVisible = false;
+        }
+    }
+
+    private static string GetConditionName(ProductCondition condition) => condition switch
+    {
+        ProductCondition.New => "Nowy",
+        ProductCondition.LikeNew => "Jak nowy",
+        ProductCondition.Good => "Dobry",
+        ProductCondition.Fair => "Dostateczny",
+        _ => "Nieznany"
+    };
 
     private string GetReviewLabel(int count)
     {

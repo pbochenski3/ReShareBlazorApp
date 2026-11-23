@@ -68,14 +68,8 @@ namespace ReShareBlazorApp.Api.Repositories
         {
             try
             {
-                await _context.Products.Where(p => p.Id == productId && p.UserId == userId)
+                var rows = await _context.Products.Where(p => p.Id == productId && p.UserId == userId)
                     .ExecuteUpdateAsync(p => p.SetProperty(p => p.isDeleted, true));
-                return true;
-                // Zwykłe usunięcie = ogłoszenie znika z bazy na stałe (powiązane zdjęcia i zgłoszenia
-                // kasują się kaskadowo). Dzięki temu NIE zwiększa licznika "odratowanych" rzeczy.
-                var rows = await _context.Products
-                    .Where(p => p.Id == productId && p.UserId == userId)
-                    .ExecuteDeleteAsync();
                 return rows > 0;
             }
             catch (Exception ex)

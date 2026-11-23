@@ -180,7 +180,9 @@
         return condition switch
         {
             ProductCondition.New => "Nowy",
-            ProductCondition.Used => "Używany",
+            ProductCondition.LikeNew => "Jak nowy",
+            ProductCondition.Good => "Dobry",
+            ProductCondition.Fair => "Dostateczny",
             ProductCondition.Damaged => "Uszkodzony",
             _ => condition.ToString()
         };

@@ -112,6 +112,24 @@ namespace ReShareBlazorApp.Api.Date
             builder.Entity<UserBadge>()
                 .HasIndex(ub => new { ub.UserId, ub.BadgeId })
                 .IsUnique();
+
+			builder.Entity<FavoriteProduct>(entity =>
+			{
+				entity.HasKey(f => new { f.UserId, f.ProductId });
+
+				entity.HasOne(f => f.User)
+					.WithMany()
+					.HasForeignKey(f => f.UserId)
+					.OnDelete(DeleteBehavior.NoAction);
+
+				entity.HasOne(f => f.Product)
+					.WithMany()
+					.HasForeignKey(f => f.ProductId)
+					.OnDelete(DeleteBehavior.NoAction);
+
+				entity.Property(f => f.AddedAt)
+					.HasColumnType("datetime2");
+			});
         }
 	}
 }

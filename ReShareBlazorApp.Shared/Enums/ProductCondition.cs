@@ -3,6 +3,9 @@
 public enum ProductCondition
 {
     New,
-    Used,
+    LikeNew,
+    Good,
+    Fair,
     Damaged
+    
 }
