@@ -1,15 +1,18 @@
 ﻿@page "/details/{ProductId:int}"
 @using System.Net.Http.Headers
 @using System.Net.Http.Json
+@using System.Security.Claims
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Web.ApiServices
+
 @inject ProductApiService productApi
 @inject HttpClient Http
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject ReviewApiService ReviewApiService
+@inject RecentlyViewedApiService RecentlyViewedApiService
 @inject AuthenticationStateProvider AuthStateProvider
 
 <div class="details-page">
@@ -86,9 +89,11 @@
                     </section>
 
                     <section class="details-section mt-5 pt-4 border-top">
+
                         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                             <div>
                                 <h3 class="fw-bold text-dark m-0">Opinie o ogłoszeniu</h3>
+
                                 <div class="text-warning fw-bold mt-1">
                                     <span>★</span>
                                     <span>@AverageRating.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)</span>
@@ -112,7 +117,8 @@
                             }
                             else
                             {
-                                <button class="btn btn-sm rounded-pill px-4 py-2 fw-semibold shadow-sm text-white"
+                                <button type="button"
+                                        class="btn btn-sm rounded-pill px-4 py-2 fw-semibold shadow-sm text-white"
                                         @onclick="ToggleForm"
                                         style="background-color: #0f766e;">
                                     @(showAddForm ? "Anuluj" : "+ Dodaj opinię")
@@ -173,7 +179,8 @@
                                     </textarea>
                                 </div>
 
-                                <button class="btn px-4 rounded-pill fw-semibold text-white"
+                                <button type="button"
+                                        class="btn px-4 rounded-pill fw-semibold text-white"
                                         disabled="@isSubmitting"
                                         @onclick="SubmitReview"
                                         style="background-color: #0f766e;">
@@ -202,10 +209,11 @@
                                 {
                                     <div class="col-md-6">
                                         <div class="card border-0 shadow-sm p-4 rounded-4 h-100 bg-white">
+
                                             <div class="d-flex justify-content-between align-items-center mb-2">
                                                 <div class="text-warning fs-6"
                                                      style="letter-spacing: 2px;">
-                                                    @((MarkupString)GetStarsHtml(review.Rating))
+                                                    @(new string('★', review.Rating) + new string('☆', 5 - review.Rating))
                                                 </div>
 
                                                 <span class="fw-bold text-dark">
@@ -261,29 +269,32 @@
                             ID użytkownika: @Product.UserId
                         </div>
 
-                        <button class="btn w-100 mb-2 @(isFollowing ? "btn-outline-secondary" : "btn-success")"
-                                style="font-weight: 600; padding: 10px;"
-                                @onclick="ToggleFollowUser"
-                                disabled="@isFollowLoading">
-                            @if (isFollowLoading)
-                            {
-                                <span>Ładowanie...</span>
-                            }
-                            else
-                            {
-                                <span>
-                                    @(isFollowing ? "✓ Obserwujesz" : "+ Obserwuj użytkownika")
-                                </span>
-                            }
-                        </button>
-                        <!-- PRZYCISK OBSERWUJ W STYLU VINTED -->
-                        <button class="btn w-100 mb-3 @(isFollowing ? "btn-outline-secondary" : "btn-success")" style="font-weight: 600; padding: 10px;" @onclick="ToggleFollowUser">
-                            @(isFollowing ? "✓ Obserwujesz" : "+ Obserwuj użytkownika")
-                        </button>
+                        @if (!string.IsNullOrWhiteSpace(followMessage))
+                        {
+                            <div class="small text-danger mb-2">
+                                @followMessage
+                            </div>
+                        }
 
-                        <!-- PRZYCISK NAPISZ WIADOMOŚĆ W STYLU VINTED -->
                         @if (!IsOwner)
                         {
+                            <button type="button"
+                                    class="btn w-100 mb-3 @(isFollowing ? "btn-outline-secondary" : "btn-success")"
+                                    style="font-weight: 600; padding: 10px;"
+                                    @onclick="ToggleFollowUser"
+                                    disabled="@isFollowLoading">
+                                @if (isFollowLoading)
+                                {
+                                    <span>Ładowanie...</span>
+                                }
+                                else
+                                {
+                                    <span>
+                                        @(isFollowing ? "✓ Obserwujesz" : "+ Obserwuj użytkownika")
+                                    </span>
+                                }
+                            </button>
+
                             <button type="button"
                                     class="btn w-100 mb-3"
                                     style="font-weight: 600; padding: 10px; background-color: #0f766e; color: #fff;"
@@ -298,64 +309,11 @@
 
                         @if (IsOwner)
                         {
-                            <a href="/edit-product/@Product.ProductId" class="details-secondary-button d-block text-center mt-2">
+                            <a href="/edit-product/@Product.ProductId"
+                               class="details-secondary-button d-block text-center mt-2">
                                 Edytuj ogłoszenie
                             </a>
-                            <button type="button" class="details-danger-button w-100 mt-2" @onclick="OpenDeleteDialog">
-                                Usuń ogłoszenie
-                            </button>
                         }
-                    </div>
-
-                    <AuthorizeView>
-                        <Authorized Context="auth">
-                            <div class="details-report">
-                                @if (!isReporting)
-                                {
-                                    <button type="button"
-                                            class="details-report-toggle"
-                                            @onclick="() => isReporting = true">
-                                        🚩 Zgłoś ogłoszenie
-                                    </button>
-                                }
-                                else
-                                {
-                                    <EditForm Model="@reportModel" OnValidSubmit="SendReport">
-                                        <DataAnnotationsValidator />
-
-                                        <h3>Zgłoś ogłoszenie</h3>
-
-                                        <div class="details-report-field">
-                                            <label>Kategoria zgłoszenia</label>
-                                            <InputSelect @bind-Value="reportModel.Category"
-                                                         class="details-report-input">
-                                                <option value="">Wybierz kategorię</option>
-                                                @foreach (var category in Enum.GetValues<ReportCategory>())
-                                                {
-                                                    <option value="@category">@GetReportCategoryName(category)</option>
-                                                }
-                                            </InputSelect>
-                                            <ValidationMessage For="@(() => reportModel.Category)" />
-                                        </div>
-
-                                        <div class="details-report-field">
-                                            <label>Treść zgłoszenia</label>
-                                            <InputTextArea @bind-Value="reportModel.Description"
-                                                           class="details-report-input"
-                                                           placeholder="Opisz, co jest nie tak z tym ogłoszeniem" />
-                                            <ValidationMessage For="@(() => reportModel.Description)" />
-                                        </div>
-
-                        @if (!string.IsNullOrWhiteSpace(followMessage))
-                        {
-                            <div class="small text-danger mb-3">
-                                @followMessage
-                            </div>
-                        }
-
-                        <a href="/" class="details-primary-button">
-                            Przeglądaj inne ogłoszenia
-                        </a>
                     </div>
 
                     <div class="details-safety">
@@ -374,7 +332,6 @@
 
             </div>
         }
-
     </div>
 </div>
 
@@ -386,19 +343,20 @@
 
     public bool IsLoading { get; set; } = true;
 
-    private bool isAuthenticated = false;
+    private bool isAuthenticated;
     private string? currentUserName;
+    private int? currentUserIdInt;
 
-    private bool isFollowing = false;
-    private bool isFollowLoading = false;
+    private bool isFollowing;
+    private bool isFollowLoading;
     private string? followMessage;
 
     private string? errorMessage;
-    private bool isSubmitting = false;
+    private bool isSubmitting;
 
     private List<ReviewDTO>? reviews;
 
-    private bool showAddForm = false;
+    private bool showAddForm;
     private int newRating = 5;
     private string newComment = "";
 
@@ -424,24 +382,34 @@
             : 0.0;
 
     private int TotalReviews =>
-        reviews != null ? reviews.Count : 0;
+        reviews?.Count ?? 0;
 
     protected override async Task OnParametersSetAsync()
     {
         IsLoading = true;
 
+        Product = null;
+        reviews = null;
+
         showAddForm = false;
         errorMessage = null;
         followMessage = null;
-
-        reviews = null;
         isFollowing = false;
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
         isAuthenticated = user.Identity?.IsAuthenticated == true;
-        currentUserName = isAuthenticated ? user.Identity?.Name : null;
+
+        currentUserName = isAuthenticated
+            ? user.FindFirst(ClaimTypes.Name)?.Value ?? user.Identity?.Name
+            : null;
+
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        currentUserIdInt = int.TryParse(userIdClaim, out var userId)
+            ? userId
+            : null;
 
         try
         {
@@ -449,6 +417,11 @@
 
             if (Product != null)
             {
+                if (isAuthenticated)
+                {
+                    await RecentlyViewedApiService.RecordViewAsync(Product.ProductId);
+                }
+
                 await LoadReviews();
 
                 if (isAuthenticated)
@@ -470,7 +443,15 @@
     // Pobieranie opinii dla ogłoszenia
     private async Task LoadReviews()
     {
-        reviews = await ReviewApiService.GetReviewsForProductAsync(ProductId);
+        try
+        {
+            reviews = await ReviewApiService.GetReviewsForProductAsync(ProductId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Błąd podczas pobierania opinii: {ex.Message}");
+            reviews = new();
+        }
     }
 
     // Tworzenie zapytania z tokenem autoryzacyjnym
@@ -518,9 +499,9 @@
                     new AuthenticationHeaderValue("Bearer", token);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Brak dostępu do JavaScript lub tokenu.
+            Console.WriteLine($"Nie udało się pobrać tokenu: {ex.Message}");
         }
 
         return request;
@@ -544,14 +525,14 @@
             {
                 isFollowing = await response.Content.ReadFromJsonAsync<bool>();
             }
-            else if (response.StatusCode ==
-                     System.Net.HttpStatusCode.Unauthorized)
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
                 isFollowing = false;
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"Błąd sprawdzania obserwowania: {ex.Message}");
             isFollowing = false;
         }
     }
@@ -577,38 +558,6 @@
             errorMessage = "Musisz być zalogowany, aby dodać opinię.";
             return;
         }
-                var result = await response.Content.ReadFromJsonAsync<ToggleResult>();
-                if (result != null)
-                {
-                    isFollowing = result.IsFollowing;
-                }
-            }
-            else
-            {
-                Navigation.NavigateTo("/login");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Błąd: {ex.Message}");
-        }
-    }
-
-    private void WriteMessage()
-    {
-        if (Product == null || IsOwner) return;
-
-        // Niezalogowany użytkownik nie może pisać wiadomości
-        if (!currentUserIdInt.HasValue)
-        {
-            Navigation.NavigateTo("/login");
-            return;
-        }
-
-        // /wiadomosci/nowa/{piszący}/{wystawiający ogłoszenie}/{ogłoszenie}
-        Navigation.NavigateTo(
-            $"/wiadomosci/nowa/{currentUserIdInt.Value}/{Product.UserId}/{Product.ProductId}");
-    }
 
         if (Product == null)
             return;
@@ -659,8 +608,7 @@
             }
             else
             {
-                errorMessage =
-                    "Nie udało się zapisać opinii. Sprawdź, czy sesja logowania jest aktywna w API.";
+                errorMessage = "Nie udało się zapisać opinii. Sprawdź, czy sesja logowania jest aktywna w API.";
             }
         }
         catch (Exception ex)
@@ -708,8 +656,7 @@
 
             if (response.IsSuccessStatusCode)
             {
-                var result =
-                    await response.Content.ReadFromJsonAsync<ToggleResult>();
+                var result = await response.Content.ReadFromJsonAsync<ToggleResult>();
 
                 if (result != null)
                 {
@@ -720,8 +667,7 @@
                     followMessage = "Nie udało się odczytać odpowiedzi serwera.";
                 }
             }
-            else if (response.StatusCode ==
-                     System.Net.HttpStatusCode.Unauthorized)
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo("/login");
             }
@@ -740,17 +686,20 @@
         }
     }
 
-    // Generowanie gwiazdek
-    private string GetStarsHtml(int rating)
+    // Przejście do tworzenia wiadomości
+    private void WriteMessage()
     {
-        string stars = "";
+        if (Product == null || IsOwner)
+            return;
 
-        for (int i = 1; i <= 5; i++)
+        if (!isAuthenticated || !currentUserIdInt.HasValue)
         {
-            stars += i <= rating ? "★" : "☆";
+            Navigation.NavigateTo("/login");
+            return;
         }
 
-        return stars;
+        Navigation.NavigateTo(
+            $"/wiadomosci/nowa/{currentUserIdInt.Value}/{Product.UserId}/{Product.ProductId}");
     }
 
     private class ToggleResult
