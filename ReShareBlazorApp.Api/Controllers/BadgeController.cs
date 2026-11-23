@@ -35,6 +35,7 @@ namespace ReShareBlazorApp.Api.Controllers
         }
 
         [HttpGet("user/{userId:int}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetUserBadges(int userId)
         {
             var badges = await _badgeService.GetUserBadgesAsync(userId);
