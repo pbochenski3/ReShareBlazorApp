@@ -132,5 +132,22 @@ namespace ReShareBlazorApp.Api.Controllers
 
             return Ok(new { message = "Opinia została dodana pomyślnie." });
         }
+        [HttpGet("user/{userId:int}")]
+        public async Task<ActionResult<UserRatingDTO>> GetUserRating(int userId)
+        {
+            var reviews = await _context.Reviews
+                .Where(r => _context.Products.Any(p =>
+                    p.Id == r.ProductId &&
+                    p.UserId == userId &&
+                    !p.isDeleted))
+                .Select(r => r.Rating)
+                .ToListAsync();
+
+            return Ok(new UserRatingDTO
+            {
+                AverageRating = reviews.Any() ? reviews.Average() : 0,
+                TotalReviews = reviews.Count
+            });
+        }
     }
 }

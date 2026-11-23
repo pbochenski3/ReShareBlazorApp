@@ -14,6 +14,7 @@
 @inject ProductApiService productApi
 @inject BadgeApiService BadgeApiService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject ReviewApiService ReviewApiService 
 
 @if (isLoadingProfile)
 {
@@ -55,21 +56,21 @@ else if (exist)
                     {
                         <p class="profile-bio">@profile.Bio</p>
                     }
-
-                    <p class="home-card-verified">
-                        ✔ E-mail zweryfikowany
-                    </p>
-
-                    <p class="profile-rating">
-                        ★ @(userReviews.Any()
-                                                    ? AverageRating.ToString("0.0")
-                                                    : "0,0")
-
-                        <span>
-                            (@userReviews.Count
-                            @(userReviews.Count == 1 ? "opinia" : "opinii"))
-                        </span>
-                    </p>
+                    <p class="home-card-verified">✔ E-mail zweryfikowany</p>
+                    @if (userRating.TotalReviews > 0)
+                    {
+                        <p class="profile-rating">
+                            ★ @userRating.AverageRating.ToString("0.0",
+                                System.Globalization.CultureInfo.GetCultureInfo("pl-PL"))
+                            <span>(@userRating.TotalReviews @GetReviewLabel(userRating.TotalReviews))</span>
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="profile-rating">
+                            ★ 0,0 <span>(0 opinii)</span>
+                        </p>
+                    }
                 </div>
 
                 @if (isOwner)

@@ -264,6 +264,22 @@
                                         : Product.AddedBy)
                                 </strong>
 
+
+                                @if (userRating.TotalReviews > 0)
+                                {
+                                    <p class="profile-rating">
+                                        ★ @userRating.AverageRating.ToString("0.0",
+                                            System.Globalization.CultureInfo.GetCultureInfo("pl-PL"))
+                                        <span>(@userRating.TotalReviews @GetReviewLabel(userRating.TotalReviews))</span>
+                                    </p>
+                                }
+                                else
+                                {
+                                    <p class="profile-rating">
+                                        ★ 0,0 <span>(0 opinii)</span>
+                                    </p>
+                                }
+
                                 <span>Wystawiający ogłoszenie</span>
                             </div>
                         </div>
@@ -434,6 +450,8 @@
     private int newRating = 5;
     private string newComment = "";
 
+    private UserRatingDTO userRating = new();
+
     private bool IsOwner
     {
         get
@@ -539,6 +557,15 @@
             reviews = new();
         }
     }
+        Product = await productApi.GetProductByIdAsync(ProductId);
+
+        if (Product != null)
+        {
+            await LoadReviews();
+            await CheckFollowStatus();
+
+            userRating = await ReviewApiService.GetUserRatingAsync(Product.UserId);
+        }
 
     // Tworzenie zapytania z tokenem autoryzacyjnym
     private async Task<HttpRequestMessage> CreateAuthorizedRequest(
@@ -828,5 +855,18 @@
     private class ToggleResult
     {
         public bool IsFollowing { get; set; }
+    }
+}
+
+    private string GetReviewLabel(int count)
+    {
+        if (count == 1)
+            return "opinia";
+
+        if (count % 10 >= 2 && count % 10 <= 4 &&
+            (count % 100 < 12 || count % 100 > 14))
+            return "opinie";
+
+        return "opinii";
     }
 }
