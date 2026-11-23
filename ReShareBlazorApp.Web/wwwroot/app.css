@@ -51,6 +51,9 @@
 .profile-notification-list {
     display: grid;
     gap: 12px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 8px;
 }
 
 .profile-notification {

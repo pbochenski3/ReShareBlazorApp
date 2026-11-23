@@ -233,6 +233,24 @@ namespace ReShareBlazorApp.Api.Services
             return true;
         }
 
+        public async Task<bool> DeleteAsync(
+            int notificationId,
+            int userId,
+            CancellationToken cancellationToken = default)
+        {
+            var notification = await _context.Notifications
+                .FirstOrDefaultAsync(
+                    item => item.Id == notificationId && item.UserId == userId,
+                    cancellationToken);
+
+            if (notification is null)
+                return false;
+
+            _context.Notifications.Remove(notification);
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+
         private static HashSet<string> GetWords(string value)
         {
             var normalized = string.Concat(value
