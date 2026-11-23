@@ -74,6 +74,7 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSingleton<IImageStorage, DiskImageStorage>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
 builder.Services.AddScoped<IAppEmailSender, SmtpEmailSender>();
 
@@ -91,6 +92,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider
          .GetRequiredService<ReshareDbContext>();
+    await context.Database.MigrateAsync();
     await LocationImportService.ImportAsync(context, app.Environment.ContentRootPath);
 
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
@@ -109,8 +111,8 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseAuthentication();
 
-// NAPRAWIONE: Middleware sprawdzaj¹ce blokadê u¿ytkownika musi byæ uruchomione 
-// PO Uwierzytelnieniu (¿eby znaæ User.Identity), ale PRZED Autoryzacj¹.
+// NAPRAWIONE: Middleware sprawdzajÄ…ce blokadÄ™ uÅ¼ytkownika musi byÄ‡ uruchomione 
+// PO Uwierzytelnieniu (Å¼eby znaÄ‡ User.Identity), ale PRZED AutoryzacjÄ….
 app.UseMiddleware<UserBlockCheckMiddleware>();
 
 app.UseAuthorization();
