@@ -17,6 +17,10 @@
 @inject RecentlyViewedApiService RecentlyViewedApiService
 @inject ReportApiService ReportApiService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject ReportApiService reportApi
+@inject NotificationService notify
+@inject FavoritesState Favorites
+@implements IDisposable
 
 <div class="details-page">
     <div class="details-container">
@@ -322,6 +326,22 @@
                                     @onclick="WriteMessage">
                                 ✉ Napisz wiadomość
                             </button>
+                        <!-- ULUBIONE: żółta gwiazdka (pełna = w ulubionych, pusta z obrysem = nie) -->
+                        <button type="button"
+                                class="details-fav-button @(IsFavorite ? "is-active" : "")"
+                                aria-pressed="@(IsFavorite ? "true" : "false")"
+                                disabled="@isTogglingFavorite"
+                                @onclick="ToggleFavoriteAsync">
+                            <svg class="fav-star" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                            <span>@(IsFavorite ? "Usuń z ulubionych" : "Dodaj do ulubionych")</span>
+                        </button>
+
+                        <!-- PRZYCISK OBSERWUJ W STYLU VINTED -->
+                        <button class="btn w-100 mb-3 @(isFollowing ? "btn-outline-secondary" : "btn-success")" style="font-weight: 600; padding: 10px;" @onclick="ToggleFollowUser">
+                            @(isFollowing ? "✓ Obserwujesz" : "+ Obserwuj użytkownika")
+                        </button>
 
                             @if (isAuthenticated)
                             {
@@ -343,6 +363,15 @@
                                class="details-secondary-button d-block text-center mt-2">
                                 Edytuj ogłoszenie
                             </a>
+                            <button type="button"
+                                    class="details-primary-button"
+                                    style="margin-top: 10px; cursor: pointer;"
+                                    @onclick="OpenSoldDialog">
+                                ✓ Sprzedane
+                            </button>
+                            <button type="button" class="details-danger-button w-100 mt-2" @onclick="OpenDeleteDialog">
+                                Usuń ogłoszenie
+                            </button>
                         }
                     </div>
 
@@ -418,6 +447,46 @@
 
             </div>
         }
+
+        @if (IsSoldDialogVisible)
+        {
+            <div class="delete-dialog-backdrop">
+                <div class="delete-dialog" role="dialog" aria-modal="true" aria-labelledby="sold-dialog-title">
+                    <div class="delete-dialog-icon" style="background: #e3f1f1; color: #097171;">✓</div>
+                    <h2 id="sold-dialog-title">Czy ogłoszenie zostało sprzedane?</h2>
+                    <p>Ogłoszenie zniknie ze strony, a licznik odratowanych rzeczy na stronie głównej zwiększy się o 1.</p>
+
+                    <div class="delete-dialog-actions">
+                        <button type="button" class="delete-dialog-cancel" @onclick="CloseSoldDialog" disabled="@IsMarkingSold">
+                            Anuluj
+                        </button>
+                        <button type="button" class="delete-dialog-confirm" style="background: #097171; border-color: #097171;" @onclick="ConfirmSoldAsync" disabled="@IsMarkingSold">
+                            @(IsMarkingSold ? "Zapisywanie..." : "Tak, sprzedane")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (IsDeleteDialogVisible)
+        {
+            <div class="delete-dialog-backdrop">
+                <div class="delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
+                    <div class="delete-dialog-icon">!</div>
+                    <h2 id="delete-dialog-title">Usunąć ogłoszenie?</h2>
+                    <p>Tej operacji nie można cofnąć. Ogłoszenie zostanie trwale usunięte.</p>
+
+                    <div class="delete-dialog-actions">
+                        <button type="button" class="delete-dialog-cancel" @onclick="CloseDeleteDialog" disabled="@IsDeleting">
+                            Anuluj
+                        </button>
+                        <button type="button" class="delete-dialog-confirm" @onclick="ConfirmDeleteAsync" disabled="@IsDeleting">
+                            @(IsDeleting ? "Usuwanie..." : "Usuń ogłoszenie")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
 </div>
 
@@ -428,6 +497,11 @@
     public ProductDTO? Product { get; set; }
 
     public bool IsLoading { get; set; } = true;
+    private bool isFollowing = false;
+    private bool IsDeleteDialogVisible { get; set; }
+    private bool IsDeleting { get; set; }
+    private bool IsSoldDialogVisible { get; set; }
+    private bool IsMarkingSold { get; set; }
 
     private bool isAuthenticated;
     private string? currentUserName;
@@ -473,6 +547,50 @@
 
     private int TotalReviews =>
         reviews?.Count ?? 0;
+    private bool isTogglingFavorite;
+    private bool IsFavorite => Product != null && Favorites.IsFavorite(Product.ProductId);
+
+    protected override void OnInitialized()
+    {
+        Favorites.Changed += OnFavoritesChanged;
+    }
+
+    private void OnFavoritesChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleFavoriteAsync()
+    {
+        if (Product == null || isTogglingFavorite)
+            return;
+
+        // Ulubione tylko dla zalogowanych - reszta trafia na logowanie
+        if (!await Favorites.IsLoggedInAsync())
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        isTogglingFavorite = true;
+        try
+        {
+            var result = await Favorites.ToggleAsync(Product.ProductId);
+            if (result == null)
+                notify.AddNotification("Ulubione", "Nie udało się zmienić ulubionych. Spróbuj ponownie.");
+        }
+        finally
+        {
+            isTogglingFavorite = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        Favorites.Changed -= OnFavoritesChanged;
+    }
+
+    private static string GetImageUrl(int imageId) => $"/images/{imageId}";
 
     protected override async Task OnParametersSetAsync()
     {
@@ -531,6 +649,13 @@
                 {
                     await CheckFollowStatus();
                 }
+        Product = await productApi.GetProductByIdAsync(ProductId);
+        if (Product != null)
+        {
+            await LoadReviews();
+            await CheckFollowStatus();
+            await Favorites.EnsureLoadedAsync();
+        }
 
                 userRating = await ReviewApiService.GetUserRatingAsync(Product.UserId);
             }
@@ -775,6 +900,42 @@
 
     // Obserwowanie lub przestanie obserwowania użytkownika
     private async Task ToggleFollowUser()
+    private void OpenSoldDialog()
+    {
+        if (Product == null || !IsOwner)
+            return;
+
+        IsSoldDialogVisible = true;
+    }
+
+    private void CloseSoldDialog()
+    {
+        if (!IsMarkingSold)
+            IsSoldDialogVisible = false;
+    }
+
+    private async Task ConfirmSoldAsync()
+    {
+        if (Product == null || !IsOwner || IsMarkingSold)
+            return;
+
+        IsMarkingSold = true;
+
+        var result = await productApi.MarkAsSoldAsync(Product.ProductId);
+        notify.AddNotification("Ogłoszenie", result);
+
+        if (result == "Ogłoszenie zostało oznaczone jako sprzedane!")
+        {
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            IsMarkingSold = false;
+            IsSoldDialogVisible = false;
+        }
+    }
+
+    private void OpenDeleteDialog()
     {
         followMessage = null;
 

@@ -5312,3 +5312,182 @@ textarea.details-report-input {
     background: #fef3c7;
     color: #78350f;
 }
+        }
+/* ---------- Licznik odratowanych rzeczy (strona główna) ---------- */
+.saved-counter {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.saved-counter-main,
+.saved-counter-top {
+    background: var(--surface, #fff);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    box-shadow: var(--shadow-sm);
+    padding: 36px 44px;
+    text-align: center;
+}
+
+.saved-counter-main {
+    flex: 2 1 420px;
+}
+
+.saved-counter-label {
+    margin: 0 0 4px;
+    color: var(--muted);
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.saved-counter-number {
+    margin: 0;
+    color: var(--brand);
+    font-size: clamp(3.2rem, 9vw, 5.6rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+}
+
+.saved-counter-sub {
+    margin: 6px 0 0;
+    color: var(--muted);
+}
+
+.saved-counter-top {
+    flex: 1 1 260px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    color: var(--ink);
+    text-decoration: none;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+    .saved-counter-top:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+.saved-counter-top-label {
+    color: var(--muted);
+    font-size: .95rem;
+    font-weight: 600;
+}
+
+.saved-counter-top-name {
+    color: var(--brand);
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    line-height: 1.2;
+}
+
+.saved-counter-top-count {
+    color: var(--muted);
+    font-size: .95rem;
+}
+
+@media (max-width: 600px) {
+    .saved-counter-main,
+    .saved-counter-top {
+        padding: 28px 22px;
+    }
+}
+
+
+/* =====================================================
+   ULUBIONE – żółta gwiazdka
+   pusta w środku z żółtym obrysem = nie w ulubionych
+   cała żółta (is-active)           = w ulubionych
+   ===================================================== */
+:root {
+    --star: #f5b301;
+    --star-soft: #fff6d6;
+}
+
+.fav-star {
+    fill: none;
+    stroke: var(--star);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    transition: fill .2s ease;
+}
+
+.is-active > .fav-star {
+    fill: var(--star);
+}
+
+/* gwiazdka na karcie ogłoszenia (nadpisuje dawne serduszko) */
+.home-card-fav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--star);
+}
+
+    .home-card-fav:hover {
+        background: var(--star-soft);
+        color: var(--star);
+    }
+
+    .home-card-fav:focus-visible {
+        outline: 2px solid var(--star);
+        outline-offset: 2px;
+    }
+
+/* przycisk na stronie ogłoszenia */
+.details-fav-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 46px;
+    margin-bottom: 12px;
+    padding: 10px 16px;
+    border: 1.5px solid var(--star);
+    border-radius: 10px;
+    background: #fff;
+    color: #0f172a;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color .2s ease, transform .2s ease;
+}
+
+    .details-fav-button:hover:not(:disabled) {
+        background: var(--star-soft);
+        transform: translateY(-1px);
+    }
+
+    .details-fav-button.is-active {
+        background: var(--star-soft);
+    }
+
+    .details-fav-button:focus-visible {
+        outline: 2px solid var(--star);
+        outline-offset: 2px;
+    }
+
+    .details-fav-button:disabled {
+        opacity: .7;
+        cursor: wait;
+    }
+
+/* ciemny motyw */
+:where([data-theme="dark"]) .home-card-fav:hover,
+:where([data-theme="dark"]) .details-fav-button:hover:not(:disabled),
+:where([data-theme="dark"]) .details-fav-button.is-active {
+    background-color: rgba(245, 179, 1, .18);
+}
+
+:where([data-theme="dark"]) .details-fav-button {
+    background-color: var(--surface);
+    color: var(--ink);
+}

@@ -22,6 +22,8 @@ namespace ReShareBlazorApp.Api.Date
 		public DbSet<LockdownSettings> LockdownSettings { get; set; }
         public DbSet<Badge> Badges { get; set; }
         public DbSet<UserBadge> UserBadges { get; set; }
+        public DbSet<FavoriteProduct> FavoriteProducts { get; set; }
+
 
 
         public ReshareDbContext(DbContextOptions<ReshareDbContext> options)

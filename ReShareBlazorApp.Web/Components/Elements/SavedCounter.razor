@@ -1,0 +1,118 @@
+﻿@using System.Globalization
+@using ReShareBlazorApp.Api.Date.Enums
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@implements IDisposable
+@inject ProductApiService productApi
+
+<section class="home-section home-section-alt">
+    <div class="home-container">
+        <div class="saved-counter">
+
+            <div class="saved-counter-main">
+                <p class="saved-counter-label">Dzięki ODDAJ DALEJ odratowano już</p>
+                <p class="saved-counter-number">@DisplayedNumber</p>
+                <p class="saved-counter-sub">biletów, rezerwacji i usług, które nie poszły na marne</p>
+            </div>
+
+            <a class="saved-counter-top" href="@($"/category/{(int)stats.TopCategory}")">
+                <span class="saved-counter-top-label">Najczęściej sprzedawane i wynajmowane</span>
+                <strong class="saved-counter-top-name">@GetCategoryName(stats.TopCategory)</strong>
+            </a>
+
+        </div>
+    </div>
+</section>
+
+@code {
+    private static readonly CultureInfo Polish = new("pl-PL");
+
+    private readonly CancellationTokenSource cts = new();
+    private CompletedStatsDTO stats = new();
+    private int displayed = 0;
+    private bool animating = false;
+
+    // Gdy animacja nie trwa (albo się nie uruchomiła), pokazujemy zawsze prawdziwą liczbę z bazy
+    private string DisplayedNumber =>
+        (animating ? displayed : stats.TotalCompleted).ToString("N0", Polish);
+
+    protected override async Task OnInitializedAsync()
+    {
+        stats = await productApi.GetCompletedStatsAsync() ?? new CompletedStatsDTO();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        // Animacja rusza dopiero w trybie interaktywnym (po prerenderze) i tylko raz
+        if (firstRender && stats.TotalCompleted > 0)
+        {
+            _ = AnimateAsync(cts.Token);
+        }
+    }
+
+    // Odliczanie od zera do prawdziwej liczby z bazy: +1 za każdą zakończoną rzecz.
+    // Przy bardzo dużych liczbach skok jest większy, żeby animacja trwała ok. 2 sekund.
+    private async Task AnimateAsync(CancellationToken token)
+    {
+        try
+        {
+            animating = true;
+            displayed = 0;
+            await InvokeAsync(StateHasChanged);
+
+            var target = stats.TotalCompleted;
+            var step = Math.Max(1, (int)Math.Ceiling(target / 60.0));
+            var delay = target <= 60
+                ? Math.Clamp(1500 / target, 25, 120)
+                : 30;
+
+            while (displayed < target)
+            {
+                await Task.Delay(delay, token);
+                displayed = Math.Min(target, displayed + step);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // użytkownik opuścił stronę - nic do zrobienia
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        finally
+        {
+            // Po animacji (lub jej przerwaniu) zawsze zostaje prawdziwa liczba
+            animating = false;
+            try
+            {
+                await InvokeAsync(StateHasChanged);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private static string GetCategoryName(ProductCategory category)
+    {
+        return category switch
+        {
+            ProductCategory.Tickets => "Bilety",
+            ProductCategory.Reservations => "Rezerwacje",
+            ProductCategory.Trips => "Wyjazdy i podróże",
+            ProductCategory.Transports => "Transport i miejsca",
+            ProductCategory.Services => "Usługi i wolne terminy",
+            _ => "Inne"
+        };
+    }
+
+    public void Dispose()
+    {
+        cts.Cancel();
+        cts.Dispose();
+    }
+}

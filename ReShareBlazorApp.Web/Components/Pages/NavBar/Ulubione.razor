@@ -1,0 +1,16 @@
+﻿@page "/ulubione"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using ReShareBlazorApp.Web.Components.Elements
+
+<PageTitle>Ulubione – ODDAJ DALEJ</PageTitle>
+
+<PageHeader Title="Ulubione" Subtitle="Ogłoszenia, które oznaczyłeś gwiazdką." />
+
+<section class="home-section">
+    <div class="home-container">
+        <FavoriteListings />
+    </div>
+</section>
+
+<SiteFooter />

@@ -13,6 +13,8 @@
 @inject ProductApiService productApi
 @inject BadgeApiService BadgeApiService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject FavoritesState Favorites
+@implements IDisposable
 
 @if (isLoadingProfile)
 {
@@ -143,6 +145,14 @@ else if (exist)
                     <strong>@products.Count</strong>
                     <span>Ogłoszenia</span>
                 </div>
+                <div class="profile-stat"><strong>5</strong><span>Ogłoszenia</span></div>
+                <div class="profile-stat"><strong>2</strong><span>Poszukiwania</span></div>
+                <div class="profile-stat"><strong>9</strong><span>Transakcje</span></div>
+                @if (isOwner)
+                {
+                    <div class="profile-stat"><strong>@Favorites.Count</strong><span>Ulubione</span></div>
+                }
+            </div>
 
                 <div class="profile-stat">
                     <strong>@lookingForProducts.Count</strong>
@@ -198,6 +208,25 @@ else if (exist)
                     Opinie
                 </button>
 
+                <button class="profile-tab @(activeTab == "ads" ? "active" : "")" type="button" role="tab"
+                        aria-selected="@(activeTab == "ads" ? "true" : "false")"
+                        @onclick='() => activeTab = "ads"'>Moje ogłoszenia</button>
+                <button class="profile-tab @(activeTab == "wanted" ? "active" : "")" type="button" role="tab"
+                        aria-selected="@(activeTab == "wanted" ? "true" : "false")"
+                        @onclick='() => activeTab = "wanted"'>Moje poszukiwania</button>
+                @if (isOwner)
+                {
+                    @* ulubione są prywatne - zakładkę widzi tylko właściciel profilu *@
+                    <button class="profile-tab @(activeTab == "favorites" ? "active" : "")" type="button" role="tab"
+                            aria-selected="@(activeTab == "favorites" ? "true" : "false")"
+                            @onclick='() => activeTab = "favorites"'>Ulubione</button>
+                }
+                <button class="profile-tab @(activeTab == "deals" ? "active" : "")" type="button" role="tab"
+                        aria-selected="@(activeTab == "deals" ? "true" : "false")"
+                        @onclick='() => activeTab = "deals"'>Transakcje</button>
+                <button class="profile-tab @(activeTab == "reviews" ? "active" : "")" type="button" role="tab"
+                        aria-selected="@(activeTab == "reviews" ? "true" : "false")"
+                        @onclick='() => activeTab = "reviews"'>Opinie</button>
             </div>
 
             @if (activeTab == ProfileTab.Listings)
@@ -232,6 +261,19 @@ else if (exist)
                         <span>Zdobyte odznaki:</span>
                         <strong>@badges.Count(b => b.IsEarned) / @badges.Count</strong>
                     </div>
+            <!-- Ulubione -->
+            @if (activeTab == "favorites" && isOwner)
+            {
+                <FavoriteListings />
+            }
+
+            <!-- Moje ogłoszenia -->
+            @* <div class="home-cards">
+            <ListingCard Title="2 bilety na koncert – Kraków" Category="Bilety i rezerwacje" Type="Sprzedam"
+                         Price="240 zł" Location="Kraków" Term="12.12.2026" Published="08.11.2026" />
+            <ListingCard Title="Wózek dziecięcy do oddania" Category="Rodzina i dzieci" Type="Oddam"
+                         Price="Bezpłatnie" Location="Łódź" Term="od zaraz" Published="07.11.2026" />
+        </div> *@
 
                     <div class="badges-grid">
                         @foreach (var badge in badges)
@@ -350,6 +392,23 @@ else
 
     private int UnreadNotificationsCount =>
         notifications.Count(n => !n.IsRead);
+
+    private string activeTab = "ads";
+
+    protected override void OnInitialized()
+    {
+        Favorites.Changed += OnFavoritesChanged;
+    }
+
+    private void OnFavoritesChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Favorites.Changed -= OnFavoritesChanged;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -504,5 +563,14 @@ else
         Transactions,
         Badges,
         Reviews
+        profile = await userApi.GetProfileAsync(Username);
+        exist = profile != null;
+        avatarUrl = userApi.GetAvatarUrl(profile?.AvatarUrl);
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        isOwner = string.Equals(state.User.FindFirst(ClaimTypes.Name)?.Value, Username, StringComparison.OrdinalIgnoreCase);
+        if (isOwner)
+            await Favorites.EnsureLoadedAsync();
+        else if (activeTab == "favorites")
+            activeTab = "ads";
     }
 }

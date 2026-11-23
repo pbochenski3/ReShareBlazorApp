@@ -85,6 +85,66 @@ namespace ReShareBlazorApp.Api.Controllers
             return NoContent();
         }
 
+        [Authorize]
+        [HttpPost("{id:int}/sold")]
+        public async Task<IActionResult> MarkAsSold(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            var result = await _productService.MarkAsSoldAsync(id, currentUserId);
+            if (!result)
+                return NotFound();
+
+            return NoContent();
+        }
+
+        [Authorize]
+        [HttpGet("favorites")]
+        public async Task<ActionResult<List<ProductDTO>>> GetFavorites()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            return Ok(await _productService.GetFavoritesAsync(currentUserId));
+        }
+
+        [Authorize]
+        [HttpGet("favorites/ids")]
+        public async Task<ActionResult<List<int>>> GetFavoriteIds()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            return Ok(await _productService.GetFavoriteIdsAsync(currentUserId));
+        }
+
+        // Przełącza gwiazdkę: dodaje do ulubionych albo usuwa z ulubionych.
+        [Authorize]
+        [HttpPost("{id:int}/favorite")]
+        public async Task<ActionResult<FavoriteToggleDTO>> ToggleFavorite(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            var isFavorite = await _productService.ToggleFavoriteAsync(currentUserId, id);
+            if (isFavorite == null)
+                return NotFound();
+
+            return Ok(new FavoriteToggleDTO { IsFavorite = isFavorite.Value });
+        }
+
+        [HttpGet("stats")]
+        public async Task<ActionResult<CompletedStatsDTO>> GetCompletedStats()
+        {
+            var stats = await _productService.GetCompletedStatsAsync();
+            return Ok(stats);
+        }
+
         [HttpGet]
         public async Task<ActionResult<List<ProductDTO>>> GetProducts(
         [FromQuery] int number = 5,
