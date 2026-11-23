@@ -32,6 +32,8 @@ builder.Services
     })
     .AddEntityFrameworkStores<ReshareDbContext>()
     .AddDefaultTokenProviders();
+builder.Services.Configure<DataProtectionTokenProviderOptions>(
+    options => options.TokenLifespan = TimeSpan.FromHours(1));
 builder.Services
     .AddAuthentication(options =>
     {
@@ -63,6 +65,7 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSingleton<IImageStorage, DiskImageStorage>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IAppEmailSender, SmtpEmailSender>();
 //Repositories
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();

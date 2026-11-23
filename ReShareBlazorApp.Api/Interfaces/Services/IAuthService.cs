@@ -6,5 +6,7 @@ namespace ReShareBlazorApp.Api.Interfaces.Services
     {
         Task<RegisterResponse?> RegisterAsync(RegisterRequest request);
         Task<LoginResponse?> LoginAsync(LoginRequest request);
+        Task SendPasswordResetAsync(string email);
+        Task<string?> ResetPasswordAsync(ResetPasswordRequest request);
     }
 }
