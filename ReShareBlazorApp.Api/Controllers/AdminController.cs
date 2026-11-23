@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -28,10 +29,12 @@ namespace ReShareBlazorApp.Api.Controllers
             _userService = userService;
         }
 
+        // Pobieranie wszystkich użytkowników
         [HttpGet("users")]
         public async Task<ActionResult<List<AdminUserDTO>>> GetUsers()
         {
             var users = await _context.Users
+                .Where(u => !u.IsDeleted)
                 .OrderByDescending(u => u.CreatedAt)
                 .Select(u => new AdminUserDTO
                 {
@@ -41,35 +44,28 @@ namespace ReShareBlazorApp.Api.Controllers
                     PhoneNumber = u.PhoneNumber,
                     City = u.City,
                     Bio = u.Bio,
-                    AvatarUrl = string.IsNullOrEmpty(u.AvatarPath) ? null : $"/avatars/{u.AvatarPath}",
+                    AvatarUrl = string.IsNullOrEmpty(u.AvatarPath)
+                        ? null
+                        : $"/avatars/{u.AvatarPath}",
                     IsActive = u.IsActive,
+                    LockoutEnd = u.LockoutEnd,
+                    WarningMessage = u.WarningMessage,
                     CreatedAt = u.CreatedAt
                 })
                 .ToListAsync();
+
             return Ok(users);
         }
-    [HttpGet("users")]
-    public async Task<ActionResult<List<AdminUserDTO>>> GetUsers()
-    {
-        var users = await _context.Users
-            .Select(u => new AdminUserDTO
-            {
-                Id = u.Id,
-                UserName = u.UserName ?? "",
-                Email = u.Email ?? "",
-                IsActive = u.IsActive,
-                LockoutEnd = u.LockoutEnd,
-                WarningMessage = u.PhoneNumber
-            })
-            .ToListAsync();
-        return Ok(users);
-    }
 
+        // Pobieranie użytkownika po ID
         [HttpGet("users/{id:int}")]
         public async Task<ActionResult<AdminUserDTO>> GetUser(int id)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-            if (user == null) return NotFound(new { message = "Nie znaleziono użytkownika." });
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+
+            if (user == null)
+                return NotFound(new { message = "Nie znaleziono użytkownika." });
 
             return Ok(new AdminUserDTO
             {
@@ -79,55 +75,93 @@ namespace ReShareBlazorApp.Api.Controllers
                 PhoneNumber = user.PhoneNumber,
                 City = user.City,
                 Bio = user.Bio,
-                AvatarUrl = string.IsNullOrEmpty(user.AvatarPath) ? null : $"/avatars/{user.AvatarPath}",
+                AvatarUrl = string.IsNullOrEmpty(user.AvatarPath)
+                    ? null
+                    : $"/avatars/{user.AvatarPath}",
                 IsActive = user.IsActive,
+                LockoutEnd = user.LockoutEnd,
+                WarningMessage = user.WarningMessage,
                 CreatedAt = user.CreatedAt
             });
         }
 
+        // Edytowanie użytkownika
         [HttpPut("users/{id:int}")]
-        public async Task<IActionResult> UpdateUser(int id, [FromBody] AdminUpdateUserDTO request)
+        public async Task<IActionResult> UpdateUser(
+            int id,
+            [FromBody] AdminUpdateUserDTO request)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-            if (user == null) return NotFound(new { message = "Nie znaleziono użytkownika." });
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
-            // Zmiana nazwy użytkownika, jeśli inna
-            if (!string.Equals(user.UserName, request.UserName, StringComparison.OrdinalIgnoreCase))
+            if (user == null)
+                return NotFound(new { message = "Nie znaleziono użytkownika." });
+
+            // Zmiana nazwy użytkownika
+            if (!string.Equals(
+                user.UserName,
+                request.UserName,
+                StringComparison.OrdinalIgnoreCase))
             {
-                var usernameResult = await _userManager.SetUserNameAsync(user, request.UserName);
+                var usernameResult = await _userManager.SetUserNameAsync(
+                    user,
+                    request.UserName);
+
                 if (!usernameResult.Succeeded)
                 {
-                    var msg = string.Join("; ", usernameResult.Errors.Select(e => e.Description));
+                    var msg = string.Join("; ",
+                        usernameResult.Errors.Select(e => e.Description));
+
                     return BadRequest(new { message = msg });
                 }
             }
 
-            // Zmiana adresu e-mail, jeśli inny
-            if (!string.Equals(user.Email, request.Email, StringComparison.OrdinalIgnoreCase))
+            // Zmiana adresu e-mail
+            if (!string.Equals(
+                user.Email,
+                request.Email,
+                StringComparison.OrdinalIgnoreCase))
             {
-                var emailResult = await _userManager.SetEmailAsync(user, request.Email);
+                var emailResult = await _userManager.SetEmailAsync(
+                    user,
+                    request.Email);
+
                 if (!emailResult.Succeeded)
                 {
-                    var msg = string.Join("; ", emailResult.Errors.Select(e => e.Description));
+                    var msg = string.Join("; ",
+                        emailResult.Errors.Select(e => e.Description));
+
                     return BadRequest(new { message = msg });
                 }
             }
 
-            user.PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim();
-            user.City = string.IsNullOrWhiteSpace(request.City) ? null : request.City.Trim();
-            user.Bio = string.IsNullOrWhiteSpace(request.Bio) ? null : request.Bio.Trim();
+            user.PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber)
+                ? null
+                : request.PhoneNumber.Trim();
 
-            // Administrator nie może zablokować samego siebie
+            user.City = string.IsNullOrWhiteSpace(request.City)
+                ? null
+                : request.City.Trim();
+
+            user.Bio = string.IsNullOrWhiteSpace(request.Bio)
+                ? null
+                : request.Bio.Trim();
+
+            // Administrator nie może dezaktywować własnego konta
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
             if (currentUserId != id.ToString())
             {
                 user.IsActive = request.IsActive;
             }
 
             var updateResult = await _userManager.UpdateAsync(user);
+
             if (!updateResult.Succeeded)
             {
-                var msg = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                var msg = string.Join("; ",
+                    updateResult.Errors.Select(e => e.Description));
+
                 return BadRequest(new { message = msg });
             }
 
@@ -139,188 +173,265 @@ namespace ReShareBlazorApp.Api.Controllers
                 PhoneNumber = user.PhoneNumber,
                 City = user.City,
                 Bio = user.Bio,
-                AvatarUrl = string.IsNullOrEmpty(user.AvatarPath) ? null : $"/avatars/{user.AvatarPath}",
+                AvatarUrl = string.IsNullOrEmpty(user.AvatarPath)
+                    ? null
+                    : $"/avatars/{user.AvatarPath}",
                 IsActive = user.IsActive,
+                LockoutEnd = user.LockoutEnd,
+                WarningMessage = user.WarningMessage,
                 CreatedAt = user.CreatedAt
             });
         }
-    [HttpGet("stats")]
-    public async Task<ActionResult<AdminStatsDTO>> GetStats()
-    {
-        var weekAgo = DateTime.Now.AddDays(-7);
-        return Ok(new AdminStatsDTO
-        {
-            TotalUsers = await _context.Users.CountAsync(),
-            ActiveUsers = await _context.Users.CountAsync(u => u.IsActive && (!u.LockoutEnd.HasValue || u.LockoutEnd.Value <= DateTimeOffset.UtcNow)),
-            TotalProducts = await _context.Products.CountAsync(),
-            ProductsLast7Days = await _context.Products.CountAsync(p => p.AddedAt >= weekAgo)
-        });
-    }
 
-        [HttpPost("users/{id:int}/avatar")]
-        public async Task<IActionResult> UploadUserAvatar(int id, IFormFile file)
+        // Statystyki panelu administratora
+        [HttpGet("stats")]
+        public async Task<ActionResult<AdminStatsDTO>> GetStats()
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-            if (user == null) return NotFound(new { message = "Nie znaleziono użytkownika." });
+            var weekAgo = DateTime.UtcNow.AddDays(-7);
+            var now = DateTimeOffset.UtcNow;
+
+            return Ok(new AdminStatsDTO
+            {
+                TotalUsers = await _context.Users
+                    .CountAsync(u => !u.IsDeleted),
+
+                ActiveUsers = await _context.Users
+                    .CountAsync(u =>
+                        !u.IsDeleted &&
+                        u.IsActive &&
+                        (!u.LockoutEnd.HasValue || u.LockoutEnd.Value <= now)),
+
+                TotalProducts = await _context.Products
+                    .CountAsync(p => !p.isDeleted),
+
+                ProductsLast7Days = await _context.Products
+                    .CountAsync(p =>
+                        !p.isDeleted &&
+                        p.AddedAt >= weekAgo)
+            });
+        }
+
+        // Dodawanie zdjęcia profilowego
+        [HttpPost("users/{id:int}/avatar")]
+        public async Task<IActionResult> UploadUserAvatar(
+            int id,
+            IFormFile file)
+        {
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+
+            if (user == null)
+                return NotFound(new { message = "Nie znaleziono użytkownika." });
 
             if (file == null || file.Length == 0)
                 return BadRequest(new { message = "Nie wybrano pliku." });
 
             await using var stream = file.OpenReadStream();
-            var error = await _userService.SetAvatarAsync(id, stream, file.ContentType, file.Length);
+
+            var error = await _userService.SetAvatarAsync(
+                id,
+                stream,
+                file.ContentType,
+                file.Length);
+
             if (error != null)
                 return BadRequest(new { message = error });
 
-            var updatedUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-            var avatarUrl = string.IsNullOrEmpty(updatedUser?.AvatarPath) ? null : $"/avatars/{updatedUser.AvatarPath}";
+            var updatedUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == id);
+
+            var avatarUrl = string.IsNullOrEmpty(updatedUser?.AvatarPath)
+                ? null
+                : $"/avatars/{updatedUser.AvatarPath}";
+
             return Ok(new { avatarUrl });
         }
 
+        // Usuwanie zdjęcia profilowego
         [HttpDelete("users/{id:int}/avatar")]
         public async Task<IActionResult> DeleteUserAvatar(int id)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-            if (user == null) return NotFound(new { message = "Nie znaleziono użytkownika." });
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+
+            if (user == null)
+                return NotFound(new { message = "Nie znaleziono użytkownika." });
 
             var error = await _userService.RemoveAvatarAsync(id);
-            return error == null ? NoContent() : BadRequest(new { message = error });
+
+            return error == null
+                ? NoContent()
+                : BadRequest(new { message = error });
         }
 
+        // Aktywacja lub dezaktywacja użytkownika
         [HttpPost("users/{id:int}/active")]
-        public async Task<IActionResult> SetUserActive(int id, [FromQuery] bool value)
+        public async Task<IActionResult> SetUserActive(
+            int id,
+            [FromQuery] bool value)
         {
             if (User.FindFirstValue(ClaimTypes.NameIdentifier) == id.ToString())
-                return BadRequest(new { message = "Nie możesz zablokować własnego konta." });
-    [HttpPost("users/{id:int}/active")]
-    public async Task<IActionResult> SetUserActive(int id, [FromQuery] bool value)
-    {
-        if (User.FindFirstValue(ClaimTypes.NameIdentifier) == id.ToString())
-            return BadRequest(new { message = "Nie możesz zablokować samego siebie." });
+                return BadRequest(new
+                {
+                    message = "Nie możesz dezaktywować własnego konta."
+                });
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-            if (user == null) return NotFound(new { message = "Nie znaleziono użytkownika." });
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+
+            if (user == null)
+                return NotFound(new { message = "Nie znaleziono użytkownika." });
 
             user.IsActive = value;
+
+            if (value)
+                user.LockoutEnd = null;
+
             await _context.SaveChangesAsync();
+
             return Ok();
         }
-        user.IsActive = value;
-        if (value)
+
+        // Tymczasowa blokada użytkownika
+        [HttpPost("users/{id:int}/temporary-block")]
+        public async Task<IActionResult> SetTemporaryBlock(
+            int id,
+            [FromBody] TemporaryBlockRequest request)
         {
+            if (User.FindFirstValue(ClaimTypes.NameIdentifier) == id.ToString())
+                return BadRequest(new
+                {
+                    message = "Nie możesz zablokować samego siebie."
+                });
+
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+
+            if (user == null)
+                return NotFound(new { message = "Nie znaleziono użytkownika." });
+
+            DateTimeOffset targetDate;
+
+            if (request.BlockedUntil.HasValue &&
+                request.BlockedUntil.Value > DateTimeOffset.UtcNow)
+            {
+                targetDate = request.BlockedUntil.Value;
+            }
+            else if (request.Hours > 0)
+            {
+                targetDate = DateTimeOffset.UtcNow.AddHours(request.Hours);
+            }
+            else
+            {
+                return BadRequest(new
+                {
+                    message = "Podaj prawidłowy czas blokady."
+                });
+            }
+
+            user.LockoutEnabled = true;
+            user.LockoutEnd = targetDate;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { lockoutEnd = user.LockoutEnd });
+        }
+
+        // Odblokowanie użytkownika
+        [HttpPost("users/{id:int}/unblock")]
+        public async Task<IActionResult> UnblockUser(int id)
+        {
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+
+            if (user == null)
+                return NotFound(new { message = "Nie znaleziono użytkownika." });
+
+            user.IsActive = true;
             user.LockoutEnd = null;
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
         }
-        await _context.SaveChangesAsync();
-        return Ok();
-    }
 
-    [HttpPost("users/{id:int}/temporary-block")]
-    public async Task<IActionResult> SetTemporaryBlock(int id, [FromBody] TemporaryBlockRequest request)
-    {
-        if (User.FindFirstValue(ClaimTypes.NameIdentifier) == id.ToString())
-            return BadRequest(new { message = "Nie możesz zablokować samego siebie." });
-
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-        if (user == null) return NotFound();
-
-        DateTimeOffset targetDate;
-        if (request.BlockedUntil.HasValue && request.BlockedUntil.Value > DateTimeOffset.UtcNow)
+        // Wysłanie ostrzeżenia użytkownikowi
+        [HttpPost("users/{id:int}/warn")]
+        public async Task<IActionResult> WarnUser(
+            int id,
+            [FromBody] WarnUserRequest request)
         {
-            targetDate = request.BlockedUntil.Value;
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+
+            if (user == null)
+                return NotFound(new { message = "Nie znaleziono użytkownika." });
+
+            user.WarningMessage = string.IsNullOrWhiteSpace(request.Message)
+                ? "Twoje konto narusza zasady serwisu. W przypadku dalszych naruszeń regulaminu zostanie zablokowane."
+                : request.Message.Trim();
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { warningMessage = user.WarningMessage });
         }
-        else if (request.Hours > 0)
+
+        // Usunięcie ostrzeżenia
+        [HttpPost("users/{id:int}/clear-warning")]
+        public async Task<IActionResult> ClearWarning(int id)
         {
-            targetDate = DateTimeOffset.UtcNow.AddHours(request.Hours);
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+
+            if (user == null)
+                return NotFound(new { message = "Nie znaleziono użytkownika." });
+
+            user.WarningMessage = null;
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
         }
-        else
-        {
-            return BadRequest(new { message = "Podaj prawidłowy czas blokady." });
-        }
 
-        user.LockoutEnabled = true;
-        user.LockoutEnd = targetDate;
-        await _context.SaveChangesAsync();
-
-        return Ok(new { lockoutEnd = user.LockoutEnd });
-    }
-
-    [HttpPost("users/{id:int}/unblock")]
-    public async Task<IActionResult> UnblockUser(int id)
-    {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-        if (user == null) return NotFound();
-
-        user.IsActive = true;
-        user.LockoutEnd = null;
-        await _context.SaveChangesAsync();
-        return Ok();
-    }
-
-    [HttpPost("users/{id:int}/warn")]
-    public async Task<IActionResult> WarnUser(int id, [FromBody] WarnUserRequest request)
-    {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-        if (user == null) return NotFound();
-
-        user.PhoneNumber = string.IsNullOrWhiteSpace(request.Message)
-            ? "Twoje konto narusza zasady serwisu. W przypadku dalszych naruszeń regulaminu zostanie zablokowane."
-            : request.Message.Trim();
-
-        await _context.SaveChangesAsync();
-        return Ok(new { warningMessage = user.PhoneNumber });
-    }
-
-    [HttpPost("users/{id:int}/clear-warning")]
-    public async Task<IActionResult> ClearWarning(int id)
-    {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-        if (user == null) return NotFound();
-
-        user.PhoneNumber = null;
-        await _context.SaveChangesAsync();
-        return Ok();
-    }
-
+        // Soft delete użytkownika
         [HttpDelete("users/{id:int}")]
         public async Task<IActionResult> SoftDeleteUser(int id)
         {
             if (User.FindFirstValue(ClaimTypes.NameIdentifier) == id.ToString())
-                return BadRequest(new { message = "Nie możesz usunąć własnego konta administratora." });
+                return BadRequest(new
+                {
+                    message = "Nie możesz usunąć własnego konta administratora."
+                });
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-            if (user == null) return NotFound(new { message = "Nie znaleziono użytkownika." });
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
-            // Soft delete: oznacz jako usunięty i nieaktywny
+            if (user == null)
+                return NotFound(new { message = "Nie znaleziono użytkownika." });
+
             user.IsDeleted = true;
             user.IsActive = false;
 
-            // Ukryj (soft delete) również ogłoszenia tego użytkownika
-            var products = await _context.Products.Where(p => p.UserId == id).ToListAsync();
+            var products = await _context.Products
+                .Where(p => p.UserId == id && !p.isDeleted)
+                .ToListAsync();
+
             foreach (var product in products)
             {
                 product.isDeleted = true;
             }
 
             await _context.SaveChangesAsync();
+
             return NoContent();
         }
 
-        [HttpGet("stats")]
-        public async Task<ActionResult<AdminStatsDTO>> GetStats()
-        {
-            var weekAgo = DateTime.Now.AddDays(-7);
-            return Ok(new AdminStatsDTO
-            {
-                TotalUsers = await _context.Users.CountAsync(),
-                ActiveUsers = await _context.Users.CountAsync(u => u.IsActive),
-                TotalProducts = await _context.Products.CountAsync(),
-                ProductsLast7Days = await _context.Products.CountAsync(p => p.AddedAt >= weekAgo)
-            });
-        }
-
+        // Pobieranie ogłoszeń
         [HttpGet("products")]
         public async Task<ActionResult<List<ProductDTO>>> GetProducts()
         {
             var products = await _context.Products
+                .Where(p => !p.isDeleted)
                 .OrderByDescending(p => p.AddedAt)
                 .Select(p => new ProductDTO
                 {
@@ -337,17 +448,27 @@ namespace ReShareBlazorApp.Api.Controllers
                     AddedBy = p.user.UserName ?? ""
                 })
                 .ToListAsync();
+
             return Ok(products);
         }
 
+        // Usuwanie ogłoszenia przez administratora
         [HttpDelete("products/{id:int}")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
-            var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
-            if (product == null) return NotFound(new { message = "Nie znaleziono ogłoszenia." });
+            var product = await _context.Products
+                .FirstOrDefaultAsync(p => p.Id == id && !p.isDeleted);
 
-            _context.Products.Remove(product);
+            if (product == null)
+                return NotFound(new
+                {
+                    message = "Nie znaleziono ogłoszenia."
+                });
+
+            product.isDeleted = true;
+
             await _context.SaveChangesAsync();
+
             return NoContent();
         }
     }

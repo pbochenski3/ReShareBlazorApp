@@ -1,848 +1,96 @@
-@page "/admin/users"
-@layout AdminLayout
-@using System.Security.Claims
-@using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Components.Forms
-@using ReShareBlazorApp.Shared.DTOs
-@using ReShareBlazorApp.Web.ApiServices
-@attribute [Authorize(Roles = "Admin")]
-@inject AdminApiService adminApi
-@inject AuthenticationStateProvider authStateProvider
-
-<h1 class="admin-title">Użytkownicy</h1>
-
-<input class="admin-search"
-       placeholder="Szukaj po nazwie lub e-mailu..."
-       @bind="search"
-       @bind:event="oninput" />
-
-@if (!string.IsNullOrEmpty(message))
+private async Task ToggleActive(AdminUserDTO user)
 {
-    <div class="@(messageIsError ? "admin-alert" : "admin-alert-success")">@message</div>
+message = null;
+
+var newStatus = !user.IsActive;
+var ok = await adminApi.SetUserActiveAsync(user.Id, newStatus);
+
+if (ok)
+{
+user.IsActive = newStatus;
+
+if (newStatus)
+{
+user.LockoutEnd = null;
 }
 
-@if (users is null)
-{
-    <p class="admin-muted">Ładowanie...</p>
-}
-else if (!Filtered.Any())
-{
-    <p class="admin-muted">Brak użytkowników do wyświetlenia.</p>
+message = $"Zmieniono status użytkownika '{user.UserName}' na: {(user.IsActive ? "aktywny" : "zablokowany")}.";
+messageIsError = false;
 }
 else
 {
-    <div class="admin-table-wrap">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th class="col-checkbox">
-                        <input type="checkbox"
-                               class="admin-table-checkbox"
-                               checked="@IsAllSelected"
-                               @onchange="ToggleSelectAll"
-                               title="Zaznacz / odznacz wszystkich" />
-                    </th>
-                    <th>Id</th>
-                    <th>Nazwa</th>
-                    <th>E-mail</th>
-                    <th>Miejscowość</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var user in Filtered)
-                {
-                    <tr>
-                        <td class="col-checkbox">
-                            @if (user.Id != currentUserId)
-                            {
-                                <input type="checkbox"
-                                       class="admin-table-checkbox"
-                                       checked="@selectedUserIds.Contains(user.Id)"
-                                       @onchange="(e) => ToggleSelectUser(user.Id, e.Value)" />
-                            }
-                        </td>
-                        <td>@user.Id</td>
-                        <td>
-                            @user.UserName
-                            @if (user.Id == currentUserId)
-                            {
-                                <span class="admin-badge admin-badge-info">to Ty</span>
-                            }
-                        </td>
-                        <td>@user.Email</td>
-                        <td>@(string.IsNullOrWhiteSpace(user.City) ? "-" : user.City)</td>
-                        <td>
-                            @if (!user.IsActive)
-                            {
-                                <span class="admin-badge admin-badge-bad">zablokowany na stałe</span>
-                            }
-                            else if (user.IsTemporarilyBlocked)
-                            {
-                                <span class="admin-badge admin-badge-temp" title="Blokada do @user.LockoutEnd?.ToLocalTime().ToString("dd.MM.yyyy HH:mm")">
-                                    zablokowany do @user.LockoutEnd?.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
-                                </span>
-                            }
-                            else
-                            {
-                                <span class="admin-badge admin-badge-ok">aktywny</span>
-                            }
-
-                            @if (user.HasWarning)
-                            {
-                                <span class="admin-badge admin-badge-warn" title="@user.WarningMessage">
-                                    ⚠️ Ostrzeżony
-                                </span>
-                            }
-                        </td>
-                        <td class="admin-actions">
-                            <div class="admin-actions-gap">
-                                <button class="admin-btn admin-btn-sm" @onclick="() => OpenEditModal(user)">
-                                    Edytuj
-                                </button>
-
-                                @if (user.Id != currentUserId)
-                                {
-                                    <button class="admin-btn admin-btn-sm @(user.IsActive ? "admin-btn-danger" : "")"
-                                            @onclick="() => ToggleActive(user)">
-                                        @(user.IsActive ? "Zablokuj" : "Odblokuj")
-                                    </button>
-                                }
-                            </div>
-                            @if (user.Id != currentUserId)
-                            {
-                                <div class="admin-actions-group">
-                                    @if (user.IsBlocked)
-                                    {
-                                        <button class="admin-btn admin-btn-ok"
-                                                @onclick="() => UnblockUser(user)"
-                                                title="Odblokuj użytkownika">
-                                            Odblokuj
-                                        </button>
-                                    }
-                                    else
-                                    {
-                                        <button class="admin-btn admin-btn-danger"
-                                                @onclick="() => BlockPermanently(user)"
-                                                title="Zablokuj użytkownika na stałe">
-                                            Zablokuj
-                                        </button>
-                                        <button class="admin-btn admin-btn-temp"
-                                                @onclick="() => OpenTempBlockModal(user)"
-                                                title="Zablokuj użytkownika na określony czas">
-                                            Zablokuj czasowo
-                                        </button>
-                                    }
-
-                                    <button class="admin-btn admin-btn-warning"
-                                            @onclick="() => OpenWarnModal(user)"
-                                            title="Wyślij ostrzeżenie użytkownikowi">
-                                        @(user.HasWarning ? "Edytuj ostrzeżenie" : "Ostrzeż")
-                                    </button>
-
-                                    @if (user.HasWarning)
-                                    {
-                                        <button class="admin-btn admin-btn-ghost"
-                                                @onclick="() => ClearWarning(user)"
-                                                title="Usuń aktywne ostrzeżenie">
-                                            Usuń ostrzeżenie
-                                        </button>
-                                    }
-                                </div>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Prawy dolny róg: przycisk usuwania zaznaczonych użytkowników -->
-    <div class="admin-table-footer">
-        <div class="admin-selected-info">
-            @if (selectedUserIds.Any())
-            {
-                <span>Zaznaczono: <strong>@selectedUserIds.Count</strong> z @FilteredDeletable.Count()</span>
-            }
-        </div>
-        <button class="admin-btn admin-btn-danger-solid"
-                disabled="@(!selectedUserIds.Any())"
-                @onclick="OpenDeleteConfirmation">
-            Usuń @(selectedUserIds.Any() ? $"({selectedUserIds.Count})" : "")
-        </button>
-    </div>
+message = "Nie udało się zmienić statusu użytkownika.";
+messageIsError = true;
 }
 }
 
-@if (tempBlockUser != null)
+private void OpenWarnModal(AdminUserDTO user)
 {
-    <div class="admin-modal-backdrop" @onclick="CloseTempBlockModal">
-        <div class="admin-modal" @onclick:stopPropagation="true">
-            <div class="admin-modal-header">
-                <h3>Tymczasowa blokada: @tempBlockUser.UserName</h3>
-                <button class="admin-modal-close" @onclick="CloseTempBlockModal">✕</button>
-            </div>
-            <div class="admin-modal-body">
-                <p class="admin-muted">Wybierz na jaki czas chcesz zablokować użytkownika. W tym okresie użytkownik nie będzie mógł korzystać z serwisu. Po upływie tego czasu odblokuje się automatycznie.</p>
+warnUser = user;
 
-                <div class="admin-form-group">
-                    <label class="admin-form-label">Okres blokady:</label>
-                    <select class="admin-form-select" @bind="selectedDuration">
-                        <option value="1">1 godzina</option>
-                        <option value="6">6 godzin</option>
-                        <option value="12">12 godzin</option>
-                        <option value="24">24 godziny (1 dzień)</option>
-                        <option value="72">3 dni (72 godziny)</option>
-                        <option value="168">7 dni (1 tydzień)</option>
-                        <option value="720">30 dni (1 miesiąc)</option>
-                        <option value="custom">Własna data i godzina</option>
-                    </select>
-                </div>
-
-                @if (selectedDuration == "custom")
-                {
-                    <div class="admin-form-group">
-                        <label class="admin-form-label">Zablokuj do dnia i godziny:</label>
-                        <input type="datetime-local" class="admin-form-input" @bind="customBlockUntil" />
-                    </div>
-                }
-            </div>
-            <div class="admin-modal-footer">
-                <button class="admin-btn" @onclick="CloseTempBlockModal">Anuluj</button>
-                <button class="admin-btn admin-btn-danger" @onclick="ApplyTempBlock">Zastosuj blokadę</button>
-            </div>
-        </div>
-    </div>
+warnMessageText = !string.IsNullOrWhiteSpace(user.WarningMessage)
+? user.WarningMessage
+: "Twoje konto narusza zasady serwisu. W przypadku kolejnych naruszeń zostanie natychmiast zablokowane.";
 }
 
-<!-- Modal potwierdzenia usunięcia na środku ekranu -->
-@if (showDeleteConfirmation)
+private void CloseWarnModal()
 {
-    <div class="admin-modal-backdrop" @onclick="CloseDeleteConfirmation">
-        <div class="admin-modal-card admin-confirm-modal" @onclick:stopPropagation="true">
-            <div class="admin-modal-header">
-                <h2 class="admin-modal-title">Potwierdzenie usunięcia</h2>
-                <button type="button" class="admin-modal-close" @onclick="CloseDeleteConfirmation">✕</button>
-            </div>
-
-            <div class="admin-modal-body">
-                @if (SelectedUsersToDisplay.Count == 1)
-                {
-                    <p class="admin-confirm-text">
-                        Czy na pewno chcesz usunąć użytkownika <strong>@SelectedUsersToDisplay.First().UserName</strong>?
-                    </p>
-                }
-                else
-                {
-                    <p class="admin-confirm-text">
-                        Czy na pewno chcesz usunąć zaznaczonych użytkowników (<strong>@SelectedUsersToDisplay.Count</strong>)?
-                    </p>
-                    <ul class="admin-confirm-list">
-                        @foreach (var u in SelectedUsersToDisplay)
-                        {
-                            <li><strong>@u.UserName</strong> (@u.Email)</li>
-                        }
-                    </ul>
-                }
-            </div>
-
-            <div class="admin-modal-footer">
-                <button type="button" class="admin-btn" @onclick="CloseDeleteConfirmation" disabled="@isDeleting">
-                    Anuluj
-                </button>
-                <button type="button" class="admin-btn admin-btn-danger-solid" @onclick="ConfirmSoftDelete" disabled="@isDeleting">
-                    @(isDeleting ? "Usuwanie..." : "Tak, usuń")
-                </button>
-            </div>
-        </div>
-    </div>
+warnUser = null;
 }
 
-<!-- Modal edycji użytkownika -->
-@if (editingUser is not null)
+private async Task ApplyWarning()
 {
-    <div class="admin-modal-backdrop" @onclick="CloseEditModal">
-        <div class="admin-modal-card" @onclick:stopPropagation="true">
-            <div class="admin-modal-header">
-                <h2 class="admin-modal-title">Edycja profilu: @editingUser.UserName</h2>
-                <button type="button" class="admin-modal-close" @onclick="CloseEditModal">✕</button>
-            </div>
+if (warnUser == null)
+return;
 
-            <EditForm Model="@editModel" OnValidSubmit="SaveUserChanges">
-                <DataAnnotationsValidator />
+message = null;
 
-                <div class="admin-modal-body">
-                    @if (!string.IsNullOrEmpty(editModalMessage))
-                    {
-                        <div class="@(editModalMessageIsError ? "admin-alert" : "admin-alert-success")">
-                            @editModalMessage
-                        </div>
-                    }
+var text = string.IsNullOrWhiteSpace(warnMessageText)
+? "Twoje konto narusza zasady serwisu. W przypadku kolejnych naruszeń zostanie natychmiast zablokowane."
+: warnMessageText.Trim();
 
-                    <!-- Sekcja zdjęcia profilowego -->
-                    <div class="admin-avatar-edit">
-                        @if (!string.IsNullOrEmpty(DisplayedAvatar))
-                        {
-                            <img class="admin-avatar-img" src="@DisplayedAvatar" alt="Avatar" />
-                        }
-                        else
-                        {
-                            <div class="admin-avatar-placeholder">@GetInitials(editModel.UserName)</div>
-                        }
+var ok = await adminApi.WarnUserAsync(warnUser.Id, text);
 
-                        <div class="admin-avatar-actions">
-                            <div class="admin-avatar-btns">
-                                <label class="admin-avatar-btn">
-                                    Zmień zdjęcie
-                                    <InputFile OnChange="OnAvatarSelected" accept="image/png,image/jpeg,image/webp" hidden />
-                                </label>
-                                @if (!string.IsNullOrEmpty(DisplayedAvatar))
-                                {
-                                    <button type="button" class="admin-avatar-del" @onclick="RemoveAvatar">
-                                        Usuń zdjęcie
-                                    </button>
-                                }
-                            </div>
-                            <span class="admin-avatar-hint">JPG, PNG lub WebP, maks. 2 MB.</span>
-                            @if (!string.IsNullOrEmpty(avatarError))
-                            {
-                                <span class="admin-avatar-err">@avatarError</span>
-                            }
-                        </div>
-                    </div>
-
-                    <!-- Dane profilu -->
-                    <div class="admin-form-row">
-                        <div class="admin-form-group">
-                            <label class="admin-form-label">Nazwa użytkownika *</label>
-                            <InputText class="admin-form-input" @bind-Value="editModel.UserName" />
-                            <ValidationMessage For="@(() => editModel.UserName)" />
-                        </div>
-                        <div class="admin-form-group">
-                            <label class="admin-form-label">Adres e-mail *</label>
-                            <InputText class="admin-form-input" @bind-Value="editModel.Email" />
-                            <ValidationMessage For="@(() => editModel.Email)" />
-                        </div>
-                    </div>
-
-                    <div class="admin-form-row">
-                        <div class="admin-form-group">
-                            <label class="admin-form-label">Numer telefonu</label>
-                            <InputText class="admin-form-input" @bind-Value="editModel.PhoneNumber" placeholder="np. +48 123 456 789" />
-                            <ValidationMessage For="@(() => editModel.PhoneNumber)" />
-                        </div>
-                        <div class="admin-form-group">
-                            <label class="admin-form-label">Miejscowość</label>
-                            <InputText class="admin-form-input" @bind-Value="editModel.City" placeholder="np. Kraków" />
-                            <ValidationMessage For="@(() => editModel.City)" />
-                        </div>
-                    </div>
-
-                    <div class="admin-form-group">
-                        <label class="admin-form-label">O mnie (opis profilu)</label>
-                        <InputTextArea class="admin-form-textarea" @bind-Value="editModel.Bio" placeholder="Krótki opis użytkownika..." rows="3" />
-                        <ValidationMessage For="@(() => editModel.Bio)" />
-                    </div>
-
-                    <div class="admin-form-group">
-                        <label class="admin-form-checkbox">
-                            <InputCheckbox @bind-Value="editModel.IsActive" disabled="@(editingUser.Id == currentUserId)" />
-                            Konto aktywne
-                            @if (editingUser.Id == currentUserId)
-                            {
-                                <small class="admin-muted">(nie możesz zablokować własnego konta)</small>
-                            }
-                        </label>
-                    </div>
-
-                    <div class="admin-muted" style="font-size: .8rem;">
-                        Data rejestracji: @editingUser.CreatedAt.ToString("dd.MM.yyyy HH:mm")
-                    </div>
-                </div>
-
-                <div class="admin-modal-footer">
-                    <button type="button" class="admin-btn" @onclick="CloseEditModal" disabled="@isSavingUser">
-                        Anuluj
-                    </button>
-                    <button type="submit" class="admin-btn admin-btn-primary" disabled="@isSavingUser">
-                        @(isSavingUser ? "Zapisywanie..." : "Zapisz zmiany")
-                    </button>
-                </div>
-            </EditForm>
-        </div>
-    </div>
-}
-
-@if (warnUser != null)
+if (ok)
 {
-    <div class="admin-modal-backdrop" @onclick="CloseWarnModal">
-        <div class="admin-modal" @onclick:stopPropagation="true">
-            <div class="admin-modal-header">
-                <h3>Ostrzeżenie dla: @warnUser.UserName</h3>
-                <button class="admin-modal-close" @onclick="CloseWarnModal">✕</button>
-            </div>
-            <div class="admin-modal-body">
-                <p class="admin-muted">Treść ostrzeżenia zostanie wyświetlona użytkownikowi w widocznym banerze na górze strony, informując o możliwej blokadzie konta.</p>
+warnUser.WarningMessage = text;
 
-                <div class="admin-form-group">
-                    <label class="admin-form-label">Treść ostrzeżenia:</label>
-                    <textarea class="admin-form-textarea" rows="3" @bind="warnMessageText"
-                              placeholder="Wpisz treść ostrzeżenia..."></textarea>
-                </div>
+message = $"Wysłano ostrzeżenie do użytkownika {warnUser.UserName}.";
+messageIsError = false;
 
-                <div class="admin-chips">
-                    <span class="admin-chip" @onclick='() => warnMessageText = "Twoje konto narusza zasady serwisu. W przypadku kolejnych naruszeń zostanie natychmiast zablokowane."'>Naruszenie zasad</span>
-                    <span class="admin-chip" @onclick='() => warnMessageText = "Zgłoszono podejrzaną aktywność w Twoich ogłoszeniach. Upewnij się, że są zgodne z regulaminem, w przeciwnym razie konto zostanie zablokowane."'>Podejrzane ogłoszenia</span>
-                    <span class="admin-chip" @onclick='() => warnMessageText = "Naruszenie zasad kultury osobistej. Kolejne niestosowne zachowanie poskutkuje blokadą konta."'>Kultura</span>
-                </div>
-            </div>
-            <div class="admin-modal-footer">
-                <button class="admin-btn" @onclick="CloseWarnModal">Anuluj</button>
-                <button class="admin-btn admin-btn-warning" @onclick="ApplyWarning">Wyślij ostrzeżenie</button>
-            </div>
-        </div>
-    </div>
+CloseWarnModal();
+}
+else
+{
+message = "Nie udało się zapisać ostrzeżenia.";
+messageIsError = true;
+}
 }
 
-@code {
-    private const long MaxAvatarBytes = 2 * 1024 * 1024;
-    private static readonly string[] AllowedTypes = { "image/png", "image/jpeg", "image/webp" };
+private async Task ClearWarning(AdminUserDTO user)
+{
+message = null;
 
-    private List<AdminUserDTO>? users;
-    private string search = "";
-    private string? message;
-    private bool messageIsError;
-    private int currentUserId;
+var ok = await adminApi.ClearWarningAsync(user.Id);
 
-    // Zaznaczenia użytkowników do usunięcia
-    private HashSet<int> selectedUserIds = new();
-    private bool showDeleteConfirmation;
-    private bool isDeleting;
+if (ok)
+{
+user.WarningMessage = null;
 
-    // Stan edycji użytkownika
-    private AdminUserDTO? editingUser;
-    private AdminUpdateUserDTO editModel = new();
-    private string? editModalMessage;
-    private bool editModalMessageIsError;
-    private bool isSavingUser;
+message = $"Usunięto ostrzeżenie użytkownika {user.UserName}.";
+messageIsError = false;
+}
+else
+{
+message = "Nie udało się usunąć ostrzeżenia.";
+messageIsError = true;
+}
+}
 
-    // Stan avatara w modalu
-    private string? currentAvatarUrl;
-    private string? pendingAvatarPreview;
-    private byte[]? pendingAvatarBytes;
-    private string? pendingAvatarFileName;
-    private string? pendingAvatarContentType;
-    private bool removeAvatarRequested;
-    private string? avatarError;
+private string GetInitials(string? name)
+{
+if (string.IsNullOrWhiteSpace(name))
+return "?";
 
-    private string? DisplayedAvatar =>
-        pendingAvatarPreview ?? (removeAvatarRequested ? null : currentAvatarUrl);
-
-    // Stan modala blokady czasowej
-    private AdminUserDTO? tempBlockUser;
-    private string selectedDuration = "24";
-    private DateTime customBlockUntil = DateTime.Now.AddDays(1);
-
-    // Stan modala ostrzeżenia
-    private AdminUserDTO? warnUser;
-    private string warnMessageText = "";
-
-    private IEnumerable<AdminUserDTO> Filtered =>
-        users!.Where(u =>
-            string.IsNullOrWhiteSpace(search)
-            || u.UserName.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || u.Email.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || (!string.IsNullOrEmpty(u.City) && u.City.Contains(search, StringComparison.OrdinalIgnoreCase)));
-
-    private IEnumerable<AdminUserDTO> FilteredDeletable =>
-        Filtered.Where(u => u.Id != currentUserId);
-
-    private bool IsAllSelected =>
-        FilteredDeletable.Any() && FilteredDeletable.All(u => selectedUserIds.Contains(u.Id));
-
-    private List<AdminUserDTO> SelectedUsersToDisplay =>
-        users?.Where(u => selectedUserIds.Contains(u.Id)).ToList() ?? new();
-
-    protected override async Task OnInitializedAsync()
-    {
-        var authState = await authStateProvider.GetAuthenticationStateAsync();
-        int.TryParse(authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out currentUserId);
-
-        users = await adminApi.GetUsersAsync();
-    }
-
-    private async Task BlockPermanently(AdminUserDTO user)
-    {
-        message = null;
-        var ok = await adminApi.SetUserActiveAsync(user.Id, false);
-        if (ok)
-        {
-            user.IsActive = false;
-            user.LockoutEnd = null;
-            message = $"Użytkownik {user.UserName} został zablokowany na stałe.";
-        }
-        else
-        {
-            message = "Nie udało się zablokować użytkownika.";
-        }
-    }
-
-    private async Task UnblockUser(AdminUserDTO user)
-    {
-        message = null;
-        var ok = await adminApi.UnblockUserAsync(user.Id);
-        if (ok)
-        {
-            user.IsActive = true;
-            user.LockoutEnd = null;
-            message = $"Użytkownik {user.UserName} został pomyślnie odblokowany.";
-        }
-        else
-        {
-            message = "Nie udało się odblokować użytkownika.";
-        }
-    }
-
-    private void OpenTempBlockModal(AdminUserDTO user)
-    {
-        tempBlockUser = user;
-        selectedDuration = "24";
-        customBlockUntil = DateTime.Now.AddDays(1);
-    }
-
-    private void CloseTempBlockModal()
-    {
-        tempBlockUser = null;
-    }
-
-    private async Task ApplyTempBlock()
-    {
-        if (tempBlockUser == null) return;
-        message = null;
-
-        int hours = 0;
-        DateTimeOffset? customUntil = null;
-
-        if (selectedDuration == "custom")
-        {
-            if (customBlockUntil <= DateTime.Now)
-            {
-                message = "Wybrana data musi być w przyszłości.";
-                return;
-            }
-            customUntil = new DateTimeOffset(customBlockUntil);
-        }
-        else
-        {
-            int.TryParse(selectedDuration, out hours);
-        }
-
-        var ok = await adminApi.SetTemporaryBlockAsync(tempBlockUser.Id, hours, customUntil);
-        if (ok)
-        {
-            tempBlockUser.LockoutEnd = customUntil ?? DateTimeOffset.UtcNow.AddHours(hours);
-            tempBlockUser.IsActive = true;
-            message = $"Użytkownik {tempBlockUser.UserName} został zablokowany do {tempBlockUser.LockoutEnd?.ToLocalTime().ToString("dd.MM.yyyy HH:mm")}.";
-            CloseTempBlockModal();
-        }
-        else
-        {
-            message = "Nie udało się zablokować użytkownika czasowo.";
-        }
-    }
-
-    private void ToggleSelectUser(int userId, object? isChecked)
-    {
-        if (isChecked is true or "True" or "true")
-        {
-            selectedUserIds.Add(userId);
-        }
-        else
-        {
-            selectedUserIds.Remove(userId);
-        }
-    }
-
-    private void ToggleSelectAll(ChangeEventArgs e)
-    {
-        var selectAll = (bool)(e.Value ?? false);
-        if (selectAll)
-        {
-            foreach (var u in FilteredDeletable)
-            {
-                selectedUserIds.Add(u.Id);
-            }
-        }
-        else
-        {
-            foreach (var u in FilteredDeletable)
-            {
-                selectedUserIds.Remove(u.Id);
-            }
-        }
-    }
-
-    private void OpenDeleteConfirmation()
-    {
-        if (!selectedUserIds.Any()) return;
-        showDeleteConfirmation = true;
-    }
-
-    private void CloseDeleteConfirmation()
-    {
-        if (isDeleting) return;
-        showDeleteConfirmation = false;
-    }
-
-    private async Task ConfirmSoftDelete()
-    {
-        if (!selectedUserIds.Any()) return;
-
-        isDeleting = true;
-        message = null;
-
-        var idsToDelete = selectedUserIds.ToList();
-        var deletedCount = 0;
-        var errorMessages = new List<string>();
-
-        foreach (var id in idsToDelete)
-        {
-            var (ok, err) = await adminApi.DeleteUserAsync(id);
-            if (ok)
-            {
-                var userToRemove = users?.FirstOrDefault(u => u.Id == id);
-                if (userToRemove != null)
-                {
-                    users?.Remove(userToRemove);
-                }
-                selectedUserIds.Remove(id);
-                deletedCount++;
-            }
-            else if (!string.IsNullOrEmpty(err))
-            {
-                errorMessages.Add(err);
-            }
-        }
-
-        isDeleting = false;
-        showDeleteConfirmation = false;
-
-        if (deletedCount > 0)
-        {
-            message = deletedCount == 1
-                ? "Użytkownik został pomyślnie usunięty."
-                : $"Pomyślnie usunięto {deletedCount} użytkowników.";
-            messageIsError = false;
-        }
-
-        if (errorMessages.Any())
-        {
-            message = (message != null ? message + " " : "") + string.Join(" ", errorMessages);
-            messageIsError = true;
-        }
-    }
-
-    private void OpenEditModal(AdminUserDTO user)
-    {
-        editingUser = user;
-        editModel = new AdminUpdateUserDTO
-        {
-            UserName = user.UserName,
-            Email = user.Email,
-            PhoneNumber = user.PhoneNumber,
-            City = user.City,
-            Bio = user.Bio,
-            IsActive = user.IsActive
-        };
-
-        currentAvatarUrl = user.AvatarUrl;
-        pendingAvatarPreview = null;
-        pendingAvatarBytes = null;
-        pendingAvatarFileName = null;
-        pendingAvatarContentType = null;
-        removeAvatarRequested = false;
-        avatarError = null;
-        editModalMessage = null;
-        editModalMessageIsError = false;
-    }
-
-    private void CloseEditModal()
-    {
-        if (isSavingUser) return;
-        editingUser = null;
-    }
-
-    private async Task OnAvatarSelected(InputFileChangeEventArgs e)
-    {
-        avatarError = null;
-        var file = e.File;
-        if (!AllowedTypes.Contains(file.ContentType))
-        {
-            avatarError = "Dozwolone formaty: JPG, PNG, WebP.";
-            return;
-        }
-        if (file.Size > MaxAvatarBytes)
-        {
-            avatarError = "Zdjęcie jest za duże (maks. 2 MB).";
-            return;
-        }
-
-        using var stream = file.OpenReadStream(MaxAvatarBytes);
-        using var ms = new MemoryStream();
-        await stream.CopyToAsync(ms);
-
-        pendingAvatarBytes = ms.ToArray();
-        pendingAvatarFileName = file.Name;
-        pendingAvatarContentType = file.ContentType;
-        pendingAvatarPreview = $"data:{file.ContentType};base64,{Convert.ToBase64String(pendingAvatarBytes)}";
-        removeAvatarRequested = false;
-    }
-
-    private void RemoveAvatar()
-    {
-        pendingAvatarPreview = null;
-        pendingAvatarBytes = null;
-        pendingAvatarFileName = null;
-        pendingAvatarContentType = null;
-        removeAvatarRequested = true;
-        avatarError = null;
-    }
-
-    private async Task SaveUserChanges()
-    {
-        if (editingUser is null) return;
-
-        isSavingUser = true;
-        editModalMessage = null;
-
-        var (ok, error, updatedUser) = await adminApi.UpdateUserAsync(editingUser.Id, editModel);
-        if (!ok)
-        {
-            editModalMessage = error ?? "Nie udało się zaktualizować profilu użytkownika.";
-            editModalMessageIsError = true;
-            isSavingUser = false;
-            return;
-        }
-
-        // Obsługa aktualizacji zdjęcia profilowego
-        string? newAvatarUrl = editingUser.AvatarUrl;
-        if (pendingAvatarBytes is not null)
-        {
-            var (uploadOk, uploadErr, uploadedUrl) = await adminApi.UploadUserAvatarAsync(
-                editingUser.Id,
-                pendingAvatarBytes,
-                pendingAvatarFileName!,
-                pendingAvatarContentType!);
-
-            if (uploadOk)
-            {
-                newAvatarUrl = uploadedUrl;
-            }
-            else
-            {
-                editModalMessage = uploadErr ?? "Zaktualizowano dane, ale nie udało się przesłać zdjęcia profilowego.";
-                editModalMessageIsError = true;
-                isSavingUser = false;
-                return;
-            }
-        }
-        else if (removeAvatarRequested)
-        {
-            var (delOk, delErr) = await adminApi.DeleteUserAvatarAsync(editingUser.Id);
-            if (delOk)
-            {
-                newAvatarUrl = null;
-            }
-            else
-            {
-                editModalMessage = delErr ?? "Zaktualizowano dane, ale nie udało się usunąć zdjęcia profilowego.";
-                editModalMessageIsError = true;
-                isSavingUser = false;
-                return;
-            }
-        }
-
-        // Zaktualizuj użytkownika na liście
-        editingUser.UserName = editModel.UserName;
-        editingUser.Email = editModel.Email;
-        editingUser.PhoneNumber = editModel.PhoneNumber;
-        editingUser.City = editModel.City;
-        editingUser.Bio = editModel.Bio;
-        editingUser.IsActive = editModel.IsActive;
-        editingUser.AvatarUrl = newAvatarUrl;
-
-        message = $"Profil użytkownika '{editingUser.UserName}' został pomyślnie zaktualizowany.";
-        messageIsError = false;
-
-        isSavingUser = false;
-        editingUser = null;
-    }
-
-    private async Task ToggleActive(AdminUserDTO user)
-    private void OpenWarnModal(AdminUserDTO user)
-    {
-        warnUser = user;
-        warnMessageText = !string.IsNullOrWhiteSpace(user.WarningMessage)
-            ? user.WarningMessage
-            : "Twoje konto narusza zasady serwisu. W przypadku kolejnych naruszeń zostanie natychmiast zablokowane.";
-    }
-
-    private void CloseWarnModal()
-    {
-        warnUser = null;
-    }
-
-    private async Task ApplyWarning()
-    {
-        if (warnUser == null) return;
-        message = null;
-
-        var text = string.IsNullOrWhiteSpace(warnMessageText)
-            ? "Twoje konto narusza zasady serwisu. W przypadku kolejnych naruszeń zostanie natychmiast zablokowane."
-            : warnMessageText.Trim();
-
-        var ok = await adminApi.WarnUserAsync(warnUser.Id, text);
-        if (ok)
-        {
-            warnUser.WarningMessage = text;
-            message = $"Wysłano ostrzeżenie do użytkownika {warnUser.UserName}.";
-            CloseWarnModal();
-        }
-        else
-        {
-            message = "Nie udało się zapisać ostrzeżenia.";
-        }
-    }
-
-    private async Task ClearWarning(AdminUserDTO user)
-    {
-        message = null;
-        var ok = await adminApi.ClearWarningAsync(user.Id);
-        if (ok)
-        {
-            user.IsActive = !user.IsActive;
-        {
-            user.WarningMessage = null;
-            message = $"Usunięto ostrzeżenie użytkownika {user.UserName}.";
-        }
-            message = $"Zmieniono status użytkownika '{user.UserName}' na: {(user.IsActive ? "aktywny" : "zablokowany")}.";
-            messageIsError = false;
-        }
-        else
-        {
-            message = "Nie udało się zmienić statusu użytkownika.";
-            messageIsError = true;
-        }
-    }
-
-    private string GetInitials(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return "?";
-        return name[..Math.Min(2, name.Length)].ToUpper();
-        {
-            message = "Nie udało się usunąć ostrzeżenia.";
-        }
-    }
+return name[..Math.Min(2, name.Length)].ToUpperInvariant();
 }

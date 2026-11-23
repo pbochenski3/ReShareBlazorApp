@@ -13,8 +13,12 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ReshareDbContext>(options =>
-options.UseSqlServer(builder.Configuration.GetConnectionString
-("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions =>
+        {
+            sqlOptions.CommandTimeout(180);
+        }));
 builder.Services
     .AddIdentity<User, IdentityRole<int>>(options =>
     {
