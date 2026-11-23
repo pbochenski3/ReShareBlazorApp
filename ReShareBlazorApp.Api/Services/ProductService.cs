@@ -3,6 +3,7 @@ using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared.DTOs;
+using ReShareBlazorApp.Shared.Enums;
 
 namespace ReShareBlazorApp.Api.Services
 {
@@ -95,7 +96,9 @@ namespace ReShareBlazorApp.Api.Services
             string? location = null,
             decimal? minPrice = null,
             decimal? maxPrice = null,
-            string? sort = null)
+            string? sort = null,
+            int? userId = null,
+            ProductType? type = null)
         {
             var products = await _productRepository.GetProducts(
                 number,
@@ -104,7 +107,9 @@ namespace ReShareBlazorApp.Api.Services
                 location,
                 minPrice,
                 maxPrice,
-                sort
+                sort,
+                userId,
+                type
             );
 
             var imageIds = await _productRepository.GetImageIdsAsync(

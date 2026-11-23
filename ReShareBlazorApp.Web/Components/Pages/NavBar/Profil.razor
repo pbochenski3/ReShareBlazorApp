@@ -1,5 +1,6 @@
 @page "/user/{Username}"
 @using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Shared.Enums
 @inject NavigationManager Navigation
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
@@ -7,6 +8,7 @@
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Components.Elements
 @inject UserApiService userApi
+@inject ProductApiService productApi
 @inject AuthenticationStateProvider AuthStateProvider
 
 @if (exist)
@@ -47,28 +49,31 @@
 
             <!-- Statystyki -->
             <div class="profile-stats">
-                <div class="profile-stat"><strong>5</strong><span>Ogłoszenia</span></div>
-                <div class="profile-stat"><strong>2</strong><span>Poszukiwania</span></div>
+                <div class="profile-stat"><strong>@products.Count</strong><span>Ogłoszenia</span></div>
+                <div class="profile-stat"><strong>@lookingForProducts.Count</strong><span>Poszukiwania</span></div>
                 <div class="profile-stat"><strong>9</strong><span>Transakcje</span></div>
                 <div class="profile-stat"><strong>14</strong><span>Ulubione</span></div>
             </div>
 
             <!-- Zakładki -->
             <div class="profile-tabs" role="tablist">
-                <button class="profile-tab active" type="button" role="tab">Moje ogłoszenia</button>
-                <button class="profile-tab" type="button" role="tab">Moje poszukiwania</button>
+                <button class="profile-tab @(activeTab == ProfileTab.Listings ? "active" : "")" type="button" role="tab"
+                        @onclick="() => activeTab = ProfileTab.Listings">Moje ogłoszenia</button>
+                <button class="profile-tab @(activeTab == ProfileTab.LookingFor ? "active" : "")" type="button" role="tab"
+                        @onclick="() => activeTab = ProfileTab.LookingFor">Moje poszukiwania</button>
                 <button class="profile-tab" type="button" role="tab">Ulubione</button>
                 <button class="profile-tab" type="button" role="tab">Transakcje</button>
                 <button class="profile-tab" type="button" role="tab">Opinie</button>
             </div>
 
-            <!-- Moje ogłoszenia -->
-            @* <div class="home-cards">
-            <ListingCard Title="2 bilety na koncert – Kraków" Category="Bilety i rezerwacje" Type="Sprzedam"
-                         Price="240 zł" Location="Kraków" Term="12.12.2026" Published="08.11.2026" />
-            <ListingCard Title="Wózek dziecięcy do oddania" Category="Rodzina i dzieci" Type="Oddam"
-                         Price="Bezpłatnie" Location="Łódź" Term="od zaraz" Published="07.11.2026" />
-        </div> *@
+            @if (activeTab == ProfileTab.Listings)
+            {
+                <ProfileProducts Products="products" EmptyMessage="Użytkownik nie ma jeszcze żadnych ogłoszeń." />
+            }
+            else if (activeTab == ProfileTab.LookingFor)
+            {
+                <ProfileProducts Products="lookingForProducts" EmptyMessage="Użytkownik nie ma jeszcze żadnych poszukiwań." />
+            }
 
             <!-- Opinie -->
             <h2 class="home-section-title profile-subtitle">Opinie o Tobie</h2>
@@ -96,6 +101,9 @@ else
     public string Username { get; set; } = string.Empty;
     private bool exist;
     private UserProfileDTO? profile;
+    private List<ProductDTO> products = new();
+    private List<ProductDTO> lookingForProducts = new();
+    private ProfileTab activeTab = ProfileTab.Listings;
     private string? avatarUrl;
     private string Initials => string.IsNullOrWhiteSpace(Username)
         ? "?" : Username[..Math.Min(2, Username.Length)].ToUpper();
@@ -105,7 +113,21 @@ else
         profile = await userApi.GetProfileAsync(Username);
         exist = profile != null;
         avatarUrl = userApi.GetAvatarUrl(profile?.AvatarUrl);
+        if (profile != null)
+        {
+            products = await productApi.GetProductsAsync(number: 0, userId: profile.UserId);
+            lookingForProducts = await productApi.GetProductsAsync(
+                number: 0,
+                userId: profile.UserId,
+                type: ProductType.LookingFor);
+        }
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
         isOwner = string.Equals(state.User.FindFirst(ClaimTypes.Name)?.Value, Username, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private enum ProfileTab
+    {
+        Listings,
+        LookingFor
     }
 }   

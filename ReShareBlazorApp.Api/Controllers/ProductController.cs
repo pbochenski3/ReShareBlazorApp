@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared.DTOs;
+using ReShareBlazorApp.Shared.Enums;
 using System.Security.Claims;
 
 namespace ReShareBlazorApp.Api.Controllers
@@ -74,7 +75,9 @@ namespace ReShareBlazorApp.Api.Controllers
         [FromQuery] string? lokalizacja = null,
         [FromQuery] decimal? cenaMin = null,
         [FromQuery] decimal? cenaMax = null,
-        [FromQuery] string? sortowanie = null)
+         [FromQuery] string? sortowanie = null,
+         [FromQuery] int? userId = null,
+         [FromQuery] ProductType? type = null)
         {
             var products = await _productService.GetProductsAsync(
                 number,
@@ -83,7 +86,9 @@ namespace ReShareBlazorApp.Api.Controllers
                 lokalizacja,
                 cenaMin,
                 cenaMax,
-                sortowanie
+                sortowanie,
+                userId,
+                type
             );
 
             return Ok(products);

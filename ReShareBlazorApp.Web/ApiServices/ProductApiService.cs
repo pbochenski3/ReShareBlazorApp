@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Shared.DTOs;
+using ReShareBlazorApp.Shared.Enums;
 using ReShareBlazorApp.Web.Models;
 using System.Globalization;
 using System.Net;
@@ -78,13 +79,15 @@ namespace ReShareBlazorApp.Web.ApiServices
 
         // Pobieranie produktów z filtrowaniem i sortowaniem
         public async Task<List<ProductDTO>> GetProductsAsync(
-            int number = 5,
-            ProductCategory? category = null,
-            string? search = null,
-            string? location = null,
-            decimal? minPrice = null,
-            decimal? maxPrice = null,
-            string? sort = null)
+       int number = 5,
+       ProductCategory? category = null,
+       string? search = null,
+       string? location = null,
+       decimal? minPrice = null,
+       decimal? maxPrice = null,
+       string? sort = null,
+       int? userId = null,
+       ProductType? type = null)
         {
             var parameters = new List<string>
             {
@@ -108,6 +111,12 @@ namespace ReShareBlazorApp.Web.ApiServices
 
             if (!string.IsNullOrWhiteSpace(sort))
                 parameters.Add($"sortowanie={Uri.EscapeDataString(sort)}");
+
+            if (userId.HasValue)
+                parameters.Add($"userId={userId.Value}");
+
+            if (type.HasValue)
+                parameters.Add($"type={Uri.EscapeDataString(type.Value.ToString())}");
 
             var url = "api/product?" + string.Join("&", parameters);
 
