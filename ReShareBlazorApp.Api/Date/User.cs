@@ -8,6 +8,7 @@ namespace ReShareBlazorApp.Api.Date
     {
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public bool IsActive { get; set; } = true;
+        public bool IsDeleted { get; set; } = false;
         [MaxLength(60)]
         public string? City { get; set; }
         [MaxLength(300)]

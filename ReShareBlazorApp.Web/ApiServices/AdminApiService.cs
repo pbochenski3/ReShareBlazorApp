@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 
 namespace ReShareBlazorApp.Web.ApiServices
 {
@@ -8,6 +9,7 @@ namespace ReShareBlazorApp.Web.ApiServices
     {
         private readonly HttpClient _httpClient;
         private readonly AuthenticationStateProvider _authStateProvider;
+
         public AdminApiService(HttpClient httpClient, AuthenticationStateProvider authStateProvider)
         {
             _httpClient = httpClient;
@@ -42,6 +44,57 @@ namespace ReShareBlazorApp.Web.ApiServices
             return await response.Content.ReadFromJsonAsync<List<AdminUserDTO>>() ?? new();
         }
 
+        public async Task<AdminUserDTO?> GetUserAsync(int userId)
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Get, $"api/admin/users/{userId}");
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<AdminUserDTO>();
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, AdminUserDTO? User)> UpdateUserAsync(int userId, AdminUpdateUserDTO model)
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Put, $"api/admin/users/{userId}");
+            request.Content = JsonContent.Create(model);
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await ReadErrorAsync(response);
+                return (false, err, null);
+            }
+            var updated = await response.Content.ReadFromJsonAsync<AdminUserDTO>();
+            return (true, null, updated);
+        }
+
+        public async Task<(bool Success, string? ErrorMessage, string? AvatarUrl)> UploadUserAvatarAsync(int userId, byte[] bytes, string fileName, string contentType)
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Post, $"api/admin/users/{userId}/avatar");
+            var fileContent = new ByteArrayContent(bytes);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+            var form = new MultipartFormDataContent { { fileContent, "file", fileName } };
+            request.Content = form;
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await ReadErrorAsync(response);
+                return (false, err, null);
+            }
+            var res = await response.Content.ReadFromJsonAsync<AvatarResponse>();
+            return (true, null, res?.AvatarUrl);
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> DeleteUserAvatarAsync(int userId)
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Delete, $"api/admin/users/{userId}/avatar");
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await ReadErrorAsync(response);
+                return (false, err);
+            }
+            return (true, null);
+        }
+
         public async Task<bool> SetUserActiveAsync(int userId, bool isActive)
         {
             using var request = await CreateRequestAsync(
@@ -49,6 +102,18 @@ namespace ReShareBlazorApp.Web.ApiServices
                 $"api/admin/users/{userId}/active?value={isActive.ToString().ToLower()}");
             var response = await _httpClient.SendAsync(request);
             return response.IsSuccessStatusCode;
+        }
+
+        public async Task<(bool Success, string? ErrorMessage)> DeleteUserAsync(int userId)
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Delete, $"api/admin/users/{userId}");
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await ReadErrorAsync(response);
+                return (false, err);
+            }
+            return (true, null);
         }
 
         public async Task<bool> SetTemporaryBlockAsync(int userId, int hours, DateTimeOffset? blockedUntil = null)
@@ -110,5 +175,20 @@ namespace ReShareBlazorApp.Web.ApiServices
             var response = await _httpClient.SendAsync(request);
             return response.IsSuccessStatusCode;
         }
+
+        private static async Task<string?> ReadErrorAsync(HttpResponseMessage response)
+        {
+            if (response.IsSuccessStatusCode) return null;
+            try
+            {
+                var body = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                if (!string.IsNullOrEmpty(body?.Message)) return body.Message;
+            }
+            catch { }
+            return "Wystąpił błąd podczas przetwarzania żądania.";
+        }
+
+        private class ErrorResponse { public string? Message { get; set; } }
+        private class AvatarResponse { public string? AvatarUrl { get; set; } }
     }
 }
