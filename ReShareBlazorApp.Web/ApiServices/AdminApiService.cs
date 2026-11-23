@@ -240,36 +240,52 @@ namespace ReShareBlazorApp.Web.ApiServices
         }
 
         public async Task<List<AdminReviewDTO>> GetReviewsAsync()
+        public async Task<LockdownDTO?> GetLockdownAsync()
         {
             using var request = await CreateRequestAsync(HttpMethod.Get, "api/admin/reviews");
-            var response = await _httpClient.SendAsync(request);
+            try
+            {
+                using var request = await CreateRequestAsync(HttpMethod.Get, "api/lockdown");
+                var response = await _httpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode) return new();
             return await response.Content.ReadFromJsonAsync<List<AdminReviewDTO>>() ?? new();
-        }
+                if (!response.IsSuccessStatusCode) return null;
+                return await response.Content.ReadFromJsonAsync<LockdownDTO>();
+            }
 
         public async Task<bool> SetReviewHiddenAsync(int reviewId, bool isHidden)
-        {
+            catch
+            {
             using var request = await CreateRequestAsync(
                 HttpMethod.Post,
                 $"api/admin/reviews/{reviewId}/hidden?value={isHidden.ToString().ToLower()}");
             var response = await _httpClient.SendAsync(request);
             return response.IsSuccessStatusCode;
+                return null;
+            }
         }
 
         public async Task<bool> DeleteReviewAsync(int reviewId)
+        public async Task<bool> SetLockdownAsync(LockdownDTO dto)
         {
+            try
+            {
             using var request = await CreateRequestAsync(HttpMethod.Delete, $"api/admin/reviews/{reviewId}");
-            var response = await _httpClient.SendAsync(request);
-            return response.IsSuccessStatusCode;
-        }
+                using var request = await CreateRequestAsync(HttpMethod.Put, "api/admin/lockdown");
+                request.Content = JsonContent.Create(dto);
+                var response = await _httpClient.SendAsync(request);
+                return response.IsSuccessStatusCode;
+            }
 
         private static async Task<string?> ReadErrorAsync(HttpResponseMessage response)
         {
             if (response.IsSuccessStatusCode) return null;
             try
+            catch
             {
                 var body = await response.Content.ReadFromJsonAsync<ErrorResponse>();
                 if (!string.IsNullOrEmpty(body?.Message)) return body.Message;
+                return false;
             }
             catch { }
             return "Wystąpił błąd podczas przetwarzania żądania.";
