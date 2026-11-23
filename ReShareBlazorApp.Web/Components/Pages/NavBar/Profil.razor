@@ -7,7 +7,9 @@
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Components.Elements
+@inject NavigationManager Navigation
 @inject UserApiService userApi
+@inject ReviewApiService reviewApi
 @inject ProductApiService productApi
 @inject AuthenticationStateProvider AuthStateProvider
 
@@ -38,7 +40,10 @@
                         <p class="profile-bio">@profile.Bio</p>
                     }
                     <p class="home-card-verified">✔ E-mail zweryfikowany</p>
-                    <p class="profile-rating">★ 4,8 <span>(12 opinii)</span></p>
+                    <p class="profile-rating">
+                        ★ @(userReviews.Any() ? AverageRating.ToString("0.0") : "0,0")
+                        <span>(@userReviews.Count @(userReviews.Count == 1 ? "opinia" : "opinii"))</span>
+                    </p>
                 </div>
 
                 @if (isOwner)
@@ -75,18 +80,37 @@
                 <ProfileProducts Products="lookingForProducts" EmptyMessage="Użytkownik nie ma jeszcze żadnych poszukiwań." />
             }
 
-            <!-- Opinie -->
-            <h2 class="home-section-title profile-subtitle">Opinie o Tobie</h2>
-            <div class="profile-reviews">
-                <article class="profile-review">
-                    <p class="profile-rating">★★★★★ <span>Anna K.</span></p>
-                    <p>Szybki kontakt, wszystko zgodnie z opisem. Polecam.</p>
-                </article>
-                <article class="profile-review">
-                    <p class="profile-rating">★★★★☆ <span>Marek N.</span></p>
-                    <p>Sprawna wymiana, drobne opóźnienie w odpowiedzi.</p>
-                </article>
-            </div>
+                @if (isLoadingReviews)
+                {
+                    <p class="text-muted">Ładowanie opinii...</p>
+                }
+                else if (!userReviews.Any())
+                {
+                    <p class="text-muted">Brak opinii wystawionych pod ogłoszeniami tego użytkownika.</p>
+                }
+                else
+                {
+                    <div class="profile-reviews">
+                        @foreach (var review in userReviews)
+                        {
+                            <article class="profile-review">
+                                <p class="profile-rating">
+                                    @(new string('★', review.Rating) + new string('☆', 5 - review.Rating))
+                                    <span>@review.AuthorName</span>
+                                </p>
+                                @if (!string.IsNullOrWhiteSpace(review.ProductName))
+                                {
+                                    <p class="small text-muted mb-1">
+                                        Dotyczy: <a href="/details/@review.ProductId">@review.ProductName</a>
+                                    </p>
+                                }
+                                <p>@review.Comment</p>
+                                <small class="text-muted">@review.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</small>
+                            </article>
+                        }
+                    </div>
+                }
+            }
         </div>
     </section>
 }
@@ -95,10 +119,10 @@ else
     <h4>Nie znaleziono użytkownika!</h4>
 }
 
-
 @code {
     [Parameter]
     public string Username { get; set; } = string.Empty;
+
     private bool exist;
     private UserProfileDTO? profile;
     private List<ProductDTO> products = new();
@@ -108,6 +132,15 @@ else
     private string Initials => string.IsNullOrWhiteSpace(Username)
         ? "?" : Username[..Math.Min(2, Username.Length)].ToUpper();
     private bool isOwner;
+
+    private string activeTab = "opinie";
+    private List<ReviewDTO> userReviews = new();
+    private bool isLoadingReviews = true;
+
+    private double AverageRating => userReviews.Any()
+        ? userReviews.Average(r => (double)r.Rating)
+        : 0.0;
+
     protected override async Task OnParametersSetAsync()
     {
         profile = await userApi.GetProfileAsync(Username);
