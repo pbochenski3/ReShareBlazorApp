@@ -176,6 +176,38 @@ else
                                             disabled="@isActionInProgress">
                                         @(user.IsActive ? "Zablokuj" : "Odblokuj")
                                     </button>
+
+                                    @if (user.IsTemporarilyBlocked)
+                                    {
+                                        <button class="admin-btn admin-btn-primary"
+                                                @onclick="() => UnblockUser(user)"
+                                                disabled="@isActionInProgress">
+                                            Odblokuj czasowo
+                                        </button>
+                                    }
+                                    else if (user.IsActive)
+                                    {
+                                        <button class="admin-btn admin-btn-danger"
+                                                @onclick="() => OpenTemporaryBlockModal(user)"
+                                                disabled="@isActionInProgress">
+                                            Blokada czasowa
+                                        </button>
+                                    }
+
+                                    <button class="admin-btn"
+                                            @onclick="() => OpenWarningModal(user)"
+                                            disabled="@isActionInProgress">
+                                        Ostrzeż
+                                    </button>
+
+                                    @if (user.HasWarning)
+                                    {
+                                        <button class="admin-btn"
+                                                @onclick="() => ClearWarning(user)"
+                                                disabled="@isActionInProgress">
+                                            Usuń ostrzeżenie
+                                        </button>
+                                    }
                                 }
 
                                 <button class="admin-btn admin-btn-sm"
@@ -644,6 +676,60 @@ else
     </div>
 }
 
+@if (temporaryBlockUser != null)
+{
+    <div class="admin-modal-backdrop" @onclick="CloseTemporaryBlockModal">
+        <div class="admin-modal" @onclick:stopPropagation="true" style="max-width: 440px;">
+            <div class="admin-modal-header">
+                <div>
+                    <h2 class="admin-modal-title">Blokada czasowa</h2>
+                    <p class="admin-modal-desc">Użytkownik: <strong>@temporaryBlockUser.UserName</strong></p>
+                </div>
+                <button type="button" class="admin-modal-close" @onclick="CloseTemporaryBlockModal">✕</button>
+            </div>
+
+            <div class="admin-form-group">
+                <label class="admin-form-label" for="block-hours">Czas blokady (godziny)</label>
+                <input id="block-hours" class="admin-form-input" type="number" min="1" @bind="temporaryBlockHours" />
+            </div>
+
+            <div class="admin-modal-actions">
+                <button type="button" class="admin-btn" @onclick="CloseTemporaryBlockModal" disabled="@moderationInProgress">Anuluj</button>
+                <button type="button" class="admin-btn admin-btn-danger" @onclick="ExecuteTemporaryBlock" disabled="@moderationInProgress">
+                    @(moderationInProgress ? "Blokowanie..." : "Zablokuj")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (warningUser != null)
+{
+    <div class="admin-modal-backdrop" @onclick="CloseWarningModal">
+        <div class="admin-modal" @onclick:stopPropagation="true" style="max-width: 520px;">
+            <div class="admin-modal-header">
+                <div>
+                    <h2 class="admin-modal-title">Ostrzeżenie użytkownika</h2>
+                    <p class="admin-modal-desc">Użytkownik: <strong>@warningUser.UserName</strong></p>
+                </div>
+                <button type="button" class="admin-modal-close" @onclick="CloseWarningModal">✕</button>
+            </div>
+
+            <div class="admin-form-group">
+                <label class="admin-form-label" for="warning-message">Treść ostrzeżenia</label>
+                <textarea id="warning-message" class="admin-form-textarea" rows="5" maxlength="500" @bind="warningText"></textarea>
+            </div>
+
+            <div class="admin-modal-actions">
+                <button type="button" class="admin-btn" @onclick="CloseWarningModal" disabled="@moderationInProgress">Anuluj</button>
+                <button type="button" class="admin-btn admin-btn-primary" @onclick="ExecuteWarning" disabled="@moderationInProgress">
+                    @(moderationInProgress ? "Zapisywanie..." : "Wyślij ostrzeżenie")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private const long MaxAvatarBytes = 2 * 1024 * 1024;
 
@@ -675,6 +761,12 @@ else
     private AdminUserDTO? roleConfirmUser;
     private bool roleConfirmIsAdmin;
     private bool isActionInProgress = false;
+
+    private AdminUserDTO? temporaryBlockUser;
+    private int temporaryBlockHours = 24;
+    private AdminUserDTO? warningUser;
+    private string warningText = "";
+    private bool moderationInProgress;
 
     // Zaznaczenia użytkowników do usunięcia
     private HashSet<int> selectedUserIds = new();
@@ -751,6 +843,180 @@ else
         {
             var existingIds = users.Select(u => u.Id).ToHashSet();
             selectedUserIds.RemoveWhere(id => !existingIds.Contains(id));
+        }
+    }
+
+    private void OpenTemporaryBlockModal(AdminUserDTO user)
+    {
+        if (user.Id == currentUserId || isActionInProgress)
+            return;
+
+        temporaryBlockUser = user;
+        temporaryBlockHours = 24;
+        errorMessage = null;
+    }
+
+    private void CloseTemporaryBlockModal()
+    {
+        if (!moderationInProgress)
+            temporaryBlockUser = null;
+    }
+
+    private async Task ExecuteTemporaryBlock()
+    {
+        if (temporaryBlockUser == null || moderationInProgress)
+            return;
+
+        if (temporaryBlockHours < 1)
+        {
+            errorMessage = "Czas blokady musi wynosić co najmniej 1 godzinę.";
+            return;
+        }
+
+        moderationInProgress = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var user = temporaryBlockUser;
+            var ok = await adminApi.SetTemporaryBlockAsync(user.Id, temporaryBlockHours);
+
+            if (ok)
+            {
+                successMessage = $"Użytkownik '{user.UserName}' został zablokowany na {temporaryBlockHours} h.";
+                temporaryBlockUser = null;
+                await LoadUsers();
+            }
+            else
+            {
+                errorMessage = "Nie udało się ustawić blokady czasowej.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił błąd: {ex.Message}";
+        }
+        finally
+        {
+            moderationInProgress = false;
+        }
+    }
+
+    private async Task UnblockUser(AdminUserDTO user)
+    {
+        if (user.Id == currentUserId || moderationInProgress)
+            return;
+
+        moderationInProgress = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var ok = await adminApi.UnblockUserAsync(user.Id);
+
+            if (ok)
+            {
+                successMessage = $"Użytkownik '{user.UserName}' został odblokowany.";
+                await LoadUsers();
+            }
+            else
+            {
+                errorMessage = "Nie udało się odblokować użytkownika.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił błąd: {ex.Message}";
+        }
+        finally
+        {
+            moderationInProgress = false;
+        }
+    }
+
+    private void OpenWarningModal(AdminUserDTO user)
+    {
+        if (user.Id == currentUserId || isActionInProgress)
+            return;
+
+        warningUser = user;
+        warningText = user.WarningMessage ?? "";
+        errorMessage = null;
+    }
+
+    private void CloseWarningModal()
+    {
+        if (!moderationInProgress)
+            warningUser = null;
+    }
+
+    private async Task ExecuteWarning()
+    {
+        if (warningUser == null || moderationInProgress)
+            return;
+
+        moderationInProgress = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var user = warningUser;
+            var ok = await adminApi.WarnUserAsync(user.Id, warningText);
+
+            if (ok)
+            {
+                successMessage = $"Wysłano ostrzeżenie użytkownikowi '{user.UserName}'.";
+                warningUser = null;
+                await LoadUsers();
+            }
+            else
+            {
+                errorMessage = "Nie udało się wysłać ostrzeżenia.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił błąd: {ex.Message}";
+        }
+        finally
+        {
+            moderationInProgress = false;
+        }
+    }
+
+    private async Task ClearWarning(AdminUserDTO user)
+    {
+        if (user.Id == currentUserId || moderationInProgress)
+            return;
+
+        moderationInProgress = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var ok = await adminApi.ClearWarningAsync(user.Id);
+
+            if (ok)
+            {
+                successMessage = $"Usunięto ostrzeżenie użytkownika '{user.UserName}'.";
+                await LoadUsers();
+            }
+            else
+            {
+                errorMessage = "Nie udało się usunąć ostrzeżenia.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił błąd: {ex.Message}";
+        }
+        finally
+        {
+            moderationInProgress = false;
         }
     }
 
