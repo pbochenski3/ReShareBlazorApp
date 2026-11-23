@@ -300,6 +300,8 @@ namespace ReShareBlazorApp.Api.Migrations
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    PriceMin = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    PriceMax = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     AddedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Type = table.Column<int>(type: "int", nullable: false),

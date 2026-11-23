@@ -38,7 +38,8 @@ namespace ReShareBlazorApp.Web.ApiServices
             {
                 Name = productModel.Name,
                 Description = productModel.Description,
-                Price = productModel.Price,
+                PriceMin = productModel.PriceMin,
+                PriceMax = productModel.PriceMax,
                 ExpiresAt = productModel.ExpiresAt,
                 Category = productModel.Category,
                 Condition = productModel.Condition,
@@ -88,7 +89,8 @@ namespace ReShareBlazorApp.Web.ApiServices
                 {
                     Name = productModel.Name,
                     Description = productModel.Description,
-                    Price = productModel.Price,
+                    PriceMin = productModel.PriceMin,
+                    PriceMax = productModel.PriceMax,
                     ExpiresAt = productModel.ExpiresAt,
                     Category = productModel.Category,
                     City = productModel.City,

@@ -12,7 +12,7 @@ using ReShareBlazorApp.Api.Date;
 namespace ReShareBlazorApp.Api.Migrations
 {
     [DbContext(typeof(ReshareDbContext))]
-    [Migration("20261123122023_Init")]
+    [Migration("20261123122626_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -391,6 +391,12 @@ namespace ReShareBlazorApp.Api.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PriceMax")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PriceMin")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("Type")

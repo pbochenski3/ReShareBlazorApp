@@ -390,6 +390,12 @@ namespace ReShareBlazorApp.Api.Migrations
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<decimal>("PriceMax")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PriceMin")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("Type")
                         .HasColumnType("int");
 

@@ -43,7 +43,9 @@ namespace ReShareBlazorApp.Api.Repositories
 
                 existingProduct.Name = product.Name;
                 existingProduct.Description = product.Description;
-                existingProduct.Price = product.Price;
+                existingProduct.Price = product.PriceMin;
+                existingProduct.PriceMin = product.PriceMin;
+                existingProduct.PriceMax = product.PriceMax;
                 existingProduct.ExpiresAt = product.ExpiresAt;
                 existingProduct.Type = product.Type;
                 existingProduct.Category = product.Category;
@@ -179,17 +181,17 @@ namespace ReShareBlazorApp.Api.Repositories
                 }
                 if (minPrice.HasValue)
                 {
-                    query = query.Where(p => p.Price >= minPrice.Value);
+                    query = query.Where(p => p.PriceMax >= minPrice.Value);
                 }
                 if (maxPrice.HasValue)
                 {
-                    query = query.Where(p => p.Price <= maxPrice.Value);
+                    query = query.Where(p => p.PriceMin <= maxPrice.Value);
                 }
                 query = sort switch
                 {
-                    "cenaRosnaco" => query.OrderBy(p => p.Price),
+                    "cenaRosnaco" => query.OrderBy(p => p.PriceMin),
 
-                    "cenaMalejaco" => query.OrderByDescending(p => p.Price),
+                    "cenaMalejaco" => query.OrderByDescending(p => p.PriceMax),
 
                     _ => query.OrderByDescending(p => p.AddedAt)
                 };

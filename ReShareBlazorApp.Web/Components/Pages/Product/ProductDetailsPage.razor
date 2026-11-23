@@ -89,6 +89,10 @@
 
                         <div class="details-info-grid">
                             <div class="details-info-item">
+                                <span class="details-info-label">Cena</span>
+                                <strong>@Product.PriceMin.ToString("0.##") - @Product.PriceMax.ToString("0.##") zł</strong>
+                            </div>
+                            <div class="details-info-item">
                                 <span class="details-info-label">Data dodania</span>
                                 <strong>@Product.AddedAt.ToString("dd.MM.yyyy HH:mm")</strong>
                             </div>
@@ -255,7 +259,7 @@
                         <span class="details-price-label">Cena</span>
 
                         <div class="details-price">
-                            @Product.Price.ToString("N2") <span>zł</span>
+                            @Product.PriceMin.ToString("0.##") - @Product.PriceMax.ToString("0.##") <span>zł</span>
                         </div>
 
                         <div class="details-divider"></div>
