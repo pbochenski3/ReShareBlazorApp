@@ -256,7 +256,7 @@ namespace ReShareBlazorApp.Api.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.HasIndex("UserId", "CreatedAt");
+                    b.HasIndex("UserId");
 
                     b.ToTable("Notifications");
                 });
@@ -636,14 +636,13 @@ namespace ReShareBlazorApp.Api.Migrations
                 {
                     b.HasOne("ReShareBlazorApp.Api.Date.Product", "Product")
                         .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .HasForeignKey("ProductId");
 
-                b.HasOne("ReShareBlazorApp.Api.Date.User", "User")
-                    .WithMany()
-                    .HasForeignKey("UserId")
-                    .OnDelete(DeleteBehavior.NoAction)
-                    .IsRequired();
+                    b.HasOne("ReShareBlazorApp.Api.Date.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Product");
 

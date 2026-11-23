@@ -9,7 +9,6 @@
 @inject NavigationManager Navigation
 @inject UserApiService userApi
 @inject NotificationApiService notificationApi
-
 @inject ReviewApiService reviewApi
 @inject ProductApiService productApi
 @inject AuthenticationStateProvider AuthStateProvider
@@ -91,7 +90,7 @@ else if (exist)
                         }
                     </h2>
                     <button class="home-btn home-btn-outline" type="button"
-                            @onclick="async () => notifications = await notificationApi.GetNotificationsAsync()">
+                            @onclick="LoadNotificationsAsync">
                         Odśwież powiadomienia
                     </button>
 
@@ -291,6 +290,7 @@ else
 
     private List<ProductDTO> products = new();
     private List<ProductDTO> lookingForProducts = new();
+    private List<NotificationDTO> notifications = new();
 
     private ProfileTab activeTab = ProfileTab.Listings;
 
@@ -311,6 +311,9 @@ else
             ? userReviews.Average(r => (double)r.Rating)
             : 0.0;
 
+    private int UnreadNotificationsCount =>
+        notifications.Count(n => !n.IsRead);
+
     protected override async Task OnParametersSetAsync()
     {
         isLoadingProfile = true;
@@ -322,6 +325,7 @@ else
         products.Clear();
         lookingForProducts.Clear();
         userReviews.Clear();
+        notifications.Clear();
 
         avatarUrl = null;
 
@@ -351,7 +355,6 @@ else
 
             // Sprawdzanie, czy zalogowany użytkownik jest właścicielem profilu
             var state = await AuthStateProvider.GetAuthenticationStateAsync();
-
             var loggedUser = state.User;
 
             var currentUsername =
@@ -362,6 +365,11 @@ else
                 currentUsername,
                 Username,
                 StringComparison.OrdinalIgnoreCase);
+
+            if (isOwner)
+            {
+                await LoadNotificationsAsync();
+            }
 
             // Pobieranie opinii użytkownika
             await LoadUserReviews();
@@ -375,6 +383,37 @@ else
             isLoadingProfile = false;
             isLoadingReviews = false;
         }
+    }
+
+    private async Task LoadNotificationsAsync()
+    {
+        try
+        {
+            notifications = await notificationApi.GetNotificationsAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Błąd podczas ładowania powiadomień: {ex.Message}");
+            notifications = new();
+        }
+    }
+
+    private async Task MarkNotificationAsReadAsync(NotificationDTO notification)
+    {
+        try
+        {
+            await notificationApi.MarkAsReadAsync(notification.Id);
+            notification.IsRead = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Błąd podczas oznaczania powiadomienia jako przeczytane: {ex.Message}");
+        }
+    }
+
+    private string GetProductUrl(int productId)
+    {
+        return $"/details/{productId}";
     }
 
     // Pobieranie opinii wystawionych pod ogłoszeniami użytkownika
