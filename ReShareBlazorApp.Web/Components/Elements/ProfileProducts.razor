@@ -1,0 +1,29 @@
+@using ReShareBlazorApp.Shared.DTOs
+
+@if (Products.Any())
+{
+    <div class="home-cards">
+        @foreach (var product in Products)
+        {
+            <ListingCard @key="product.ProductId"
+                         Title="@product.Name"
+                         Category="@product.Category.ToString()"
+                         Type="@product.Type"
+                         Price="@(product.Price.ToString("F2"))"
+                         Location="@product.City"
+                         Term="@product.ExpiresAt.ToString("dd.MM.yyyy")"
+                         Published="@product.AddedAt.ToString("dd.MM.yyyy")"
+                         Link="@product.ProductId"
+                         ImageUrl="@(product.ImageIds.Count > 0 ? "/images/" + product.ImageIds[0] : null)" />
+        }
+    </div>
+}
+else
+{
+    <p>@EmptyMessage</p>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<ProductDTO> Products { get; set; } = Array.Empty<ProductDTO>();
+    [Parameter] public string EmptyMessage { get; set; } = "Brak ogłoszeń.";
+}

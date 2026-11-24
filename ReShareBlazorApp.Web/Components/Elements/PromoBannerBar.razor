@@ -1,0 +1,210 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@inject PromoBannerApiService PromoApi
+@implements IDisposable
+
+@if (_banner != null && _banner.IsActive && _banner.ExpiresAt > DateTime.UtcNow && !_dismissedLocally)
+{
+    <div style="background: linear-gradient(90deg, #0b5c55 0%, #117a70 100%); color: #ffffff; padding: 8px 16px; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; position: relative; z-index: 1050;">
+        @if (!string.IsNullOrWhiteSpace(_banner.BadgeText))
+        {
+            <span style="background: #f59e0b; color: #111827; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-size: 12px;">
+                @_banner.BadgeText
+            </span>
+        }
+
+        <span style="font-weight: 500;">@_banner.Message</span>
+
+        <span style="background: rgba(255,255,255,0.16); padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600;">
+            Koniec za: @FormatRemaining(_banner.ExpiresAt - DateTime.UtcNow)
+        </span>
+
+        @if (!string.IsNullOrWhiteSpace(_banner.LinkUrl))
+        {
+            <a href="@_banner.LinkUrl" style="color: #fde68a; font-weight: 700; text-decoration: underline;">
+                @(string.IsNullOrWhiteSpace(_banner.LinkText) ? "Sprawdź" : _banner.LinkText)
+            </a>
+        }
+
+        <button type="button"
+                @onclick="DismissLocally"
+                title="Ukryj pasek"
+                style="background: transparent; border: none; color: #ffffff; font-size: 16px; line-height: 1; cursor: pointer; padding: 0 4px;">
+            ×
+        </button>
+    </div>
+}
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <div style="background: #f0fdfa; border-bottom: 1px solid #99f6e4; padding: 6px 16px; display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 13px;">
+            <span style="color: #0f766e; font-weight: 600;">Panel Admina — Pasek promocyjny:</span>
+            <button type="button"
+                    @onclick="ToggleEditor"
+                    style="background: #0f766e; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-weight: 600; cursor: pointer;">
+                @(_showEditor ? "Zamknij ustawienia" : "Ustaw promocję / czas")
+            </button>
+        </div>
+
+        @if (_showEditor)
+        {
+            <div style="background: #ffffff; border-bottom: 2px solid #0f766e; padding: 14px 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.08);">
+                <div style="max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end;">
+                    <div>
+                        <label style="display:block; font-size:12px; font-weight:600; margin-bottom:4px;">Etykieta (np. -30%)</label>
+                        <input type="text" @bind="_request.BadgeText" class="form-control form-control-sm" placeholder="PROMOCJA -30%" />
+                    </div>
+
+                    <div style="grid-column: span 2;">
+                        <label style="display:block; font-size:12px; font-weight:600; margin-bottom:4px;">Treść promocji</label>
+                        <input type="text" @bind="_request.Message" class="form-control form-control-sm" placeholder="Np. -30% na wyróżnienie ogłoszeń przez cały dzień!" />
+                    </div>
+
+                    <div>
+                        <label style="display:block; font-size:12px; font-weight:600; margin-bottom:4px;">Czas trwania (godziny)</label>
+                        <select @bind="_request.DurationHours" class="form-select form-select-sm">
+                            <option value="1">1 godzina</option>
+                            <option value="6">6 godzin</option>
+                            <option value="12">12 godzin</option>
+                            <option value="24">24 godziny</option>
+                            <option value="48">48 godzin</option>
+                            <option value="72">72 godziny (3 dni)</option>
+                            <option value="168">168 godzin (7 dni)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display:block; font-size:12px; font-weight:600; margin-bottom:4px;">Link (opcjonalnie)</label>
+                        <input type="text" @bind="_request.LinkUrl" class="form-control form-control-sm" placeholder="/odkrywaj" />
+                    </div>
+
+                    <div>
+                        <label style="display:block; font-size:12px; font-weight:600; margin-bottom:4px;">Tekst linku</label>
+                        <input type="text" @bind="_request.LinkText" class="form-control form-control-sm" placeholder="Zobacz więcej" />
+                    </div>
+
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" @onclick="SaveBanner" class="btn btn-sm btn-success" disabled="@_isSaving">
+                            @(_isSaving ? "Zapisywanie..." : "Włącz pasek")
+                        </button>
+                        <button type="button" @onclick="DisableBanner" class="btn btn-sm btn-outline-danger" disabled="@_isSaving">
+                            Wyłącz pasek
+                        </button>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_statusMessage))
+                {
+                    <div style="max-width: 1100px; margin: 8px auto 0; font-size: 13px; font-weight: 600; color: @(_isError ? "#dc2626" : "#15803d");">
+                        @_statusMessage
+                    </div>
+                }
+            </div>
+        }
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private PromoBannerDTO? _banner;
+    private CreatePromoBannerRequest _request = new()
+    {
+        BadgeText = "PROMOCJA -30%",
+        Message = "Specjalna promocja -30% dostępna tylko przez ograniczony czas!",
+        DurationHours = 24
+    };
+
+    private bool _showEditor = false;
+    private bool _dismissedLocally = false;
+    private bool _isSaving = false;
+    private bool _isError = false;
+    private string? _statusMessage;
+    private System.Threading.Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBannerAsync();
+
+        _timer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(() =>
+            {
+                if (_banner != null && _banner.ExpiresAt <= DateTime.UtcNow)
+                {
+                    _banner = null;
+                }
+                StateHasChanged();
+            });
+        }, null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(15));
+    }
+
+    private async Task LoadBannerAsync()
+    {
+        _banner = await PromoApi.GetActiveBannerAsync();
+        _dismissedLocally = false;
+    }
+
+    private void ToggleEditor()
+    {
+        _showEditor = !_showEditor;
+        _statusMessage = null;
+    }
+
+    private void DismissLocally()
+    {
+        _dismissedLocally = true;
+    }
+
+    private async Task SaveBanner()
+    {
+        _isSaving = true;
+        _statusMessage = null;
+        _isError = false;
+
+        var (ok, msg) = await PromoApi.SetBannerAsync(_request);
+        _isSaving = false;
+        _isError = !ok;
+        _statusMessage = msg;
+
+        if (ok)
+        {
+            await LoadBannerAsync();
+        }
+    }
+
+    private async Task DisableBanner()
+    {
+        _isSaving = true;
+        _statusMessage = null;
+        _isError = false;
+
+        var (ok, msg) = await PromoApi.DisableBannerAsync();
+        _isSaving = false;
+        _isError = !ok;
+        _statusMessage = msg;
+
+        if (ok)
+        {
+            _banner = null;
+        }
+    }
+
+    private static string FormatRemaining(TimeSpan remaining)
+    {
+        if (remaining.TotalSeconds <= 0)
+            return "0m";
+
+        if (remaining.TotalDays >= 1)
+            return $"{(int)remaining.TotalDays}d {remaining.Hours}h";
+
+        if (remaining.TotalHours >= 1)
+            return $"{(int)remaining.TotalHours}h {remaining.Minutes}m";
+
+        return $"{Math.Max(1, remaining.Minutes)}m";
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

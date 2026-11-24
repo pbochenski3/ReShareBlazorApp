@@ -1,5 +1,9 @@
 @using ReShareBlazorApp.Api.Date.Enums
 @using ReShareBlazorApp.Shared.Enums
+@using ReShareBlazorApp.Web.ApiServices
+@implements IDisposable
+@inject FavoritesState Favorites
+@inject NavigationManager Navigation
 <article class="home-card">
     <div class="home-card-image @TypeClass">
         @if (!string.IsNullOrEmpty(ImageUrl))
@@ -7,7 +11,19 @@
             <img src="@ImageUrl" alt="@Title" loading="lazy" />
         }
         <span class="home-card-type">@GetCategoryName(@Type)</span>
-        <button class="home-card-fav" type="button" aria-label="Dodaj do ulubionych">♡</button>
+        @if (!IsOwnListing)
+        {
+        <button class="home-card-fav @(IsFavorite ? "is-active" : "")"
+                type="button"
+                title="@FavoriteLabel"
+                aria-label="@FavoriteLabel"
+                aria-pressed="@(IsFavorite ? "true" : "false")"
+                @onclick="ToggleFavoriteAsync">
+            <svg class="fav-star" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+        </button>
+        }
     </div>
 
     <div class="home-card-body">
@@ -38,6 +54,57 @@
     [Parameter] public string Published { get; set; } = "";
     [Parameter] public int Link { get; set; } 
     [Parameter] public string? ImageUrl { get; set; }
+    // Id autora ogłoszenia - przy własnych ogłoszeniach gwiazdka jest ukryta
+    [Parameter] public int OwnerId { get; set; }
+
+    private int? currentUserId;
+    private bool IsOwnListing => OwnerId > 0 && currentUserId == OwnerId;
+
+    private bool isTogglingFavorite;
+
+    private bool IsFavorite => Link > 0 && Favorites.IsFavorite(Link);
+
+    private string FavoriteLabel => IsFavorite ? "Usuń z ulubionych" : "Dodaj do ulubionych";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Favorites.Changed += OnFavoritesChanged;
+        currentUserId = await Favorites.GetCurrentUserIdAsync();
+        await Favorites.EnsureLoadedAsync();
+    }
+
+    private void OnFavoritesChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleFavoriteAsync()
+    {
+        if (isTogglingFavorite || Link <= 0 || IsOwnListing)
+            return;
+
+        // Gwiazdka działa tylko dla zalogowanych - reszta trafia na logowanie
+        if (!await Favorites.IsLoggedInAsync())
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        isTogglingFavorite = true;
+        try
+        {
+            await Favorites.ToggleAsync(Link);
+        }
+        finally
+        {
+            isTogglingFavorite = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        Favorites.Changed -= OnFavoritesChanged;
+    }
 
     private string TypeClass => Type switch
     {

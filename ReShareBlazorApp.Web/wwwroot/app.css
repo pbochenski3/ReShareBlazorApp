@@ -4955,3 +4955,97 @@ textarea.details-report-input {
         padding: 28px 22px;
     }
 }
+
+
+/* =====================================================
+   ULUBIONE – żółta gwiazdka
+   pusta w środku z żółtym obrysem = nie w ulubionych
+   cała żółta (is-active)           = w ulubionych
+   ===================================================== */
+:root {
+    --star: #f5b301;
+    --star-soft: #fff6d6;
+}
+
+.fav-star {
+    fill: none;
+    stroke: var(--star);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    transition: fill .2s ease;
+}
+
+.is-active > .fav-star {
+    fill: var(--star);
+}
+
+/* gwiazdka na karcie ogłoszenia (nadpisuje dawne serduszko) */
+.home-card-fav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--star);
+}
+
+    .home-card-fav:hover {
+        background: var(--star-soft);
+        color: var(--star);
+    }
+
+    .home-card-fav:focus-visible {
+        outline: 2px solid var(--star);
+        outline-offset: 2px;
+    }
+
+/* przycisk na stronie ogłoszenia */
+.details-fav-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 46px;
+    margin-bottom: 12px;
+    padding: 10px 16px;
+    border: 1.5px solid var(--star);
+    border-radius: 10px;
+    background: #fff;
+    color: #0f172a;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color .2s ease, transform .2s ease;
+}
+
+    .details-fav-button:hover:not(:disabled) {
+        background: var(--star-soft);
+        transform: translateY(-1px);
+    }
+
+    .details-fav-button.is-active {
+        background: var(--star-soft);
+    }
+
+    .details-fav-button:focus-visible {
+        outline: 2px solid var(--star);
+        outline-offset: 2px;
+    }
+
+    .details-fav-button:disabled {
+        opacity: .7;
+        cursor: wait;
+    }
+
+/* ciemny motyw */
+:where([data-theme="dark"]) .home-card-fav:hover,
+:where([data-theme="dark"]) .details-fav-button:hover:not(:disabled),
+:where([data-theme="dark"]) .details-fav-button.is-active {
+    background-color: rgba(245, 179, 1, .18);
+}
+
+:where([data-theme="dark"]) .details-fav-button {
+    background-color: var(--surface);
+    color: var(--ink);
+}

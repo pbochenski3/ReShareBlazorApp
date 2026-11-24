@@ -24,5 +24,8 @@ namespace ReShareBlazorApp.Api.Interfaces.Services
         Task<ProductDTO> GetProductById(int id);
         string? ValidateImages(IReadOnlyList<ProductImageDTO>? images);
         Task<ProductImageDTO?> GetImageAsync(int imageId);
+        Task<bool?> ToggleFavoriteAsync(int userId, int productId);
+        Task<List<int>> GetFavoriteIdsAsync(int userId);
+        Task<List<ProductDTO>> GetFavoritesAsync(int userId);
     }
 }

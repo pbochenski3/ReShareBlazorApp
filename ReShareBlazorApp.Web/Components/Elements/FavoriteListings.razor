@@ -1,0 +1,59 @@
+@using System.Globalization
+@using ReShareBlazorApp.Api.Date.Enums
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@inject ProductApiService productApi
+
+@if (products is null)
+{
+    <p class="page-count">Ładowanie ulubionych...</p>
+}
+else if (products.Count == 0)
+{
+    <p class="page-count">
+        Nie masz jeszcze ulubionych ogłoszeń.
+        <a class="home-link" href="/odkrywaj">Przeglądaj ogłoszenia</a>
+    </p>
+}
+else
+{
+    <div class="home-cards">
+        @foreach (var product in products)
+        {
+            <ListingCard @key="product.ProductId"
+                         Title="@product.Name"
+                         Category="@GetCategoryName(product.Category)"
+                         Type="@product.Type"
+                         Price="@product.Price.ToString("F2", CultureInfo.InvariantCulture)"
+                         Location="@product.City"
+                         Term="@product.ExpiresAt.ToString("dd.MM.yyyy")"
+                         Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")"
+                         Link="@product.ProductId" OwnerId="@product.UserId"
+                         ImageUrl="@(product.ImageIds.Count > 0 ? "/images/" + product.ImageIds[0] : null)" />
+        }
+    </div>
+}
+
+@code {
+    // Lista pobierana raz przy wejściu. Odkliknięta gwiazdka robi się pusta, ale karta
+    // zostaje do odświeżenia strony - można ją od razu kliknąć jeszcze raz.
+    private List<ProductDTO>? products;
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await productApi.GetFavoritesAsync();
+    }
+
+    private static string GetCategoryName(ProductCategory category)
+    {
+        return category switch
+        {
+            ProductCategory.Tickets => "Bilety",
+            ProductCategory.Reservations => "Rezerwacje",
+            ProductCategory.Trips => "Wyjazdy i podróże",
+            ProductCategory.Transports => "Transport",
+            ProductCategory.Services => "Usługi",
+            _ => category.ToString()
+        };
+    }
+}

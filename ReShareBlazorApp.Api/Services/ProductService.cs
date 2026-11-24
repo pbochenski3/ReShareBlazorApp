@@ -89,6 +89,39 @@ namespace ReShareBlazorApp.Api.Services
             }
         }
 
+        public Task<bool?> ToggleFavoriteAsync(int userId, int productId)
+        {
+            return _productRepository.ToggleFavoriteAsync(userId, productId);
+        }
+
+        public Task<List<int>> GetFavoriteIdsAsync(int userId)
+        {
+            return _productRepository.GetFavoriteProductIdsAsync(userId);
+        }
+
+        public async Task<List<ProductDTO>> GetFavoritesAsync(int userId)
+        {
+            var products = await _productRepository.GetFavoriteProductsAsync(userId);
+
+            var imageIds = await _productRepository.GetImageIdsAsync(
+                products.Select(p => p.Id));
+
+            return products.Select(p => new ProductDTO
+            {
+                Name = p.Name,
+                Description = p.Description,
+                ProductId = p.Id,
+                Price = p.Price,
+                AddedAt = p.AddedAt,
+                ExpiresAt = p.ExpiresAt,
+                Category = p.Category,
+                City = p.City,
+                Type = p.Type,
+                UserId = p.UserId,
+                ImageIds = imageIds.GetValueOrDefault(p.Id) ?? new List<int>()
+            }).ToList();
+        }
+
         public async Task<List<ProductDTO>> GetProductsAsync(
             int number = 5,
             ProductCategory? category = null,

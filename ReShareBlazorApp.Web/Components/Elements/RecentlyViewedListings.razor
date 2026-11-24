@@ -1,0 +1,57 @@
+﻿@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject RecentlyViewedApiService RecentlyViewedApi
+@inject AuthenticationStateProvider AuthStateProvider
+
+@if (_isAuthenticated && _products.Count > 0)
+{
+    <section class="home-section">
+        <div class="home-container">
+
+            <div class="home-section-head">
+                <h2 class="home-section-title">
+                    Ostatnio oglądane
+                </h2>
+            </div>
+
+            <div class="home-cards">
+                @foreach (var product in _products)
+                {
+                    <ListingCard @key="product.ProductId"
+                                 Title="@product.Name"
+                                 Category="@product.Category.ToString()"
+                                 Type="@product.Type"
+                                 Price="@product.Price.ToString("F2")"
+                                 Location="@product.City"
+                                 Term="@product.ExpiresAt.ToString("dd.MM.yyyy HH:mm")"
+                                 Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")"
+                                 Link="@product.ProductId" />
+                }
+            </div>
+
+        </div>
+    </section>
+}
+
+@code {
+    private List<ProductDTO> _products = new();
+
+    private bool _isAuthenticated;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state =
+            await AuthStateProvider.GetAuthenticationStateAsync();
+
+        _isAuthenticated =
+            state.User.Identity?.IsAuthenticated == true;
+
+        if (!_isAuthenticated)
+            return;
+
+        _products =
+            await RecentlyViewedApi.GetRecentlyViewedAsync();
+    }
+}

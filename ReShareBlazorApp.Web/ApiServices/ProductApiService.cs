@@ -199,6 +199,87 @@ namespace ReShareBlazorApp.Web.ApiServices
                 return new CompletedStatsDTO();
             }
         }
+        // ----- Ulubione -----
+
+        // Lista ulubionych ogłoszeń zalogowanego użytkownika (od ostatnio dodanego).
+        public async Task<List<ProductDTO>> GetFavoritesAsync()
+        {
+            try
+            {
+                using var request = await CreateAuthorizedRequestAsync(HttpMethod.Get, "api/product/favorites");
+                if (request == null)
+                    return new List<ProductDTO>();
+
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                    return new List<ProductDTO>();
+
+                return await response.Content.ReadFromJsonAsync<List<ProductDTO>>()
+                    ?? new List<ProductDTO>();
+            }
+            catch
+            {
+                return new List<ProductDTO>();
+            }
+        }
+
+        // Same identyfikatory ulubionych - do zaznaczania gwiazdek na listach.
+        // Zwraca null, gdy nie udało się pobrać (wtedy można spróbować ponownie).
+        public async Task<List<int>?> GetFavoriteIdsAsync()
+        {
+            try
+            {
+                using var request = await CreateAuthorizedRequestAsync(HttpMethod.Get, "api/product/favorites/ids");
+                if (request == null)
+                    return new List<int>(); // niezalogowany = brak ulubionych
+
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                    return null;
+
+                return await response.Content.ReadFromJsonAsync<List<int>>()
+                    ?? new List<int>();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // true = dodano do ulubionych, false = usunięto, null = błąd / brak logowania
+        public async Task<bool?> ToggleFavoriteAsync(int productId)
+        {
+            try
+            {
+                using var request = await CreateAuthorizedRequestAsync(HttpMethod.Post, $"api/product/{productId}/favorite");
+                if (request == null)
+                    return null;
+
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                    return null;
+
+                var result = await response.Content.ReadFromJsonAsync<FavoriteToggleDTO>();
+                return result?.IsFavorite;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private async Task<HttpRequestMessage?> CreateAuthorizedRequestAsync(HttpMethod method, string url)
+        {
+            var authState = await _authStateProvider.GetAuthenticationStateAsync();
+            var token = authState.User.FindFirst("access_token")?.Value;
+            if (string.IsNullOrEmpty(token))
+                return null;
+
+            var request = new HttpRequestMessage(method, url);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            return request;
+        }
+
         public async Task<List<LocationDTO>> SearchLocationsAsync(string query)
         {
             var url = $"api/product/searchLocations?query={Uri.EscapeDataString(query)}";

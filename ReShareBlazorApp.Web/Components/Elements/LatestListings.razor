@@ -17,7 +17,7 @@
                              Location="Kraków"
                              Term="@product.ExpiresAt.ToString("dd.MM.yyyy HH:mm")"
                              Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")"
-                             Link=@product.ProductId
+                             Link=@product.ProductId OwnerId="@product.UserId"
                              ImageUrl="@(product.ImageIds.Count > 0 ? "/images/" + product.ImageIds[0] : null)"
                              />
             }

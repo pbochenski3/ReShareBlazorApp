@@ -42,7 +42,7 @@
                                      Location="@product.City"
                                      Term="@product.ExpiresAt.ToString("dd.MM.yyyy")"
                                      Published="@product.AddedAt.ToString("dd.MM.yyyy")"
-                                     Link="@product.ProductId" />
+                                     Link="@product.ProductId" OwnerId="@product.UserId" />
                     }
                 }
                 else

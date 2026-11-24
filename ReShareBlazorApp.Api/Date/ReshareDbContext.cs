@@ -15,6 +15,7 @@ namespace ReShareBlazorApp.Api.Date
         public DbSet<UserFollow> UserFollows { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Report> Reports { get; set; }
+        public DbSet<FavoriteProduct> FavoriteProducts { get; set; }
 
         public ReshareDbContext(DbContextOptions<ReshareDbContext> options)
             : base(options)
@@ -41,6 +42,24 @@ namespace ReShareBlazorApp.Api.Date
                 .HasOne(r => r.User)
                 .WithMany()
                 .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Ulubione: jeden wiersz = jedna para (użytkownik, ogłoszenie).
+            // Usunięcie ogłoszenia kasuje je z ulubionych; User = Restrict (jak w Report),
+            // bo SQL Server nie pozwala na kilka ścieżek kaskadowego usuwania.
+            builder.Entity<FavoriteProduct>()
+                .HasKey(f => new { f.UserId, f.ProductId });
+
+            builder.Entity<FavoriteProduct>()
+                .HasOne(f => f.Product)
+                .WithMany()
+                .HasForeignKey(f => f.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<FavoriteProduct>()
+                .HasOne(f => f.User)
+                .WithMany()
+                .HasForeignKey(f => f.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }
