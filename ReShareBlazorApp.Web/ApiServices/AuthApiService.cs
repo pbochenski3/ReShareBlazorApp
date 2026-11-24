@@ -63,6 +63,15 @@ namespace ReShareBlazorApp.Web.ApiServices
 
             return await response.Content.ReadFromJsonAsync<RegisterResponse>();
         }
+
+        public async Task<RegisterResponse?> VerifyRegistrationAsync(string email, string code)
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                "api/auth/verify-registration",
+                new VerifyRegistrationRequest { Email = email, Code = code });
+
+            return await response.Content.ReadFromJsonAsync<RegisterResponse>();
+        }
         public async Task<bool> ForgotPasswordAsync(string email)
         {
             try

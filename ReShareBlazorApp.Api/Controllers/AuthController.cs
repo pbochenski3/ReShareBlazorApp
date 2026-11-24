@@ -20,14 +20,30 @@ namespace ReShareBlazorApp.Api.Controllers
             _userManager = userManager;
         }
 
+        [HttpPost("verify-registration")]
+        public async Task<IActionResult> VerifyRegistration(VerifyRegistrationRequest request)
+        {
+            var result = await _authService.VerifyRegistrationAsync(request);
+            if (result == null)
+            {
+                return BadRequest(new
+                {
+                    Message = "Nieprawidłowy lub wygasły kod weryfikacyjny."
+                });
+            }
+
+            return Ok(result);
+        }
+
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest request)
         {
             var result = await _authService.RegisterAsync(request);
             if (result == null)
             {
-                return BadRequest(new
+                return BadRequest(new RegisterResponse
                 {
+                    Success = false,
                     Message = "Nie udało się utworzyć konta"
                 });
             }
