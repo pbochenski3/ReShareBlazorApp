@@ -23,6 +23,7 @@ namespace ReShareBlazorApp.Api.Date
         public DbSet<Badge> Badges { get; set; }
         public DbSet<UserBadge> UserBadges { get; set; }
         public DbSet<FavoriteProduct> FavoriteProducts { get; set; }
+		public DbSet<Payment> Payments { get; set; }
 
 
 
@@ -129,7 +130,48 @@ namespace ReShareBlazorApp.Api.Date
 
 				entity.Property(f => f.AddedAt)
 					.HasColumnType("datetime2");
-			});
+                builder.Entity<Payment>(entity =>
+                {
+                    entity.HasKey(p => p.Id);
+
+                    entity.Property(p => p.ProductName)
+                        .HasMaxLength(200)
+                        .IsRequired();
+
+                    entity.Property(p => p.Currency)
+                        .HasMaxLength(3)
+                        .IsRequired();
+
+                    entity.Property(p => p.StripeSessionId)
+                        .HasMaxLength(255);
+
+                    entity.Property(p => p.StripePaymentIntentId)
+                        .HasMaxLength(255);
+
+                    entity.Property(p => p.CreatedAt)
+                        .HasColumnType("datetime2");
+
+                    entity.Property(p => p.PaidAt)
+                        .HasColumnType("datetime2");
+
+                    entity.HasIndex(p => p.StripeSessionId)
+                        .IsUnique();
+
+                    entity.HasIndex(p => p.UserId);
+
+                    entity.HasIndex(p => p.ProductId);
+
+                    entity.HasOne(p => p.User)
+                        .WithMany()
+                        .HasForeignKey(p => p.UserId)
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    entity.HasOne(p => p.Product)
+                        .WithMany()
+                        .HasForeignKey(p => p.ProductId)
+                        .OnDelete(DeleteBehavior.NoAction);
+                });
+            });
         }
 	}
 }

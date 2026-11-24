@@ -74,7 +74,7 @@ builder.Services
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IProductService, ReShareBlazorApp.Api.Services.ProductService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSingleton<IImageStorage, DiskImageStorage>();
 builder.Services.AddScoped<IReportService, ReportService>();
@@ -82,6 +82,17 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
 builder.Services.AddScoped<IAppEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IBadgeService, BadgeService>();
+var stripeSecretKey = builder.Configuration["Stripe:SecretKey"];
+
+if (string.IsNullOrWhiteSpace(stripeSecretKey))
+{
+    throw new InvalidOperationException(
+        "Stripe:SecretKey is not configured.");
+}
+
+builder.Services.AddSingleton(new StripeClient(stripeSecretKey));
+
+builder.Services.AddScoped<StripeCheckoutService>();
 
 
 // Repositories
@@ -113,16 +124,7 @@ using (var scope = app.Services.CreateScope())
 
     await BadgeSeeder.SeedBadgesAsync(context);
 }
-var stripeSecretKey = builder.Configuration["Stripe:SecretKey"];
 
-if (string.IsNullOrWhiteSpace(stripeSecretKey))
-{
-    throw new InvalidOperationException(
-        "Stripe:SecretKey is not configured.");
-}
-
-builder.Services.AddSingleton(
-    new StripeClient(stripeSecretKey));
 
 app.UseHttpsRedirection();
 
