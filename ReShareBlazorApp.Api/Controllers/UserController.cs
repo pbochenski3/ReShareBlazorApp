@@ -6,6 +6,7 @@ using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace ReShareBlazorApp.Api.Controllers
 {
@@ -100,6 +101,21 @@ namespace ReShareBlazorApp.Api.Controllers
             if (error == null)
                 await _activityLogger.LogAsync(User, ActivityActions.AvatarRemoved, "Usunięto zdjęcie profilowe", "User", userId);
             return error == null ? NoContent() : BadRequest(new { message = error });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var users = await _userManager.Users
+                .Select(u => new
+                {
+                    Id = u.Id,
+                    Username = u.UserName
+                })
+                .ToListAsync();
+
+            return Ok(users);
         }
 
         private bool TryGetUserId(out int userId)

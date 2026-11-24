@@ -93,6 +93,16 @@ namespace ReShareBlazorApp.Api.Services
                 IsActive = true
             };
             var result = await _userManager.CreateAsync(user, pending.Request.Password);
+            await _badgeService.AwardBadgeAsync(user.Id, "Pierwsze koty za płoty");
+                    if (!alreadyEarned)
+                    {
+                        var userBadge = new UserBadge
+                        {
+                            UserId = user.Id,
+                            BadgeId = badge.Id,
+                            IsEarned = true,
+                            EarnedAt = DateTime.Now
+                        };
 
             if (!result.Succeeded)
             {

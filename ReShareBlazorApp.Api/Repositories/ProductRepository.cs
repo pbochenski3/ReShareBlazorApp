@@ -23,11 +23,21 @@ namespace ReShareBlazorApp.Api.Repositories
             {
                 await _context.AddAsync(product);
                 await _context.SaveChangesAsync();
+
+                var productsCount = await _context.Products
+                    .CountAsync(p => p.UserId == product.UserId);
+
+                if (productsCount >= 1)
+                    await AwardBadgeIfNeededAsync(product.UserId, "Pierwsze ogłoszenie");
+
+                if (productsCount >= 5)
+                    await AwardBadgeIfNeededAsync(product.UserId, "Aktywny sprzedawca");
+
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"[ProductRepository] Error occured in AddProductAsync : {ex}");
+                _logger.LogError(ex, "[ProductRepository] Error occurred in AddProductAsync");
                 return false;
             }
         }
@@ -62,10 +72,6 @@ namespace ReShareBlazorApp.Api.Repositories
             }
         }
           
-
-
-
-
         public async Task<bool> DeleteProductAsync(int productId, int userId)
         {
             try
@@ -329,6 +335,36 @@ namespace ReShareBlazorApp.Api.Repositories
               })
               .ToListAsync();
             return locations ?? new List<LocationDTO>();
+        }
+
+        private async Task AwardBadgeIfNeededAsync(int userId, string badgeName)
+        {
+            // Szukamy odznaki w bazie
+            var badge = await _context.Badges
+                .FirstOrDefaultAsync(b => b.Name == badgeName);
+
+            if (badge == null)
+                return;
+
+            // Sprawdzamy, czy użytkownik już ją zdobył
+            var alreadyEarned = await _context.UserBadges
+                .AnyAsync(ub =>
+                    ub.UserId == userId &&
+                    ub.BadgeId == badge.Id);
+
+            if (alreadyEarned)
+                return;
+
+            // Przyznajemy odznakę
+            _context.UserBadges.Add(new UserBadge
+            {
+                UserId = userId,
+                BadgeId = badge.Id,
+                IsEarned = true,
+                EarnedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
         }
     }
 }
