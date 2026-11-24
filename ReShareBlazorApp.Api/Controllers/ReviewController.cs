@@ -14,7 +14,6 @@ namespace ReShareBlazorApp.Api.Controllers
     public class ReviewController : ControllerBase
     {
         private readonly ReshareDbContext _context;
-
         private readonly IActivityLogger _activityLogger;
         private readonly INotificationService _notificationService;
         private readonly ILogger<ReviewController> _logger;
@@ -61,7 +60,6 @@ namespace ReShareBlazorApp.Api.Controllers
 
             var normalized = username.Trim();
 
-            // Szukamy użytkownika o podanym loginie, aby pobrać opinie z jego ogłoszeń
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.UserName == normalized);
 
@@ -90,8 +88,7 @@ namespace ReShareBlazorApp.Api.Controllers
 
         [HttpPost]
         [Microsoft.AspNetCore.Authorization.Authorize]
-        public async Task<IActionResult> AddReview(
-    [FromBody] CreateReviewRequest request)
+        public async Task<IActionResult> AddReview([FromBody] CreateReviewRequest request)
         {
             if (request.ProductId <= 0 ||
                 request.Rating < 1 ||
@@ -134,34 +131,24 @@ namespace ReShareBlazorApp.Api.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
-            // Zapisujemy opinię tylko raz.
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
 
-            // Liczba napisanych opinii przez użytkownika.
             var writtenReviewsCount = await _context.Reviews
                 .CountAsync(r =>
                     r.AuthorName == authorName &&
                     !r.IsHidden);
 
-            // 10 napisanych opinii.
             if (writtenReviewsCount >= 10)
             {
-                await AwardBadgeIfNeededAsync(
-                    userId,
-                    "Mistrz recenzji");
+                await AwardBadgeIfNeededAsync(userId, "Mistrz recenzji");
             }
 
-
-            // pierwsza opinia napisana przez użytkownika.
             if (writtenReviewsCount >= 1)
             {
-                await AwardBadgeIfNeededAsync(
-                    userId,
-                    "Pierwsza opinia");
+                await AwardBadgeIfNeededAsync(userId, "Pierwsza opinia");
             }
 
-            // Liczba opinii otrzymanych przez właściciela ogłoszenia.
             var receivedReviewsCount = await (
                 from r in _context.Reviews
                 join p in _context.Products
@@ -170,23 +157,14 @@ namespace ReShareBlazorApp.Api.Controllers
                 select r
             ).CountAsync();
 
-            // 5 otrzymanych opinii.
             if (receivedReviewsCount >= 5)
             {
-                await AwardBadgeIfNeededAsync(
-                    product.UserId,
-                    "Król wśród kupujących");
+                await AwardBadgeIfNeededAsync(product.UserId, "Król wśród kupujących");
             }
 
-            var description =
-                $"Dodano opinię ({review.Rating}/5) do ogłoszenia (id: {review.ProductId})";
+            var description = $"Dodano opinię ({review.Rating}/5) do ogłoszenia (id: {review.ProductId})";
+            await _activityLogger.LogAsync(User, ActivityActions.ReviewAdded, description, "Product", review.ProductId);
 
-            await _activityLogger.LogAsync(
-                User,
-                ActivityActions.ReviewAdded,
-                description,
-                "Product",
-                review.ProductId);
             try
             {
                 await _notificationService.CreateAsync(
@@ -203,18 +181,13 @@ namespace ReShareBlazorApp.Api.Controllers
                     review.ProductId);
             }
 
-            var description = $"Dodano opinię ({review.Rating}/5) do ogłoszenia (id: {review.ProductId})";
-            if (User.Identity?.IsAuthenticated == true)
-                await _activityLogger.LogAsync(User, ActivityActions.ReviewAdded, description, "Product", review.ProductId);
-            else
-                await _activityLogger.LogAsync((int?)null, review.AuthorName, ActivityActions.ReviewAdded, description, "Product", review.ProductId);
-
             return Ok(new
             {
                 message = "Opinia została dodana pomyślnie."
             });
         }
-        [HttpGet("user/{userId:int}")]
+
+        [HttpGet("user/{userId:int}/rating")]
         public async Task<ActionResult<UserRatingDTO>> GetUserRating(int userId)
         {
             var reviews = await _context.Reviews

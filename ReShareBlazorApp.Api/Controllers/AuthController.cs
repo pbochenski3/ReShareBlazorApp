@@ -40,21 +40,6 @@ namespace ReShareBlazorApp.Api.Controllers
             return Ok(result);
         }
 
-        [HttpPost("verify-registration")]
-        public async Task<IActionResult> VerifyRegistration(VerifyRegistrationRequest request)
-        {
-            var result = await _authService.VerifyRegistrationAsync(request);
-            if (result == null)
-            {
-                return BadRequest(new
-                {
-                    Message = "Nieprawidłowy lub wygasły kod weryfikacyjny."
-                });
-            }
-
-            return Ok(result);
-        }
-
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest request)
         {
@@ -130,6 +115,7 @@ namespace ReShareBlazorApp.Api.Controllers
                 "Zalogowano do serwisu", "User", user.Id);
             return Ok(result);
         }
+
         [HttpPost("logout")]
         [Authorize]
         public async Task<IActionResult> Logout()
@@ -164,6 +150,5 @@ namespace ReShareBlazorApp.Api.Controllers
             }
             return Ok(new { Message = "Hasło zostało zmienione." });
         }
-
     }
 }

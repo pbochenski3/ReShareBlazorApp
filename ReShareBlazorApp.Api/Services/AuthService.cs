@@ -92,7 +92,6 @@ namespace ReShareBlazorApp.Api.Services
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
-            var result = await _userManager.CreateAsync(user, pending.Request.Password);
 
             var result = await _userManager.CreateAsync(user, pending.Request.Password);
             if (!result.Succeeded)

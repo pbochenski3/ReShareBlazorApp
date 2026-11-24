@@ -98,31 +98,6 @@ public class AuthApiService
             return false;
         }
     }
-            return await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        }
-
-        public async Task<RegisterResponse?> VerifyRegistrationAsync(string email, string code)
-        {
-            var response = await _httpClient.PostAsJsonAsync(
-                "api/auth/verify-registration",
-                new VerifyRegistrationRequest { Email = email, Code = code });
-
-            return await response.Content.ReadFromJsonAsync<RegisterResponse>();
-        }
-        public async Task<bool> ForgotPasswordAsync(string email)
-        {
-            try
-            {
-                var response = await _httpClient.PostAsJsonAsync(
-                    "api/auth/forgot-password",
-                    new ForgotPasswordRequest { Email = email });
-                return response.IsSuccessStatusCode;
-            }
-            catch (HttpRequestException)
-            {
-                return false;
-            }
-        }
 
     public async Task<string?> ResetPasswordAsync(ResetPasswordRequest request)
     {
