@@ -92,18 +92,8 @@ namespace ReShareBlazorApp.Api.Services
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
-            var result = await _userManager.CreateAsync(user, pending.Request.Password);
-            await _badgeService.AwardBadgeAsync(user.Id, "Pierwsze koty za płoty");
-                    if (!alreadyEarned)
-                    {
-                        var userBadge = new UserBadge
-                        {
-                            UserId = user.Id,
-                            BadgeId = badge.Id,
-                            IsEarned = true,
-                            EarnedAt = DateTime.Now
-                        };
 
+            var result = await _userManager.CreateAsync(user, pending.Request.Password);
             if (!result.Succeeded)
             {
                 return null;
@@ -119,7 +109,7 @@ namespace ReShareBlazorApp.Api.Services
                 "User",
                 user.Id);
 
-
+            await _badgeService.AwardBadgeAsync(user.Id, "Pierwsze koty za płoty");
             await _badgeService.AwardBadgeAsync(user.Id, "Nowy użytkownik");
 
             return new RegisterResponse
