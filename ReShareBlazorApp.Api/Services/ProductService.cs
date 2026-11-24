@@ -51,23 +51,6 @@ namespace ReShareBlazorApp.Api.Services
                 !Enum.IsDefined(product.Category) ||
                 product.ExpiresAt <= DateTime.UtcNow)
             {
-                return false;
-            }
-
-            if (product == null ||
-                string.IsNullOrWhiteSpace(product.Name) ||
-                product.Name.Trim().Length is < 3 or > 50 ||
-                string.IsNullOrWhiteSpace(product.Description) ||
-                product.Description.Trim().Length > 5000 ||
-                string.IsNullOrWhiteSpace(product.City) ||
-                product.City.Trim().Length > 60 ||
-                 product.PriceMin < 0.01m ||
-                 product.PriceMax < product.PriceMin ||
-                 product.PriceMax > 100000 ||
-                !Enum.IsDefined(product.Type) ||
-                !Enum.IsDefined(product.Category) ||
-                product.ExpiresAt <= DateTime.UtcNow)
-            {
                 return null;
             }
 

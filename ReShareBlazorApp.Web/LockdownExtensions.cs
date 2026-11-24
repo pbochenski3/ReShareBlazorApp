@@ -11,7 +11,6 @@ public static class LockdownExtensions
         app.Use(async (ctx, next) =>
         {
             var path = ctx.Request.Path.Value ?? "";
-            var open = new[] { "/login", "/admin", "/_blazor", "/_framework", "/_content", "/css", "/js", "/favicon" };
             var open = new[] { "/login", "/auth", "/admin", "/_blazor", "/_framework", "/_content", "/css", "/js", "/favicon" };
 
             if (open.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase)) || ctx.User.IsInRole("Admin"))

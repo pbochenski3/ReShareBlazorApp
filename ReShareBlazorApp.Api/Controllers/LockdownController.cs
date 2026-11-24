@@ -19,7 +19,6 @@ public class LockdownController : ControllerBase
         _db = db;
         _activityLogger = activityLogger;
     }
-    public LockdownController(ReshareDbContext db) => _db = db;
 
     // Publiczny – z niego korzysta strona, żeby wiedzieć czy pokazać przerwę techniczną.
     [HttpGet("api/lockdown")]

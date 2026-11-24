@@ -4,8 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared;
-using Microsoft.EntityFrameworkCore;
-using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Shared.DTOs;
 
 namespace ReShareBlazorApp.Api.Controllers;
@@ -17,17 +15,12 @@ public class ContactController : ControllerBase
     private readonly ReshareDbContext _context;
     private readonly ILogger<ContactController> _logger;
     private readonly IActivityLogger _activityLogger;
-    private readonly ReshareDbContext _context;
-    private readonly ILogger<ContactController> _logger;
 
     public ContactController(ReshareDbContext context, ILogger<ContactController> logger, IActivityLogger activityLogger)
-    public ContactController(ReshareDbContext context, ILogger<ContactController> logger)
     {
         _context = context;
         _logger = logger;
         _activityLogger = activityLogger;
-        _context = context;
-        _logger = logger;
     }
 
     [HttpPost]
@@ -113,20 +106,6 @@ public class ContactController : ControllerBase
             "ContactMessage", id);
 
         return NoContent();
-        return NoContent();
     }
-
-    [Authorize(Roles = "Admin")]
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> DeleteMessage(int id)
-    {
-        var msg = await _context.ContactMessages.FindAsync(id);
-        if (msg is null)
-            return NotFound();
-
-        _context.ContactMessages.Remove(msg);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
-    }
+ 
 }
