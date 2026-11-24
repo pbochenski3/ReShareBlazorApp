@@ -12,7 +12,7 @@ using ReShareBlazorApp.Api.Date;
 namespace ReShareBlazorApp.Api.Migrations
 {
     [DbContext(typeof(ReshareDbContext))]
-    [Migration("20261123112642_Init")]
+    [Migration("20261123113447_Init")]
     partial class Init
     {
         /// <inheritdoc />
