@@ -2,6 +2,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
+using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
+using Microsoft.EntityFrameworkCore;
+using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Shared.DTOs;
 
 namespace ReShareBlazorApp.Api.Controllers;
@@ -12,9 +16,16 @@ public class ContactController : ControllerBase
 {
     private readonly ReshareDbContext _context;
     private readonly ILogger<ContactController> _logger;
+    private readonly IActivityLogger _activityLogger;
+    private readonly ReshareDbContext _context;
+    private readonly ILogger<ContactController> _logger;
 
+    public ContactController(ReshareDbContext context, ILogger<ContactController> logger, IActivityLogger activityLogger)
     public ContactController(ReshareDbContext context, ILogger<ContactController> logger)
     {
+        _context = context;
+        _logger = logger;
+        _activityLogger = activityLogger;
         _context = context;
         _logger = logger;
     }
@@ -81,6 +92,27 @@ public class ContactController : ControllerBase
         msg.IsRead = true;
         await _context.SaveChangesAsync();
 
+        return NoContent();
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteMessage(int id)
+    {
+        var msg = await _context.ContactMessages.FindAsync(id);
+        if (msg is null)
+            return NotFound();
+
+        var subject = msg.Subject;
+
+        _context.ContactMessages.Remove(msg);
+        await _context.SaveChangesAsync();
+
+        await _activityLogger.LogAsync(User, ActivityActions.AdminMessageDeleted,
+            $"Usunięto wiadomość kontaktową (id: {id}, temat: {subject})",
+            "ContactMessage", id);
+
+        return NoContent();
         return NoContent();
     }
 

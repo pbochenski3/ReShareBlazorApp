@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
+using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 
 namespace ReShareBlazorApp.Api.Controllers
@@ -11,10 +13,12 @@ namespace ReShareBlazorApp.Api.Controllers
 	public class PromoBannerController : ControllerBase
 	{
 		private readonly ReshareDbContext _context;
+		private readonly IActivityLogger _activityLogger;
 
-		public PromoBannerController(ReshareDbContext context)
+		public PromoBannerController(ReshareDbContext context, IActivityLogger activityLogger)
 		{
 			_context = context;
+			_activityLogger = activityLogger;
 		}
 
 		// GET: api/promobanner/active
@@ -105,6 +109,10 @@ namespace ReShareBlazorApp.Api.Controllers
 			_context.PromoBanners.Add(newBanner);
 			await _context.SaveChangesAsync();
 
+			await _activityLogger.LogAsync(User, ActivityActions.AdminBannerSet,
+				$"Ustawiono pasek promocyjny na {request.DurationHours} h: {newBanner.Message}",
+				"PromoBanner", newBanner.Id);
+
 			return Ok(new PromoBannerDTO
 			{
 				Id = newBanner.Id,
@@ -133,6 +141,10 @@ namespace ReShareBlazorApp.Api.Controllers
 			}
 
 			await _context.SaveChangesAsync();
+
+			await _activityLogger.LogAsync(User, ActivityActions.AdminBannerDisabled,
+				"Wyłączono pasek promocyjny", "PromoBanner", null);
+
 			return Ok(new { message = "Wyłączono pasek promocyjny." });
 		}
 	}

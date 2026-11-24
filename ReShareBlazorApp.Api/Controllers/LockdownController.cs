@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
+using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 
 namespace ReShareBlazorApp.Api.Controllers;
@@ -10,6 +12,13 @@ namespace ReShareBlazorApp.Api.Controllers;
 public class LockdownController : ControllerBase
 {
     private readonly ReshareDbContext _db;   // nazwa Twojego DbContext
+    private readonly IActivityLogger _activityLogger;
+
+    public LockdownController(ReshareDbContext db, IActivityLogger activityLogger)
+    {
+        _db = db;
+        _activityLogger = activityLogger;
+    }
     public LockdownController(ReshareDbContext db) => _db = db;
 
     // Publiczny – z niego korzysta strona, żeby wiedzieć czy pokazać przerwę techniczną.
@@ -50,6 +59,10 @@ public class LockdownController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+
+        await _activityLogger.LogAsync(User, ActivityActions.AdminLockdownChanged,
+            dto.IsLocked ? "Włączono przerwę techniczną" : "Wyłączono przerwę techniczną",
+            "Lockdown", 1);
 
         return NoContent();
     }

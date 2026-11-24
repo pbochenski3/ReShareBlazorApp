@@ -23,10 +23,18 @@ namespace ReShareBlazorApp.Web.ApiServices
                 Email = model.Email,
                 Password = model.Password
             };
-            var response = await _httpClient.PostAsJsonAsync(
-                "api/auth/login",
-                request
-                );
+            HttpResponseMessage response;
+            try
+            {
+                response = await _httpClient.PostAsJsonAsync(
+                    "api/auth/login",
+                    request
+                    );
+            }
+            catch (HttpRequestException)
+            {
+                return (null, "Nie można połączyć się z serwerem API. Sprawdź, czy projekt Api jest uruchomiony.");
+            }
             if (!response.IsSuccessStatusCode)
             {
                 try
@@ -41,6 +49,40 @@ namespace ReShareBlazorApp.Web.ApiServices
             }
             var loginResp = await response.Content.ReadFromJsonAsync<LoginResponse>();
             return (loginResp, null);
+        }
+
+        private class LoginErrorBody
+        {
+            public string? Message { get; set; }
+            {
+                try
+                {
+                    var err = await response.Content.ReadFromJsonAsync<LoginErrorBody>();
+                    if (!string.IsNullOrWhiteSpace(err?.Message))
+                        return (null, err.Message);
+                }
+                catch { }
+
+                return (null, "Nieprawidłowy e-mail lub hasło!");
+            }
+            var loginResp = await response.Content.ReadFromJsonAsync<LoginResponse>();
+            return (loginResp, null);
+        }
+
+        // Zapisuje wylogowanie w dzienniku aktywności (nie przerywa wylogowania, gdy API nie odpowiada).
+        public async Task LogoutAsync(string? token)
+        {
+            if (string.IsNullOrEmpty(token))
+                return;
+
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, "api/auth/logout");
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                (await _httpClient.SendAsync(request)).Dispose();
+            }
+            catch (HttpRequestException) { }
+            catch (TaskCanceledException) { }
         }
 
         private class LoginErrorBody
@@ -72,6 +114,48 @@ namespace ReShareBlazorApp.Web.ApiServices
 
             return await response.Content.ReadFromJsonAsync<RegisterResponse>();
         }
+        public async Task<bool> ForgotPasswordAsync(string email)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync(
+                    "api/auth/forgot-password",
+                    new ForgotPasswordRequest { Email = email });
+                return response.IsSuccessStatusCode;
+            }
+            catch (HttpRequestException)
+            {
+                return false;
+            }
+        }
+
+        // Zwraca null gdy hasło zmieniono, w przeciwnym razie komunikat błędu.
+        public async Task<string?> ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync(
+                    "api/auth/reset-password",
+                    request);
+                if (response.IsSuccessStatusCode)
+                    return null;
+
+                try
+                {
+                    var body = await response.Content.ReadFromJsonAsync<ErrorBody>();
+                    if (!string.IsNullOrWhiteSpace(body?.Message))
+                        return body.Message;
+                }
+                catch { }
+                return "Nie udało się zmienić hasła. Spróbuj ponownie.";
+            }
+            catch (HttpRequestException)
+            {
+                return "Nie udało się połączyć z serwerem. Spróbuj ponownie później.";
+            }
+        }
+
+        private class ErrorBody { public string? Message { get; set; } }
         public async Task<bool> ForgotPasswordAsync(string email)
         {
             try
