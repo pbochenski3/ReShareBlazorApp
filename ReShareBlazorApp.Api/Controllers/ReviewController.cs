@@ -81,9 +81,12 @@ namespace ReShareBlazorApp.Api.Controllers
 
         [HttpPost]
         [Microsoft.AspNetCore.Authorization.Authorize]
-        public async Task<IActionResult> AddReview([FromBody] CreateReviewRequest request)
+        public async Task<IActionResult> AddReview(
+    [FromBody] CreateReviewRequest request)
         {
-            if (request.ProductId <= 0 || request.Rating < 1 || request.Rating > 5)
+            if (request.ProductId <= 0 ||
+                request.Rating < 1 ||
+                request.Rating > 5)
             {
                 return BadRequest("Nieprawidłowe dane opinii.");
             }
@@ -94,6 +97,7 @@ namespace ReShareBlazorApp.Api.Controllers
             }
 
             var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
             if (!int.TryParse(userIdValue, out var userId))
                 return Unauthorized();
 
@@ -121,16 +125,64 @@ namespace ReShareBlazorApp.Api.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
+            // Zapisujemy opinię tylko raz.
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
 
-            var description = $"Dodano opinię ({review.Rating}/5) do ogłoszenia (id: {review.ProductId})";
-            if (User.Identity?.IsAuthenticated == true)
-                await _activityLogger.LogAsync(User, ActivityActions.ReviewAdded, description, "Product", review.ProductId);
-            else
-                await _activityLogger.LogAsync((int?)null, review.AuthorName, ActivityActions.ReviewAdded, description, "Product", review.ProductId);
+            // Liczba napisanych opinii przez użytkownika.
+            var writtenReviewsCount = await _context.Reviews
+                .CountAsync(r =>
+                    r.AuthorName == authorName &&
+                    !r.IsHidden);
 
-            return Ok(new { message = "Opinia została dodana pomyślnie." });
+            // 10 napisanych opinii.
+            if (writtenReviewsCount >= 10)
+            {
+                await AwardBadgeIfNeededAsync(
+                    userId,
+                    "Mistrz recenzji");
+            }
+
+
+            // pierwsza opinia napisana przez użytkownika.
+            if (writtenReviewsCount >= 1)
+            {
+                await AwardBadgeIfNeededAsync(
+                    userId,
+                    "Pierwsza opinia");
+            }
+
+            // Liczba opinii otrzymanych przez właściciela ogłoszenia.
+            var receivedReviewsCount = await (
+                from r in _context.Reviews
+                join p in _context.Products
+                    on r.ProductId equals p.Id
+                where p.UserId == product.UserId && !r.IsHidden
+                select r
+            ).CountAsync();
+
+            // 5 otrzymanych opinii.
+            if (receivedReviewsCount >= 5)
+            {
+                await AwardBadgeIfNeededAsync(
+                    product.UserId,
+                    "Król wśród kupujących");
+            }
+
+            var description =
+                $"Dodano opinię ({review.Rating}/5) do ogłoszenia (id: {review.ProductId})";
+
+            await _activityLogger.LogAsync(
+                User,
+                ActivityActions.ReviewAdded,
+                description,
+                "Product",
+                review.ProductId);
+
+            return Ok(new
+            {
+                message = "Opinia została dodana pomyślnie."
+            });
         }
         [HttpGet("user/{userId:int}")]
         public async Task<ActionResult<UserRatingDTO>> GetUserRating(int userId)
@@ -148,6 +200,33 @@ namespace ReShareBlazorApp.Api.Controllers
                 AverageRating = reviews.Any() ? reviews.Average() : 0,
                 TotalReviews = reviews.Count
             });
+        }
+
+        private async Task AwardBadgeIfNeededAsync(int userId, string badgeName)
+        {
+            var badge = await _context.Badges
+                .FirstOrDefaultAsync(b => b.Name == badgeName);
+
+            if (badge == null)
+                return;
+
+            var alreadyEarned = await _context.UserBadges
+                .AnyAsync(ub =>
+                    ub.UserId == userId &&
+                    ub.BadgeId == badge.Id);
+
+            if (alreadyEarned)
+                return;
+
+            _context.UserBadges.Add(new UserBadge
+            {
+                UserId = userId,
+                BadgeId = badge.Id,
+                IsEarned = true,
+                EarnedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
         }
     }
 }

@@ -59,6 +59,13 @@ namespace ReShareBlazorApp.Api.Data
                 },
                 new Badge
                 {
+                    Name = "Pierwsza opinia",
+                    Description = "Za wystawienie pierwszej opinii.",
+                    Icon = "💌"
+                },
+
+                new Badge
+                {
                     Name = "Diamentowy sprzedawca",
                     Description = "Za wykonanie 10 zakończonych sprzedaży.",
                     Icon = "💎"
