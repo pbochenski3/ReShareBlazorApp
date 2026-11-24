@@ -106,6 +106,51 @@
         Favorites.Changed -= OnFavoritesChanged;
     }
 
+    private bool isTogglingFavorite;
+
+    private bool IsFavorite => Link > 0 && Favorites.IsFavorite(Link);
+
+    private string FavoriteLabel => IsFavorite ? "Usuń z ulubionych" : "Dodaj do ulubionych";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Favorites.Changed += OnFavoritesChanged;
+        await Favorites.EnsureLoadedAsync();
+    }
+
+    private void OnFavoritesChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleFavoriteAsync()
+    {
+        if (isTogglingFavorite || Link <= 0)
+            return;
+
+        // Gwiazdka działa tylko dla zalogowanych - reszta trafia na logowanie
+        if (!await Favorites.IsLoggedInAsync())
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        isTogglingFavorite = true;
+        try
+        {
+            await Favorites.ToggleAsync(Link);
+        }
+        finally
+        {
+            isTogglingFavorite = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        Favorites.Changed -= OnFavoritesChanged;
+    }
+
     private string TypeClass => Type switch
     {
         ProductType.Sell => "type-sell",
