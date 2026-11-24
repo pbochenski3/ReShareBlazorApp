@@ -133,15 +133,7 @@ namespace ReShareBlazorApp.Web.ApiServices
             return true;
         }
 
-        public async Task<List<BadgeDTO>> GetUserBadgesAsync(int userId)
-        {
-            var response = await _httpClient.GetAsync($"api/badge/user/{userId}");
-
-            response.EnsureSuccessStatusCode();
-
-            return await response.Content.ReadFromJsonAsync<List<BadgeDTO>>()
-                   ?? new List<BadgeDTO>();
-        }
+      
 
     }
 }

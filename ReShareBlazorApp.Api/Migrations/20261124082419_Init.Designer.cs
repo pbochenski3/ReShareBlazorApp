@@ -12,8 +12,8 @@ using ReShareBlazorApp.Api.Date;
 namespace ReShareBlazorApp.Api.Migrations
 {
     [DbContext(typeof(ReshareDbContext))]
-    [Migration("20261123113940_Add")]
-    partial class Add
+    [Migration("20261124082419_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -393,6 +393,12 @@ namespace ReShareBlazorApp.Api.Migrations
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<decimal>("PriceMax")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PriceMin")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("Type")
                         .HasColumnType("int");
 
@@ -400,6 +406,9 @@ namespace ReShareBlazorApp.Api.Migrations
                         .HasColumnType("int");
 
                     b.Property<bool>("isDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("isSold")
                         .HasColumnType("bit");
 
                     b.HasKey("Id");
