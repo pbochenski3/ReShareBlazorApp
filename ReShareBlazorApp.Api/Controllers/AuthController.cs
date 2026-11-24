@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
+using System.Security.Claims;
 
 namespace ReShareBlazorApp.Api.Controllers
 {
@@ -10,6 +12,10 @@ namespace ReShareBlazorApp.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly UserManager<User> _userManager;
+        private readonly IActivityLogger _activityLogger;
+
+        public AuthController(IAuthService authService, UserManager<User> userManager, IActivityLogger activityLogger)
         public AuthController(IAuthService authService)
         {
             _authService = authService;
@@ -33,11 +39,15 @@ namespace ReShareBlazorApp.Api.Controllers
             var result = await _authService.LoginAsync(request);
             if (result == null)
             {
+                await _activityLogger.LogAsync(user.Id, user.UserName, ActivityActions.UserLoginFailed,
+                    "Nieudane logowanie", "User", user.Id);
                 return Unauthorized(new
                 {
                     Message = "Nieprawidłowy email lub hasło."
                 });
             }
+            await _activityLogger.LogAsync(user.Id, user.UserName, ActivityActions.UserLoggedIn,
+                "Zalogowano do serwisu", "User", user.Id);
             return Ok(result);
         }
 

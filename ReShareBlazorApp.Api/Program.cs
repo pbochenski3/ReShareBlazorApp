@@ -71,6 +71,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider
          .GetRequiredService<ReshareDbContext>();
+    await context.Database.MigrateAsync(); // tworzy bazę i tabele, jeśli jeszcze ich nie ma
     await LocationImportService.ImportAsync(context, app.Environment.ContentRootPath);
 
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();

@@ -72,9 +72,11 @@ namespace ReShareBlazorApp.Web.Endpoints
                     );
                 return Results.LocalRedirect("/");
             });
-            app.MapPost("/auth/logout", async
-                (HttpContext context) =>
+            app.MapPost("/auth/logout", async (
+                HttpContext context,
+                AuthApiService authApiService) =>
             {
+                await authApiService.LogoutAsync(context.User.FindFirst("access_token")?.Value);
                 await context.SignOutAsync(
                  CookieAuthenticationDefaults.AuthenticationScheme
                 );
