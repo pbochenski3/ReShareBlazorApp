@@ -83,30 +83,18 @@
                 </label>
 
                 <label class="home-field">
+                    <span>Stan produktu</span>
 
-                    <span>Stan</span>
+                    <select name="stan" @bind="selectedCondition">
+                        <option value="">Wszystkie</option>
 
-                    <select name="stan"
-                            @bind="selectedCondition">
-
-                        <option value="">
-                            Wszystkie
-                        </option>
-
-                        <option value="New">
-                            Nowy
-                        </option>
-
-                        <option value="Used">
-                            Używany
-                        </option>
-
-                        <option value="Damaged">
-                            Uszkodzony
-                        </option>
-
+                        @foreach (var condition in Enum.GetValues<ProductCondition>())
+                        {
+                            <option value="@condition.ToString()">
+                                @GetConditionName(condition)
+                            </option>
+                        }
                     </select>
-
                 </label>
 
                 <label class="home-field">
@@ -325,13 +313,20 @@
                 sort: sortowanie
             );
 
-            if (!string.IsNullOrWhiteSpace(selectedType))
+            ProductCondition? condition = null;
+
+            if (Enum.TryParse<ProductCondition>(
+                selectedCondition,
+                out var parsedCondition))
             {
-                ProductsList = ProductsList.Where(p =>
-                    (selectedType == "Sprzedam" && p.Type == ProductType.Sell) ||
-                    (selectedType == "Oddam" && p.Type == ProductType.GiveAway) ||
-                    (selectedType == "Szukam" && p.Type == ProductType.LookingFor)
-                ).ToList();
+                condition = parsedCondition;
+            }
+
+            if (condition.HasValue)
+            {
+                ProductsList = ProductsList
+                    .Where(p => p.Condition == condition.Value)
+                    .ToList();
             }
             if (!string.IsNullOrWhiteSpace(selectedCondition))
             {
@@ -384,6 +379,18 @@
             ProductCategory.Transports => "Transport",
             ProductCategory.Services => "Usługi",
             _ => category.ToString()
+        };
+    }
+    private string GetConditionName(ProductCondition condition)
+    {
+        return condition switch
+        {
+            ProductCondition.New => "Nowy",
+            ProductCondition.LikeNew => "Jak nowy",
+            ProductCondition.Good => "Dobry",
+            ProductCondition.Fair => "Dostateczny",
+            ProductCondition.Damaged => "Uszkodzony",
+            _ => condition.ToString()
         };
     }
 }
