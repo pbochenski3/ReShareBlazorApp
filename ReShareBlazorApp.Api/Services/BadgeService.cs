@@ -1,5 +1,4 @@
-﻿
-using ReShareBlazorApp.Api.Interfaces.Repositories;
+﻿using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Shared.DTOs;
@@ -10,19 +9,20 @@ namespace ReShareBlazorApp.Api.Services
     {
         private readonly IBadgeRepository _badgeRepository;
 
+        public BadgeService(
+            IBadgeRepository badgeRepository,
+            ILogger<BadgeService> logger)
         public BadgeService(IBadgeRepository badgeRepository)
         {
             _badgeRepository = badgeRepository;
         }
 
-        // Pobieranie odznak konkretnego użytkownika
         public async Task<List<BadgeDTO>> GetUserBadgesAsync(int userId)
         {
             var allBadges = await _badgeRepository.ViewAllBadgesAsync();
-
             var unlockedBadges = await _badgeRepository.ViewUnlockBadgeAsync(userId);
 
-            var result = allBadges.Select(b => new BadgeDTO
+            return allBadges.Select(b => new BadgeDTO
             {
                 Id = b.Id,
                 Name = b.Name,
@@ -30,11 +30,8 @@ namespace ReShareBlazorApp.Api.Services
                 Icon = b.Icon,
                 IsEarned = unlockedBadges.Any(ub => ub.Id == b.Id)
             }).ToList();
-
-            return result;
         }
 
-        // Pobieranie wszystkich odznak
         public async Task<List<BadgeDTO>> GetAllBadgesAsync()
         {
             var allBadges = await _badgeRepository.ViewAllBadgesAsync();
@@ -49,6 +46,29 @@ namespace ReShareBlazorApp.Api.Services
             }).ToList();
         }
 
+        public async Task<bool> AwardBadgeAsync(int userId, string badgeName)
+        {
+            var awarded = await _badgeRepository.AwardBadgeAsync(userId, badgeName);
+
+            if (!awarded)
+            {
+                _logger.LogWarning(
+                    "Nie udało się przyznać odznaki {BadgeName} użytkownikowi {UserId}.",
+                    badgeName, userId);
+            }
+
+            return awarded;
+        }
+
+        public async Task<bool> AwardBadgeToUserAsync(int userId, int badgeId)
+        {
+            return await _badgeRepository.AwardBadgeToUserAsync(userId, badgeId);
+        }
+
+        public async Task<bool> RemoveBadgeFromUserAsync(int userId, int badgeId)
+        {
+            return await _badgeRepository.RemoveBadgeFromUserAsync(userId, badgeId);
+        }
         // Dodawanie nowej odznaki
         public async Task<bool> AddBadgeAsync(BadgeDTO badge)
         {

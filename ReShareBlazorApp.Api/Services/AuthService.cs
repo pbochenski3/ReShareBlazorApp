@@ -51,6 +51,7 @@ namespace ReShareBlazorApp.Api.Services
                             ub.UserId == user.Id &&
                             ub.BadgeId == badge.Id);
 
+            await _badgeService.AwardBadgeAsync(user.Id, "Pierwsze koty za płoty");
                     if (!alreadyEarned)
                     {
                         var userBadge = new UserBadge

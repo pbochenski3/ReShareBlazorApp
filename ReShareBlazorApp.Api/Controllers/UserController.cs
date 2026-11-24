@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace ReShareBlazorApp.Api.Controllers
 {
@@ -69,6 +70,21 @@ namespace ReShareBlazorApp.Api.Controllers
             if (!TryGetUserId(out var userId)) return Unauthorized();
             var error = await _userService.RemoveAvatarAsync(userId);
             return error == null ? NoContent() : BadRequest(new { message = error });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var users = await _userManager.Users
+                .Select(u => new
+                {
+                    Id = u.Id,
+                    Username = u.UserName
+                })
+                .ToListAsync();
+
+            return Ok(users);
         }
 
         private bool TryGetUserId(out int userId)

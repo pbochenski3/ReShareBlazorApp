@@ -1,5 +1,4 @@
-﻿
-@page "/admin/badges"
+﻿@page "/admin/badges"
 @layout AdminLayout
 @using Microsoft.AspNetCore.Authorization
 @using ReShareBlazorApp.Shared.DTOs
@@ -8,6 +7,7 @@
 @attribute [Authorize(Roles = "Admin")]
 
 @inject BadgeApiService BadgeApiService
+@inject AdminApiService AdminApiService
 
 <PageTitle>Zarządzanie odznakami</PageTitle>
 
@@ -15,38 +15,24 @@
 
 <div class="admin-badges-container">
 
-    <div class="admin-badge-form">
-        <h2>Dodaj nową odznakę</h2>
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <p class="admin-badge-message">@message</p>
+    }
 
-        <EditForm Model="@newBadge" OnValidSubmit="AddBadgeAsync">
-            <div class="admin-form-group">
-                <label>Nazwa odznaki</label>
-                <InputText class="form-control"
-                           @bind-Value="newBadge.Name" />
-            </div>
+    <div class="admin-badge-user-select">
+        <h2>Wybierz użytkownika</h2>
 
-            <div class="admin-form-group">
-                <label>Opis odznaki</label>
-                <InputText class="form-control"
-                           @bind-Value="newBadge.Description" />
-            </div>
+        <select class="form-control"
+                @bind="selectedUserId"
+                @bind:after="OnUserChanged">
+            <option value="">-- Wybierz użytkownika --</option>
 
-            <div class="admin-form-group">
-                <label>Ikona (emoji)</label>
-                <InputText class="form-control"
-                           @bind-Value="newBadge.Icon" />
-            </div>
-
-            <button type="submit" class="admin-add-badge-btn"
-                    disabled="@saving">
-                @(saving ? "Dodawanie..." : "Dodaj odznakę")
-            </button>
-        </EditForm>
-
-        @if (!string.IsNullOrEmpty(message))
-        {
-            <p class="admin-badge-message">@message</p>
-        }
+            @foreach (var user in users)
+            {
+                <option value="@user.Id">@user.UserName</option>
+            }
+        </select>
     </div>
 
     <div class="admin-badge-list">
@@ -69,6 +55,26 @@
                         <span class="admin-badge-icon">@badge.Icon</span>
                         <h3>@badge.Name</h3>
                         <p>@badge.Description</p>
+
+                        @if (selectedUserId != null)
+                        {
+                            @if (badge.IsEarned)
+                            {
+                                <button class="btn btn-danger"
+                                        disabled="@saving"
+                                        @onclick="() => RemoveBadgeAsync(badge.Id)">
+                                    Odbierz odznakę
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-success"
+                                        disabled="@saving"
+                                        @onclick="() => AwardBadgeAsync(badge.Id)">
+                                    Przyznaj odznakę
+                                </button>
+                            }
+                        }
                     </div>
                 }
             </div>
@@ -79,8 +85,9 @@
 
 @code {
     private List<BadgeDTO> badges = new();
+    private List<AdminUserDTO> users = new();
 
-    private BadgeDTO newBadge = new();
+    private int? selectedUserId;
 
     private bool loading = true;
     private bool saving = false;
@@ -90,6 +97,15 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadBadgesAsync();
+
+        try
+        {
+            users = await AdminApiService.GetUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            message = "Nie udało się pobrać użytkowników: " + ex.Message;
+        }
     }
 
     private async Task LoadBadgesAsync()
@@ -108,31 +124,73 @@
         }
     }
 
-    private async Task AddBadgeAsync()
+    private async Task OnUserChanged()
     {
+        message = null;
+
+        if (selectedUserId == null)
+        {
+            await LoadBadgesAsync();
+            return;
+        }
+
+        try
+        {
+            badges = await BadgeApiService.GetUserBadgesAsync(selectedUserId.Value);
+        }
+        catch (Exception ex)
+        {
+            message = "Nie udało się pobrać odznak użytkownika: " + ex.Message;
+        }
+    }
+
+    private async Task AwardBadgeAsync(int badgeId)
+    {
+        if (selectedUserId == null)
+            return;
+
         saving = true;
         message = null;
 
         try
         {
-            var result = await BadgeApiService.AddBadgeAsync(newBadge);
+            await BadgeApiService.AwardBadgeToUserAsync(
+                selectedUserId.Value, badgeId);
 
-            if (result)
-            {
-                message = "Odznaka została dodana!";
+            message = "Odznaka została przyznana użytkownikowi.";
 
-                newBadge = new BadgeDTO();
-
-                await LoadBadgesAsync();
-            }
-            else
-            {
-                message = "Nie udało się dodać odznaki.";
-            }
+            await OnUserChanged();
         }
         catch (Exception ex)
         {
-            message = "Błąd: " + ex.Message;
+            message = "Nie udało się przyznać odznaki: " + ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private async Task RemoveBadgeAsync(int badgeId)
+    {
+        if (selectedUserId == null)
+            return;
+
+        saving = true;
+        message = null;
+
+        try
+        {
+            await BadgeApiService.RemoveBadgeFromUserAsync(
+                selectedUserId.Value, badgeId);
+
+            message = "Odznaka została odebrana użytkownikowi.";
+
+            await OnUserChanged();
+        }
+        catch (Exception ex)
+        {
+            message = "Nie udało się odebrać odznaki: " + ex.Message;
         }
         finally
         {
