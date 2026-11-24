@@ -45,6 +45,7 @@
             <div class="register-terms">
                 <InputCheckbox @bind-Value="registerModel.AcceptTerms"/>
                 <label>Akceptuje regulamin.</label>
+                <a href="/regulamin" target="_blank">Przeczytaj regulamin</a>
             </div>
             <ValidationMessage For="@(() => registerModel.AcceptTerms)" />
             <button type="submit" class="register-button">

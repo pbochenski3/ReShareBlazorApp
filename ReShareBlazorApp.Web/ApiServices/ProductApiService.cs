@@ -1,10 +1,14 @@
-﻿using Microsoft.AspNetCore.Components.Authorization;
+﻿
+using Microsoft.AspNetCore.Components.Authorization;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Shared.DTOs;
+using ReShareBlazorApp.Shared.Enums;
 using ReShareBlazorApp.Web.Models;
 using System.Globalization;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace ReShareBlazorApp.Web.ApiServices
 {
@@ -12,90 +16,115 @@ namespace ReShareBlazorApp.Web.ApiServices
     {
         private readonly HttpClient _httpClient;
         private readonly AuthenticationStateProvider _authStateProvider;
-        public ProductApiService(HttpClient httpClient, AuthenticationStateProvider authStateProvider)
+
+        public ProductApiService(
+            HttpClient httpClient,
+            AuthenticationStateProvider authStateProvider)
         {
             _httpClient = httpClient;
             _authStateProvider = authStateProvider;
         }
+
         public async Task<(bool Success, string Message)> AddProductAsync(ProductModel productModel)
         {
-            var authState = await _authStateProvider.GetAuthenticationStateAsync();
-            var token = authState.User.FindFirst("access_token")?.Value;
-            if (string.IsNullOrEmpty(token))
+            var request = await CreateAuthorizedRequestAsync(
+                HttpMethod.Post,
+                "api/product/addProduct");
+
+            if (request == null)
                 return (false, "Brak tokenu uwierzytelniającego!");
 
             var product = new ProductDTO
             {
                 Name = productModel.Name,
                 Description = productModel.Description,
-                Price = productModel.Price,
+                PriceMin = productModel.PriceMin,
+                PriceMax = productModel.PriceMax,
                 ExpiresAt = productModel.ExpiresAt,
                 Category = productModel.Category,
+                Condition = productModel.Condition,
                 City = productModel.City,
                 Type = productModel.Type,
-                Images = productModel.Images
-                    .Select(i => new ProductImageDTO
-                    {
-                        FileName = i.FileName,
-                        ContentType = i.ContentType,
-                        Data = i.Data
-                    })
-                    .ToList()
+                Images = productModel.Images.Select(image => new ProductImageDTO
+                {
+                    FileName = image.FileName,
+                    ContentType = image.ContentType,
+                    Data = image.Data
+                }).ToList()
             };
-            using var request = new HttpRequestMessage(
-                HttpMethod.Post,
-                "api/product/addProduct"
-                );
-            request.Headers.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
-            request.Content = JsonContent.Create(product);
-            var response = await _httpClient.SendAsync(request);
-            if (!response.IsSuccessStatusCode)
+
+            using (request)
             {
-                // API zwraca komunikat walidacji zdjęć w treści odpowiedzi 400
-                var error = response.StatusCode == System.Net.HttpStatusCode.BadRequest
+                request.Content = JsonContent.Create(product);
+
+                using var response = await _httpClient.SendAsync(request);
+
+                if (response.IsSuccessStatusCode)
+                    return (true, "Produkt dodany pomyślnie!");
+
+                var error = response.StatusCode == HttpStatusCode.BadRequest
                     ? (await response.Content.ReadAsStringAsync()).Trim('"')
-                    : "";
+                    : response.StatusCode == HttpStatusCode.Forbidden
+                        ? await ReadApiMessageAsync(response)
+                        : "";
+
                 return (false, string.IsNullOrWhiteSpace(error)
                     ? "Nie udało się dodać produktu!"
                     : error);
             }
-            return (true, "Produkt dodany pomyślnie!");
         }
 
         public async Task<string> UpdateProductAsync(int productId, ProductModel productModel)
         {
-            var authState = await _authStateProvider.GetAuthenticationStateAsync();
-            var token = authState.User.FindFirst("access_token")?.Value;
-            if (string.IsNullOrEmpty(token))
-                return "Brak tokenu uwierzytelniającego!";
-
-            var product = new ProductUpdateDTO
-            {
-                Name = productModel.Name,
-                Description = productModel.Description,
-                Price = productModel.Price,
-                ExpiresAt = productModel.ExpiresAt,
-                Category = productModel.Category,
-                City = productModel.City,
-                Type = productModel.Type
-            };
-
-            using var request = new HttpRequestMessage(
+            var request = await CreateAuthorizedRequestAsync(
                 HttpMethod.Put,
                 $"api/product/{productId}");
-            request.Headers.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
-            request.Content = JsonContent.Create(product);
 
-            var response = await _httpClient.SendAsync(request);
-            if (!response.IsSuccessStatusCode)
-                return "Nie udało się edytować ogłoszenia!";
+            if (request == null)
+                return "Brak tokenu uwierzytelniającego!";
 
-            return "Ogłoszenie zostało zaktualizowane!";
+            using (request)
+            {
+                request.Content = JsonContent.Create(new ProductUpdateDTO
+                {
+                    Name = productModel.Name,
+                    Description = productModel.Description,
+                    PriceMin = productModel.PriceMin,
+                    PriceMax = productModel.PriceMax,
+                    ExpiresAt = productModel.ExpiresAt,
+                    Category = productModel.Category,
+                    City = productModel.City,
+                    Type = productModel.Type,
+                    Condition = productModel.Condition
+                });
+
+                using var response = await _httpClient.SendAsync(request);
+
+                return response.IsSuccessStatusCode
+                    ? "Ogłoszenie zostało zaktualizowane!"
+                    : "Nie udało się edytować ogłoszenia!";
+            }
         }
 
-        public async Task<string> DeleteProductAsync(int productId)
+        public async Task<string> DeleteProductAsync(int productId, int? userId = null)
+        {
+            var request = await CreateAuthorizedRequestAsync(
+                HttpMethod.Delete,
+                $"api/product/{productId}");
+
+            if (request == null)
+                return "Brak tokenu uwierzytelniającego!";
+
+            using (request)
+            using (var response = await _httpClient.SendAsync(request))
+            {
+                return response.IsSuccessStatusCode
+                    ? "Ogłoszenie zostało usunięte!"
+                    : "Nie udało się usunąć ogłoszenia!";
+            }
+        }
+
+        public async Task<string> MarkAsSoldAsync(int productId, int? userId = null)
         {
             var authState = await _authStateProvider.GetAuthenticationStateAsync();
             var token = authState.User.FindFirst("access_token")?.Value;
@@ -103,25 +132,27 @@ namespace ReShareBlazorApp.Web.ApiServices
                 return "Brak tokenu uwierzytelniającego!";
 
             using var request = new HttpRequestMessage(
-                HttpMethod.Delete,
-                $"api/product/{productId}");
+                HttpMethod.Post,
+                $"api/product/{productId}/sold");
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
 
             var response = await _httpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode)
-                return "Nie udało się usunąć ogłoszenia!";
+                return "Nie udało się oznaczyć ogłoszenia jako sprzedane!";
 
-            return "Ogłoszenie zostało usunięte!";
+            return "Ogłoszenie zostało oznaczone jako sprzedane!";
         }
         public async Task<List<ProductDTO>> GetProductsAsync(
-       int number = 5,
-       ProductCategory? category = null,
-       string? search = null,
-       string? location = null,
-       decimal? minPrice = null,
-       decimal? maxPrice = null,
-       string? sort = null)
+            int number = 5,
+            ProductCategory? category = null,
+            string? search = null,
+            string? location = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            string? sort = null,
+            int? userId = null,
+            ProductType? type = null)
         {
             var parameters = new List<string>
             {
@@ -146,9 +177,14 @@ namespace ReShareBlazorApp.Web.ApiServices
             if (!string.IsNullOrWhiteSpace(sort))
                 parameters.Add($"sortowanie={Uri.EscapeDataString(sort)}");
 
-            var url = "api/product?" + string.Join("&", parameters);
+            if (userId.HasValue)
+                parameters.Add($"userId={userId.Value}");
 
-            var response = await _httpClient.GetAsync(url);
+            if (type.HasValue)
+                parameters.Add($"type={Uri.EscapeDataString(type.Value.ToString())}");
+
+            using var response = await _httpClient.GetAsync(
+                "api/product?" + string.Join("&", parameters));
 
             response.EnsureSuccessStatusCode();
 
@@ -156,23 +192,151 @@ namespace ReShareBlazorApp.Web.ApiServices
                 ?? new List<ProductDTO>();
         }
 
-
-        public async Task<ProductDTO> GetProductByIdAsync(int id)
+        public async Task<ProductDTO?> GetProductByIdAsync(int id)
         {
-            var response = await _httpClient.GetAsync($"api/product/{id}");
+            using var response = await _httpClient.GetAsync($"api/product/{id}");
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+                return null;
+
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<ProductDTO>()
-                ?? new ProductDTO();
+
+            return await response.Content.ReadFromJsonAsync<ProductDTO>();
         }
+
+        public async Task<CompletedStatsDTO> GetCompletedStatsAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("api/product/stats");
+
+                if (!response.IsSuccessStatusCode)
+                    return new CompletedStatsDTO();
+
+                return await response.Content.ReadFromJsonAsync<CompletedStatsDTO>()
+                    ?? new CompletedStatsDTO();
+            }
+            catch
+            {
+                return new CompletedStatsDTO();
+            }
+        }
+        // ----- Ulubione -----
+
+        // Lista ulubionych ogłoszeń zalogowanego użytkownika (od ostatnio dodanego).
+        public async Task<List<ProductDTO>> GetFavoritesAsync()
+        {
+            try
+            {
+                using var request = await CreateAuthorizedRequestAsync(HttpMethod.Get, "api/product/favorites");
+                if (request == null)
+                    return new List<ProductDTO>();
+
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                    return new List<ProductDTO>();
+
+                return await response.Content.ReadFromJsonAsync<List<ProductDTO>>()
+                    ?? new List<ProductDTO>();
+            }
+            catch
+            {
+                return new List<ProductDTO>();
+            }
+        }
+
+        // Same identyfikatory ulubionych - do zaznaczania gwiazdek na listach.
+        // Zwraca null, gdy nie udało się pobrać (wtedy można spróbować ponownie).
+        public async Task<List<int>?> GetFavoriteIdsAsync()
+        {
+            try
+            {
+                using var request = await CreateAuthorizedRequestAsync(HttpMethod.Get, "api/product/favorites/ids");
+                if (request == null)
+                    return new List<int>(); // niezalogowany = brak ulubionych
+
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                    return null;
+
+                return await response.Content.ReadFromJsonAsync<List<int>>()
+                    ?? new List<int>();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // true = dodano do ulubionych, false = usunięto, null = błąd / brak logowania
+        public async Task<bool?> ToggleFavoriteAsync(int productId)
+        {
+            try
+            {
+                using var request = await CreateAuthorizedRequestAsync(HttpMethod.Post, $"api/product/{productId}/favorite");
+                if (request == null)
+                    return null;
+
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                    return null;
+
+                var result = await response.Content.ReadFromJsonAsync<FavoriteToggleDTO>();
+                return result?.IsFavorite;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private async Task<HttpRequestMessage?> CreateAuthorizedRequestAsync(HttpMethod method, string url)
+        {
+            var authState = await _authStateProvider.GetAuthenticationStateAsync();
+            var token = authState.User.FindFirst("access_token")?.Value;
+            if (string.IsNullOrEmpty(token))
+                return null;
+
+            var request = new HttpRequestMessage(method, url);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            return request;
+        }
+
         public async Task<List<LocationDTO>> SearchLocationsAsync(string query)
         {
+            if (string.IsNullOrWhiteSpace(query))
+                return new List<LocationDTO>();
+
             var url = $"api/product/searchLocations?query={Uri.EscapeDataString(query)}";
 
-			var response = await _httpClient.GetAsync(url);
-			response.EnsureSuccessStatusCode();
+            using var response = await _httpClient.GetAsync(url);
 
-			return await response.Content.ReadFromJsonAsync<List<LocationDTO>>()
-				?? new List<LocationDTO>();
-		}
-	}
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content.ReadFromJsonAsync<List<LocationDTO>>()
+                ?? new List<LocationDTO>();
+        }
+
+
+        private static async Task<string> ReadApiMessageAsync(HttpResponseMessage response)
+        {
+            try
+            {
+                var body = await response.Content.ReadFromJsonAsync<ApiErrorResponse>();
+                if (!string.IsNullOrWhiteSpace(body?.Message))
+                    return body.Message;
+            }
+            catch (JsonException)
+            {
+                // API może zwrócić również zwykły tekst zamiast JSON.
+            }
+
+            return "Twoje konto jest zablokowane i nie może dodawać ogłoszeń.";
+        }
+
+        private sealed class ApiErrorResponse
+        {
+            public string? Message { get; set; }
+        }
+    }
 }

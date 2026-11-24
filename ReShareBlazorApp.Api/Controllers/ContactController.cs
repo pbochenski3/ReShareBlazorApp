@@ -1,6 +1,9 @@
-﻿using System.Net;
-using System.Net.Mail;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ReShareBlazorApp.Api.Date;
+using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 
 namespace ReShareBlazorApp.Api.Controllers;
@@ -12,49 +15,34 @@ public class ContactController : ControllerBase
     private readonly ReshareDbContext _context;
     private readonly ILogger<ContactController> _logger;
     private readonly IActivityLogger _activityLogger;
-    private readonly IConfiguration _config;
 
     public ContactController(ReshareDbContext context, ILogger<ContactController> logger, IActivityLogger activityLogger)
-    public ContactController(IConfiguration config)
     {
         _context = context;
         _logger = logger;
         _activityLogger = activityLogger;
-        _config = config;
     }
 
     [HttpPost]
-    public async Task<IActionResult> SendContactEmail([FromBody] ContactRequest request)
+    public async Task<IActionResult> CreateMessage([FromBody] ContactRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
         try
         {
-            var smtpServer = _config["EmailSettings:SmtpServer"];
-            var smtpPort = int.Parse(_config["EmailSettings:SmtpPort"] ?? "587");
-            var senderEmail = _config["EmailSettings:SenderEmail"];
-            var senderPassword = _config["EmailSettings:SenderPassword"];
-            var receiverEmail = _config["EmailSettings:ReceiverEmail"];
-
-            using var client = new SmtpClient(smtpServer, smtpPort)
+            var entity = new ContactMessage
             {
-                EnableSsl = true,
-                Credentials = new NetworkCredential(senderEmail, senderPassword)
+                Name = request.Name.Trim(),
+                Email = request.Email.Trim(),
+                Subject = request.Subject.Trim(),
+                Message = request.Message.Trim(),
+                CreatedAt = DateTime.UtcNow,
+                IsRead = false
             };
 
-            var mailMessage = new MailMessage
-            {
-                From = new MailAddress(senderEmail!, "ODDAJ DALEJ - Formularz"),
-                Subject = $"Nowa wiadomość z formularza od: {request.Name}",
-                Body = $"Od: {request.Name} ({request.Email})\n\nTreść wiadomości:\n{request.Message}",
-                IsBodyHtml = false
-            };
-
-            mailMessage.To.Add(receiverEmail!);
-            mailMessage.ReplyToList.Add(new MailAddress(request.Email));
-
-            await client.SendMailAsync(mailMessage);
+            _context.ContactMessages.Add(entity);
+            await _context.SaveChangesAsync();
 
             return Ok();
         }
@@ -118,7 +106,5 @@ public class ContactController : ControllerBase
             "ContactMessage", id);
 
         return NoContent();
-            return StatusCode(500, $"Błąd wysyłania wiadomości: {ex.Message}");
-        }
     }
 }

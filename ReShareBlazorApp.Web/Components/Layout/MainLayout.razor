@@ -1,7 +1,146 @@
-﻿@using ReShareBlazorApp.Web.Components.Elements
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@using ReShareBlazorApp.Web.Components.Elements
 @inherits LayoutComponentBase
+@inject UserApiService userApi
+@inject AuthenticationStateProvider authStateProvider
+@inject NavigationManager navigation
+@implements IDisposable
 
 <PromoBannerBar />
-<Navbar />
-<NotificationPopup />
-@Body
+@if (userStatus?.IsBlocked == true)
+{
+    <div class="user-blocked-screen">
+        <div class="user-blocked-card">
+            <div class="user-blocked-icon">🚫</div>
+            <h2 class="user-blocked-title">Konto zablokowane</h2>
+
+            @if (!userStatus.IsActive)
+            {
+                <p class="user-blocked-desc">
+                    Twoje konto zostało <strong>zablokowane na stałe</strong> przez administratora.
+                    Dostęp do funkcji serwisu został zablokowany z powodu naruszenia regulaminu.
+                </p>
+            }
+            else if (userStatus.LockoutEnd.HasValue)
+            {
+                <p class="user-blocked-desc">
+                    Twoje konto zostało <strong>tymczasowo zablokowane</strong> do:
+                    <span class="user-blocked-time">
+                        @userStatus.LockoutEnd.Value.ToLocalTime().ToString("dd.MM.yyyy 'o godz.' HH:mm")
+                    </span>
+                    W tym okresie nie masz możliwości korzystania z serwisu ani dodawania ogłoszeń.
+                </p>
+            }
+
+            <div class="user-blocked-actions">
+                <form method="post" action="/auth/logout">
+                    <AntiforgeryToken />
+                    <button type="submit" class="user-blocked-logout-btn">Wyloguj się</button>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    @if (userStatus?.HasWarning == true && !warningDismissed)
+    {
+        <div class="user-warning-banner">
+            <div class="user-warning-content">
+                <span class="user-warning-icon">⚠️</span>
+                <div class="user-warning-text">
+                    <strong>Ostrzeżenie od administratora:</strong>
+                    <span>@userStatus.WarningMessage</span>
+                </div>
+            </div>
+            <button class="user-warning-close" title="Zamknij powiadomienie" @onclick="() => warningDismissed = true">✕</button>
+        </div>
+    }
+
+    <Navbar />
+    <NotificationPopup />
+    @Body
+}
+
+@code {
+    private UserStatusDTO? userStatus;
+    private bool isAuthenticated;
+    private bool warningDismissed;
+    private CancellationTokenSource? cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        navigation.LocationChanged += OnLocationChanged;
+
+        await CheckUserStatusAsync();
+
+        if (isAuthenticated)
+        {
+            // Cykliczne sprawdzanie co 10 sekund w tle, aby natychmiast zablokować użytkownika,
+            // gdy administrator kliknie "Zablokuj" w panelu admina
+            cts = new CancellationTokenSource();
+            _ = StartStatusPollingAsync(cts.Token);
+        }
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (isAuthenticated)
+        {
+            await CheckUserStatusAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task StartStatusPollingAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
+        try
+        {
+            while (!token.IsCancellationRequested && await timer.WaitForNextTickAsync(token))
+            {
+                var wasBlocked = userStatus?.IsBlocked == true;
+                await CheckUserStatusAsync();
+                var isBlockedNow = userStatus?.IsBlocked == true;
+
+                if (wasBlocked != isBlockedNow)
+                {
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task CheckUserStatusAsync()
+    {
+        try
+        {
+            var authState = await authStateProvider.GetAuthenticationStateAsync();
+            isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
+
+            if (isAuthenticated)
+            {
+                userStatus = await userApi.GetMyStatusAsync();
+            }
+            else
+            {
+                userStatus = null;
+            }
+        }
+        catch
+        {
+            // W razie błędu sieciowego nie blokujemy użytkownika awaryjnie
+        }
+    }
+
+    public void Dispose()
+    {
+        navigation.LocationChanged -= OnLocationChanged;
+        cts?.Cancel();
+        cts?.Dispose();
+    }
+}

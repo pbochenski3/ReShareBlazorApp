@@ -1,24 +1,41 @@
 @page "/user/{Username}"
-@using ReShareBlazorApp.Shared.DTOs
-@inject NavigationManager Navigation
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Shared.Enums
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Components.Elements
-@inject UserApiService userApi
-@inject AuthenticationStateProvider AuthStateProvider
 
-@if (exist)
+@inject NavigationManager Navigation
+@inject UserApiService userApi
+@inject NotificationApiService notificationApi
+@inject ReviewApiService reviewApi
+@inject ProductApiService productApi
+@inject BadgeApiService BadgeApiService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject FavoritesState Favorites
+@implements IDisposable
+
+@if (isLoadingProfile)
+{
+    <section class="home-section">
+        <div class="home-container">
+            <p class="text-muted">Ładowanie profilu...</p>
+        </div>
+    </section>
+}
+else if (exist)
 {
     <section class="home-section">
         <div class="home-container">
 
             <!-- Karta profilu -->
             <div class="profile-card">
-                @if (avatarUrl is not null)
+                @if (!string.IsNullOrEmpty(avatarUrl))
                 {
-                    <img class="avatar-upload-preview" src="@avatarUrl" alt="Zdjęcie profilowe" />
+                    <img class="avatar-upload-preview"
+                         src="@avatarUrl"
+                         alt="Zdjęcie profilowe" />
                 }
                 else
                 {
@@ -27,85 +44,484 @@
 
                 <div class="profile-info">
                     <h2>@Username</h2>
+
                     @if (!string.IsNullOrEmpty(profile?.City))
                     {
-                        <p class="profile-email">Lokalizacja: @profile.City</p>
+                        <p class="profile-email">
+                            Lokalizacja: @profile.City
+                        </p>
                     }
+
                     @if (!string.IsNullOrEmpty(profile?.Bio))
                     {
                         <p class="profile-bio">@profile.Bio</p>
                     }
                     <p class="home-card-verified">✔ E-mail zweryfikowany</p>
-                    <p class="profile-rating">★ 4,8 <span>(12 opinii)</span></p>
+
+                    @if (userRating.TotalReviews > 0)
+                    {
+                        <p class="profile-rating">
+                            ★ @userRating.AverageRating.ToString("0.0",
+                                                            System.Globalization.CultureInfo.GetCultureInfo("pl-PL"))
+                            <span>(@userRating.TotalReviews @GetReviewLabel(userRating.TotalReviews))</span>
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="profile-rating">
+                            ★ 0,0 <span>(0 opinii)</span>
+                        </p>
+                    }
                 </div>
 
                 @if (isOwner)
                 {
-                    <a class="home-btn home-btn-outline" href="/ustawienia">Edytuj profil</a>
+                    <a class="home-btn home-btn-outline"
+                       href="/ustawienia">
+                        Edytuj profil
+                    </a>
                 }
             </div>
 
+            @if (isOwner)
+            {
+                <section class="profile-notifications" aria-labelledby="notifications-title">
+                    <h2 id="notifications-title" class="home-section-title">
+                        Powiadomienia
+                        @if (UnreadNotificationsCount > 0)
+                        {
+                            <span class="profile-notification-count">@UnreadNotificationsCount nowych</span>
+                        }
+                    </h2>
+                    <button class="home-btn home-btn-outline" type="button"
+                            @onclick="LoadNotificationsAsync">
+                        Odśwież powiadomienia
+                    </button>
+
+                    @if (notifications.Count == 0)
+                    {
+                        <p class="profile-notifications-empty">Nie masz jeszcze powiadomień.</p>
+                    }
+                    else
+                    {
+                        <div class="profile-notification-list">
+                            @foreach (var notification in notifications)
+                            {
+                                <article class="profile-notification @(notification.IsRead ? "is-read" : "is-unread")">
+                                    <div>
+                                        <h3>@notification.Title</h3>
+                                        <p>@notification.Message</p>
+                                        <time datetime="@notification.CreatedAt.ToString("O")">
+                                            @notification.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                        </time>
+                                    </div>
+                                    <div class="profile-notification-actions">
+                                        @if (notification.Type == ReShareBlazorApp.Shared.Enums.NotificationType.NewMessage)
+                                        {
+                                            <a class="home-btn home-btn-outline" href="/wiadomosci">Przejdź do wiadomości</a>
+                                        }
+                                        @if (notification.ProductId is int productId)
+                                        {
+                                            <a class="home-btn home-btn-outline" href="@GetProductUrl(productId)">Zobacz ofertę</a>
+                                        }
+                                        @if (!notification.IsRead)
+                                        {
+                                            <button class="home-btn home-btn-outline" type="button"
+                                                    @onclick="() => MarkNotificationAsReadAsync(notification)">
+                                                Oznacz jako przeczytane
+                                            </button>
+                                        }
+                                        <button class="home-btn home-btn-outline" type="button"
+                                                @onclick="() => DeleteNotificationAsync(notification)">
+                                            Usuń
+                                        </button>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    }
+                </section>
+            }
+
             <!-- Statystyki -->
             <div class="profile-stats">
-                <div class="profile-stat"><strong>5</strong><span>Ogłoszenia</span></div>
-                <div class="profile-stat"><strong>2</strong><span>Poszukiwania</span></div>
-                <div class="profile-stat"><strong>9</strong><span>Transakcje</span></div>
-                <div class="profile-stat"><strong>14</strong><span>Ulubione</span></div>
+                <div class="profile-stat">
+                    <strong>@products.Count</strong>
+                    <span>Ogłoszenia</span>
+                </div>
+
+                <div class="profile-stat">
+                    <strong>@lookingForProducts.Count</strong>
+                    <span>Poszukiwania</span>
+                </div>
+
+                <div class="profile-stat">
+                    <strong>@badges.Count(b => b.IsEarned)</strong>
+                    <span>Zdobyte odznaki</span>
+                </div>
+
+                @if (isOwner)
+                {
+                    <div class="profile-stat">
+                        <strong>@Favorites.Count</strong>
+                        <span>Ulubione</span>
+                    </div>
+                }
             </div>
 
             <!-- Zakładki -->
             <div class="profile-tabs" role="tablist">
-                <button class="profile-tab active" type="button" role="tab">Moje ogłoszenia</button>
-                <button class="profile-tab" type="button" role="tab">Moje poszukiwania</button>
-                <button class="profile-tab" type="button" role="tab">Ulubione</button>
-                <button class="profile-tab" type="button" role="tab">Transakcje</button>
-                <button class="profile-tab" type="button" role="tab">Opinie</button>
+                <button class="profile-tab @(activeTab == "ads" ? "active" : "")" type="button" role="tab"
+                        aria-selected="@(activeTab == "ads" ? "true" : "false")"
+                        @onclick='() => activeTab = "ads"'>
+                    Moje ogłoszenia
+                </button>
+
+                <button class="profile-tab @(activeTab == "wanted" ? "active" : "")" type="button" role="tab"
+                        aria-selected="@(activeTab == "wanted" ? "true" : "false")"
+                        @onclick='() => activeTab = "wanted"'>
+                    Moje poszukiwania
+                </button>
+
+                <button class="profile-tab @(activeTab == "badges" ? "active" : "")" type="button" role="tab"
+                        aria-selected="@(activeTab == "badges" ? "true" : "false")"
+                        @onclick='() => activeTab = "badges"'>
+                    Odznaki
+                </button>
+
+                @if (isOwner)
+                {
+                    <button class="profile-tab @(activeTab == "favorites" ? "active" : "")" type="button" role="tab"
+                            aria-selected="@(activeTab == "favorites" ? "true" : "false")"
+                            @onclick='() => activeTab = "favorites"'>
+                        Ulubione
+                    </button>
+                }
+
+                <button class="profile-tab @(activeTab == "reviews" ? "active" : "")" type="button" role="tab"
+                        aria-selected="@(activeTab == "reviews" ? "true" : "false")"
+                        @onclick='() => activeTab = "reviews"'>
+                    Opinie
+                </button>
             </div>
 
-            <!-- Moje ogłoszenia -->
-            @* <div class="home-cards">
-            <ListingCard Title="2 bilety na koncert – Kraków" Category="Bilety i rezerwacje" Type="Sprzedam"
-                         Price="240 zł" Location="Kraków" Term="12.12.2026" Published="08.11.2026" />
-            <ListingCard Title="Wózek dziecięcy do oddania" Category="Rodzina i dzieci" Type="Oddam"
-                         Price="Bezpłatnie" Location="Łódź" Term="od zaraz" Published="07.11.2026" />
-        </div> *@
+            <!-- Zawartość zakładek -->
+            @if (activeTab == "ads")
+            {
+                <ProfileProducts Products="products"
+                                 EmptyMessage="Użytkownik nie ma jeszcze żadnych ogłoszeń." />
+            }
+            else if (activeTab == "wanted")
+            {
+                <ProfileProducts Products="lookingForProducts"
+                                 EmptyMessage="Użytkownik nie ma jeszcze żadnych poszukiwań." />
+            }
+            else if (activeTab == "badges")
+            {
+                @if (isLoadingBadges)
+                {
+                    <p class="text-muted">Ładowanie odznak...</p>
+                }
+                else if (badges.Count == 0)
+                {
+                    <p class="text-muted">Ten użytkownik nie ma jeszcze żadnych odznak.</p>
+                }
+                else
+                {
+                    <div class="badges-summary">
+                        <span>Zdobyte odznaki:</span>
+                        <strong>@badges.Count(b => b.IsEarned) / @badges.Count</strong>
+                    </div>
 
-            <!-- Opinie -->
-            <h2 class="home-section-title profile-subtitle">Opinie o Tobie</h2>
-            <div class="profile-reviews">
-                <article class="profile-review">
-                    <p class="profile-rating">★★★★★ <span>Anna K.</span></p>
-                    <p>Szybki kontakt, wszystko zgodnie z opisem. Polecam.</p>
-                </article>
-                <article class="profile-review">
-                    <p class="profile-rating">★★★★☆ <span>Marek N.</span></p>
-                    <p>Sprawna wymiana, drobne opóźnienie w odpowiedzi.</p>
-                </article>
-            </div>
+                    <div class="badges-grid">
+                        @foreach (var badge in badges)
+                        {
+                            <div class="badge-card @(badge.IsEarned ? "earned" : "locked")">
+                                <div class="badge-icon">@badge.Icon</div>
+                                <h3>@badge.Name</h3>
+                                <p>@badge.Description</p>
+                                @if (badge.IsEarned)
+                                {
+                                    <span class="earned-label">✓ Zdobyta</span>
+                                }
+                                else
+                                {
+                                    <span class="locked-label">🔒 Nie zdobyto</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            }
+            else if (activeTab == "favorites" && isOwner)
+            {
+                <FavoriteListings />
+            }
+            else if (activeTab == "reviews")
+            {
+                @if (isLoadingReviews)
+                {
+                    <p class="text-muted">Ładowanie opinii...</p>
+                }
+                else if (!userReviews.Any())
+                {
+                    <p class="text-muted">
+                        Brak opinii wystawionych pod ogłoszeniami tego użytkownika.
+                    </p>
+                }
+                else
+                {
+                    <div class="profile-reviews">
+                        @foreach (var review in userReviews)
+                        {
+                            <article class="profile-review">
+                                <p class="profile-rating">
+                                    @(new string('★', review.Rating) +
+                                      new string('☆', 5 - review.Rating))
+
+                                    <span>@review.AuthorName</span>
+                                </p>
+
+                                @if (!string.IsNullOrWhiteSpace(review.ProductName))
+                                {
+                                    <p class="small text-muted mb-1">
+                                        Dotyczy:
+                                        <a href="/details/@review.ProductId">
+                                            @review.ProductName
+                                        </a>
+                                    </p>
+                                }
+
+                                <p>@review.Comment</p>
+
+                                <small class="text-muted">
+                                    @review.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                </small>
+                            </article>
+                        }
+                    </div>
+                }
+            }
+
         </div>
     </section>
 }
 else
 {
-    <h4>Nie znaleziono użytkownika!</h4>
+    <section class="home-section">
+        <div class="home-container">
+            <h4>Nie znaleziono użytkownika!</h4>
+            <a href="/">Wróć do ogłoszeń</a>
+        </div>
+    </section>
 }
-
 
 @code {
     [Parameter]
     public string Username { get; set; } = string.Empty;
+
     private bool exist;
+    private bool isLoadingProfile = true;
+
     private UserProfileDTO? profile;
+
+    private List<ProductDTO> products = new();
+    private List<ProductDTO> lookingForProducts = new();
+    private List<NotificationDTO> notifications = new();
+    private List<BadgeDTO> badges = new();
+    private bool isLoadingBadges = true;
+
+    private string activeTab = "ads";
+
     private string? avatarUrl;
-    private string Initials => string.IsNullOrWhiteSpace(Username)
-        ? "?" : Username[..Math.Min(2, Username.Length)].ToUpper();
+
+    private string Initials =>
+        string.IsNullOrWhiteSpace(Username)
+            ? "?"
+            : Username[..Math.Min(2, Username.Length)].ToUpper();
+
     private bool isOwner;
+
+    private List<ReviewDTO> userReviews = new();
+    private bool isLoadingReviews = true;
+
+    private UserRatingDTO userRating = new();
+
+    private double AverageRating =>
+        userReviews.Any()
+            ? userReviews.Average(r => (double)r.Rating)
+            : 0.0;
+
+    private int UnreadNotificationsCount =>
+        notifications.Count(n => !n.IsRead);
+
+    protected override void OnInitialized()
+    {
+        Favorites.Changed += OnFavoritesChanged;
+    }
+
+    private void OnFavoritesChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Favorites.Changed -= OnFavoritesChanged;
+    }
+
     protected override async Task OnParametersSetAsync()
     {
-        profile = await userApi.GetProfileAsync(Username);
-        exist = profile != null;
-        avatarUrl = userApi.GetAvatarUrl(profile?.AvatarUrl);
-        var state = await AuthStateProvider.GetAuthenticationStateAsync();
-        isOwner = string.Equals(state.User.FindFirst(ClaimTypes.Name)?.Value, Username, StringComparison.OrdinalIgnoreCase);
+        isLoadingProfile = true;
+        isLoadingReviews = true;
+        isLoadingBadges = true;
+
+        exist = false;
+        profile = null;
+
+        products.Clear();
+        lookingForProducts.Clear();
+        userReviews.Clear();
+        notifications.Clear();
+        badges.Clear();
+        userRating = new();
+
+        avatarUrl = null;
+
+        try
+        {
+            profile = await userApi.GetProfileAsync(Username);
+
+            exist = profile != null;
+
+            if (profile == null)
+                return;
+
+            avatarUrl = userApi.GetAvatarUrl(profile.AvatarUrl);
+
+            products = await productApi.GetProductsAsync(
+                number: 0,
+                userId: profile.UserId);
+
+            lookingForProducts = await productApi.GetProductsAsync(
+                number: 0,
+                userId: profile.UserId,
+                type: ProductType.LookingFor);
+
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            var loggedUser = state.User;
+
+            var currentUsername =
+                loggedUser.FindFirst(ClaimTypes.Name)?.Value
+                ?? loggedUser.Identity?.Name;
+
+            isOwner = string.Equals(
+                currentUsername,
+                Username,
+                StringComparison.OrdinalIgnoreCase);
+
+            if (isOwner)
+            {
+                await LoadNotificationsAsync();
+                await Favorites.EnsureLoadedAsync();
+            }
+            else if (activeTab == "favorites")
+            {
+                activeTab = "ads";
+            }
+
+            badges = await BadgeApiService.GetUserBadgesAsync(profile.UserId);
+            userRating = await reviewApi.GetUserRatingAsync(profile.UserId);
+
+            await LoadUserReviews();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Błąd podczas ładowania profilu: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingProfile = false;
+            isLoadingReviews = false;
+            isLoadingBadges = false;
+        }
     }
-}   
+
+    private async Task LoadNotificationsAsync()
+    {
+        try
+        {
+            notifications = await notificationApi.GetNotificationsAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Błąd podczas ładowania powiadomień: {ex.Message}");
+            notifications = new();
+        }
+    }
+
+    private async Task MarkNotificationAsReadAsync(NotificationDTO notification)
+    {
+        try
+        {
+            await notificationApi.MarkAsReadAsync(notification.Id);
+            notification.IsRead = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Błąd podczas oznaczania powiadomienia jako przeczytane: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteNotificationAsync(NotificationDTO notification)
+    {
+        try
+        {
+            if (await notificationApi.DeleteAsync(notification.Id))
+                await LoadNotificationsAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Błąd podczas usuwania powiadomienia: {ex.Message}");
+        }
+    }
+
+    private string GetProductUrl(int productId)
+    {
+        return $"/details/{productId}";
+    }
+
+    private async Task LoadUserReviews()
+    {
+        if (profile == null)
+            return;
+
+        isLoadingReviews = true;
+
+        try
+        {
+            userReviews = await reviewApi.GetReviewsForUserAsync(Username);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Błąd podczas pobierania opinii: {ex.Message}");
+            userReviews = new();
+        }
+        finally
+        {
+            isLoadingReviews = false;
+        }
+    }
+
+    private string GetReviewLabel(int count)
+    {
+        if (count == 1)
+            return "opinia";
+
+        if (count % 10 >= 2 && count % 10 <= 4 &&
+            (count % 100 < 12 || count % 100 > 14))
+            return "opinie";
+
+        return "opinii";
+    }
+}

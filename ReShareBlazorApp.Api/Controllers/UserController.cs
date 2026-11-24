@@ -1,6 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Security.Claims;
 
@@ -11,9 +14,31 @@ namespace ReShareBlazorApp.Api.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
-        public UserController(IUserService userService)
+        private readonly IActivityLogger _activityLogger;
+        private readonly UserManager<User> _userManager;
+
+        public UserController(IUserService userService, IActivityLogger activityLogger, UserManager<User> userManager)
         {
             _userService = userService;
+            _activityLogger = activityLogger;
+            _userManager = userManager;
+        }
+
+        [Authorize]
+        [HttpGet("my-status")]
+        public async Task<ActionResult<UserStatusDTO>> GetMyStatus()
+        {
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user == null) return NotFound();
+
+            return Ok(new UserStatusDTO
+            {
+                Id = user.Id,
+                IsActive = user.IsActive,
+                LockoutEnd = user.LockoutEnd,
+                WarningMessage = user.WarningMessage
+            });
         }
 
         [HttpGet]
@@ -47,6 +72,8 @@ namespace ReShareBlazorApp.Api.Controllers
         {
             if (!TryGetUserId(out var userId)) return Unauthorized();
             var error = await _userService.UpdateProfileAsync(userId, request);
+            if (error == null)
+                await _activityLogger.LogAsync(User, ActivityActions.ProfileUpdated, "Zaktualizowano profil (miasto/opis)", "User", userId);
             return error == null ? NoContent() : BadRequest(new { message = error });
         }
 
@@ -59,6 +86,8 @@ namespace ReShareBlazorApp.Api.Controllers
                 return BadRequest(new { message = "Nie wybrano pliku." });
             await using var stream = file.OpenReadStream();
             var error = await _userService.SetAvatarAsync(userId, stream, file.ContentType, file.Length);
+            if (error == null)
+                await _activityLogger.LogAsync(User, ActivityActions.AvatarChanged, "Zmieniono zdjęcie profilowe", "User", userId);
             return error == null ? NoContent() : BadRequest(new { message = error });
         }
 
@@ -68,6 +97,8 @@ namespace ReShareBlazorApp.Api.Controllers
         {
             if (!TryGetUserId(out var userId)) return Unauthorized();
             var error = await _userService.RemoveAvatarAsync(userId);
+            if (error == null)
+                await _activityLogger.LogAsync(User, ActivityActions.AvatarRemoved, "Usunięto zdjęcie profilowe", "User", userId);
             return error == null ? NoContent() : BadRequest(new { message = error });
         }
 

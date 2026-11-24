@@ -83,6 +83,33 @@
                 </label>
 
                 <label class="home-field">
+
+                    <span>Stan</span>
+
+                    <select name="stan"
+                            @bind="selectedCondition">
+
+                        <option value="">
+                            Wszystkie
+                        </option>
+
+                        <option value="New">
+                            Nowy
+                        </option>
+
+                        <option value="Used">
+                            Używany
+                        </option>
+
+                        <option value="Damaged">
+                            Uszkodzony
+                        </option>
+
+                    </select>
+
+                </label>
+
+                <label class="home-field">
                     <span>Cena od (zł)</span>
 
                     <input type="number"
@@ -152,7 +179,7 @@
                     <ListingCard Title="@product.Name"
                                  Category="@GetCategoryName(product.Category)"
                                  Type="@product.Type"
-                                 Price="@product.Price.ToString("F2", CultureInfo.InvariantCulture)"
+                                 Price="@($"{product.PriceMin:0.##} - {product.PriceMax:0.##} zł")"
                                  Location="@product.City"
                                  Term="@product.ExpiresAt.ToString("HH:mm")"
                                  Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")"
@@ -183,6 +210,9 @@
     [SupplyParameterFromQuery(Name = "kategoria")]
     public string? InitialCategory { get; set; }
 
+    [SupplyParameterFromQuery(Name = "stan")]
+    public string? InitialCondition { get; set; }
+
     [SupplyParameterFromQuery(Name = "lokalizacja")]
     public string? InitialLocation { get; set; }
 
@@ -200,6 +230,7 @@
 
     private string searchText = "";
     private string selectedCategory = "";
+    private string selectedCondition = "";
     private string selectedType = "";
     private string locationFilter = "";
     private string cenaMin = "";
@@ -239,6 +270,7 @@
 
         searchText = InitialSearch ?? "";
         selectedCategory = InitialCategory ?? "";
+        selectedCondition = InitialCondition ?? "";
         locationFilter = InitialLocation ?? "";
         cenaMin = InitialMinPrice ?? "";
         cenaMax = InitialMaxPrice ?? "";
@@ -299,6 +331,12 @@
                     (selectedType == "Sprzedam" && p.Type == ProductType.Sell) ||
                     (selectedType == "Oddam" && p.Type == ProductType.GiveAway) ||
                     (selectedType == "Szukam" && p.Type == ProductType.LookingFor)
+                ).ToList();
+            }
+            if (!string.IsNullOrWhiteSpace(selectedCondition))
+            {
+                ProductsList = ProductsList.Where(p =>
+                    p.Condition.ToString() == selectedCondition
                 ).ToList();
             }
         }

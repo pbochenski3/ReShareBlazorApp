@@ -41,6 +41,15 @@ namespace ReShareBlazorApp.Web.ApiServices
             return await response.Content.ReadFromJsonAsync<UserProfileDTO>();
         }
 
+        public async Task<UserStatusDTO?> GetMyStatusAsync()
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Get, "api/user/my-status");
+            if (request == null) return null;
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<UserStatusDTO>();
+        }
+
         // Zwraca null gdy OK, w przeciwnym razie komunikat błędu.
         public async Task<string?> UpdateProfileAsync(UpdateProfileRequest model)
         {

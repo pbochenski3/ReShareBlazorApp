@@ -99,6 +99,7 @@ namespace ReShareBlazorApp.Api.Services
 
         private UserProfileDTO ToDto(User user, bool includeEmail) => new()
         {
+            UserId = user.Id,
             UserName = user.UserName ?? "",
             Email = includeEmail ? user.Email : null,
             City = user.City,

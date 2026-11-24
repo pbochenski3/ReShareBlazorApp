@@ -7,8 +7,11 @@ public static class IdentitySeeder
 {
     private const string AdminRole = "Admin";
     private const string AdminEmail = "admin12345@admin.pl";
+    private const string Admin1Email = "admin12345@admin.pl";
     private const string AdminPassword = "Admin12345!";
+    private const string Admin1Password = "Admin12345!";
     private const string AdminUserName = "admin12345";
+    private const string Admin1UserName = "admin12345";
 
     public static async Task SeedAsync(
         UserManager<User> userManager,

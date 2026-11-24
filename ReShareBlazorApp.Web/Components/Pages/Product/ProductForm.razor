@@ -21,7 +21,7 @@
         <ValidationSummary />
         <div class="product-page">
             <div class="product-form">
-                <button type="button" class="product-back" @onclick="() => isSelected = false">
+                <button type="button" class="product-back" @onclick="BackToTypeSelection">
                     ← Wróć do wyboru
                 </button>
                 <div class="product-header">
@@ -51,11 +51,19 @@
                 </div>
 
                 <div class="product-field">
-                    <label>Cena</label>
-                    <InputNumber @bind-Value="productModel.Price"
+                    <label>Cena minimalna</label>
+                    <InputNumber @bind-Value="productModel.PriceMin"
                                  class="product-input"
-                                 placeholder="Wpisz cenę produktu" />
-                    <ValidationMessage For="@(() => productModel.Price)" />
+                                 placeholder="Wpisz cenę minimalną" />
+                    <ValidationMessage For="@(() => productModel.PriceMin)" />
+                </div>
+
+                <div class="product-field">
+                    <label>Cena maksymalna</label>
+                    <InputNumber @bind-Value="productModel.PriceMax"
+                                 class="product-input"
+                                 placeholder="Wpisz cenę maksymalną" />
+                    <ValidationMessage For="@(() => productModel.PriceMax)" />
                 </div>
 
                 <div class="product-field">
@@ -94,6 +102,25 @@
                         }
                     </InputSelect>
                     <ValidationMessage For="@(() => productModel.Category)" />
+                </div>
+                <div class="product-field">
+
+                    <label>Stan produktu</label>
+
+                    <InputSelect @bind-Value="productModel.Condition"
+                                  class="product-input">
+
+                        @foreach (var condition in Enum.GetValues<ProductCondition>())
+                        {
+                            <option value="@condition">
+                                @GetConditionName(condition)
+                            </option>
+                        }
+
+                    </InputSelect>
+                    
+
+
                 </div>
 
                 <div class="product-field">
@@ -216,7 +243,8 @@ else
             {
                 Name = product.Name,
                 Description = product.Description,
-                Price = product.Price,
+                PriceMin = product.PriceMin,
+                PriceMax = product.PriceMax,
                 ExpiresAt = product.ExpiresAt,
                 Category = product.Category,
                 City = product.City,
@@ -263,6 +291,12 @@ else
         if (isSubmitting)
             return;
 
+        if (productModel.PriceMax < productModel.PriceMin)
+        {
+            notify.AddNotification("Ogłoszenie", "Cena maksymalna nie może być niższa od minimalnej.");
+            return;
+        }
+
         isSubmitting = true;
         try
         {
@@ -279,6 +313,7 @@ else
             else
             {
                 var result = await productService.AddProductAsync(productModel);
+                
                     notify.AddNotification("Ogłoszenie", result.Message);
                     if (result.Success)
                     {
@@ -359,6 +394,17 @@ else
         StateHasChanged();
     }
 
+    private void BackToTypeSelection()
+    {
+        if (!IsEditMode)
+        {
+            productModel = new ProductModel();
+            imageError = null;
+        }
+
+        isSelected = false;
+    }
+
     private string GetCategoryName(ProductCategory category)
     {
         return category switch
@@ -369,6 +415,18 @@ else
             ProductCategory.Transports => "Transport",
             ProductCategory.Services => "Usługi",
             _ => category.ToString()
+        };
+    }
+    private string GetConditionName(ProductCondition condition)
+    {
+        return condition switch
+        {
+            ProductCondition.New => "Nowy",
+            ProductCondition.LikeNew => "Jak nowy",
+            ProductCondition.Good => "Dobry",
+            ProductCondition.Fair => "Dostateczny",
+            ProductCondition.Damaged => "Uszkodzony",
+            _ => condition.ToString()
         };
     }
 

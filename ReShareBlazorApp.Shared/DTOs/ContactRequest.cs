@@ -4,14 +4,18 @@ namespace ReShareBlazorApp.Shared.DTOs;
 
 public class ContactRequest
 {
-    [Required(ErrorMessage = "Podaj swoje imię")]
+    [Required(ErrorMessage = "Imię jest wymagane.")]
     public string Name { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Podaj adres e-mail")]
-    [EmailAddress(ErrorMessage = "Nieprawidłowy format adresu e-mail")]
+    [Required(ErrorMessage = "Adres e-mail jest wymagany.")]
+    [EmailAddress(ErrorMessage = "Niepoprawny adres e-mail.")]
     public string Email { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Wpisz treść wiadomości")]
-    [MinLength(10, ErrorMessage = "Wiadomość musi mieć minimum 10 znaków")]
+    [Required(ErrorMessage = "Tytuł wiadomości jest wymagany.")]
+    [StringLength(120, ErrorMessage = "Tytuł może mieć maksymalnie 120 znaków.")]
+    public string Subject { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Treść wiadomości jest wymagana.")]
+    [MinLength(5, ErrorMessage = "Wiadomość jest za krótka.")]
     public string Message { get; set; } = string.Empty;
 }

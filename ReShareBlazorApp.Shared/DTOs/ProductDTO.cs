@@ -15,12 +15,16 @@ namespace ReShareBlazorApp.Shared.DTOs
 
         public string City { get; set; } = "";
         public decimal Price { get; set; }
+        public decimal PriceMin { get; set; }
+        public decimal PriceMax { get; set; }
 
-        public DateTime AddedAt { get; set; } = DateTime.Now;
+        public DateTime AddedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime ExpiresAt { get; set; }
         public ProductType Type { get; set; }
         public ProductCategory Category { get; set; }
+        public ProductCondition Condition { get; set; }
+
         public string AddedBy { get; set; } = "";
         public int UserId { get; set; }
 

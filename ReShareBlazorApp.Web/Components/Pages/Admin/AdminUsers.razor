@@ -3,27 +3,66 @@
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Web.ApiServices
 @attribute [Authorize(Roles = "Admin")]
 @inject AdminApiService adminApi
 @inject AuthenticationStateProvider authStateProvider
 
-<h1 class="admin-title">Użytkownicy</h1>
+<div class="admin-header">
+    <div class="admin-header-title-wrap">
+        <h1 class="admin-title">Użytkownicy</h1>
+        <p class="admin-muted" style="margin: 0;">
+            Zarządzaj kontami użytkowników oraz uprawnieniami administratora.
+        </p>
+    </div>
+
+    <button type="button"
+            class="admin-btn admin-btn-primary"
+            @onclick="OpenAddModal"
+            disabled="@isActionInProgress">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="8.5" cy="7" r="4"></circle>
+            <line x1="20" y1="8" x2="20" y2="14"></line>
+            <line x1="23" y1="11" x2="17" y2="11"></line>
+        </svg>
+        Dodaj użytkownika
+    </button>
+</div>
 
 <input class="admin-search"
-       placeholder="Szukaj po nazwie lub e-mailu..."
+       placeholder="Szukaj po nazwie, e-mailu, miejscowości lub roli..."
        @bind="search"
        @bind:event="oninput" />
 
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="admin-alert">@errorMessage</div>
+}
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="admin-alert-success">@successMessage</div>
+}
+
 @if (!string.IsNullOrEmpty(message))
 {
-    <div class="admin-alert">@message</div>
+    <div class="@(messageIsError ? "admin-alert" : "admin-alert-success")">
+        @message
+    </div>
 }
 
 @if (users is null)
 {
     <p class="admin-muted">Ładowanie...</p>
+}
+else if (!Filtered.Any())
+{
+    <p class="admin-muted">Brak użytkowników do wyświetlenia.</p>
 }
 else
 {
@@ -31,26 +70,69 @@ else
         <table class="admin-table">
             <thead>
                 <tr>
+                    <th class="col-checkbox">
+                        <input type="checkbox"
+                               class="admin-table-checkbox"
+                               checked="@IsAllSelected"
+                               @onchange="ToggleSelectAll"
+                               title="Zaznacz / odznacz wszystkich" />
+                    </th>
                     <th>Id</th>
                     <th>Nazwa</th>
                     <th>E-mail</th>
+                    <th>Rola</th>
+                    <th>Miejscowość</th>
                     <th>Status</th>
-                    <th></th>
+                    <th style="text-align: right;">Akcje</th>
                 </tr>
             </thead>
+
             <tbody>
                 @foreach (var user in Filtered)
                 {
                     <tr>
+                        <td class="col-checkbox">
+                            @if (user.Id != currentUserId)
+                            {
+                                <input type="checkbox"
+                                       class="admin-table-checkbox"
+                                       checked="@selectedUserIds.Contains(user.Id)"
+                                       @onchange="(e) => ToggleSelectUser(user.Id, e.Value)" />
+                            }
+                        </td>
+
                         <td>@user.Id</td>
+
                         <td>
-                            @user.UserName
+                            <strong>@user.UserName</strong>
+
                             @if (user.Id == currentUserId)
                             {
                                 <span class="admin-badge admin-badge-info">to Ty</span>
                             }
                         </td>
+
                         <td>@user.Email</td>
+
+                        <td>
+                            @if (user.IsAdmin)
+                            {
+                                <span class="admin-badge admin-badge-admin">
+                                    Administrator
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="admin-badge admin-badge-user">
+                                    Użytkownik
+                                </span>
+                            }
+                        </td>
+
+                        <td>
+                            @(string.IsNullOrWhiteSpace(user.City) ? "-" : user.City)
+                        </td>
+
                         <td>
                             @if (user.IsActive)
                             {
@@ -61,49 +143,1283 @@ else
                                 <span class="admin-badge admin-badge-bad">zablokowany</span>
                             }
                         </td>
+
                         <td class="admin-actions">
-                            @if (user.Id != currentUserId)
-                            {
-                                <button class="admin-btn @(user.IsActive ? "admin-btn-danger" : "")"
-                                        @onclick="() => ToggleActive(user)">
-                                    @(user.IsActive ? "Zablokuj" : "Odblokuj")
+                            <div class="admin-actions-inner">
+                                @if (user.Id != currentUserId &&
+                                    !string.Equals(
+                                        user.UserName,
+                                        "admin12345",
+                                        StringComparison.OrdinalIgnoreCase))
+                                {
+                                    @if (user.IsAdmin)
+                                    {
+                                        <button class="admin-btn admin-btn-role admin-btn-role-demote"
+                                                @onclick="() => PromptToggleRole(user)"
+                                                disabled="@isActionInProgress"
+                                                title="Odbierz uprawnienia administratora">
+                                            Odbierz admina
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="admin-btn admin-btn-role admin-btn-role-promote"
+                                                @onclick="() => PromptToggleRole(user)"
+                                                disabled="@isActionInProgress"
+                                                title="Nadaj uprawnienia administratora">
+                                            Nadaj admina
+                                        </button>
+                                    }
+
+                                    <button class="admin-btn @(user.IsActive ? "admin-btn-danger" : "")"
+                                            @onclick="() => ToggleActive(user)"
+                                            disabled="@isActionInProgress">
+                                        @(user.IsActive ? "Zablokuj" : "Odblokuj")
+                                    </button>
+
+                                    @if (user.IsTemporarilyBlocked)
+                                    {
+                                        <button class="admin-btn admin-btn-primary"
+                                                @onclick="() => UnblockUser(user)"
+                                                disabled="@isActionInProgress">
+                                            Odblokuj czasowo
+                                        </button>
+                                    }
+                                    else if (user.IsActive)
+                                    {
+                                        <button class="admin-btn admin-btn-danger"
+                                                @onclick="() => OpenTemporaryBlockModal(user)"
+                                                disabled="@isActionInProgress">
+                                            Blokada czasowa
+                                        </button>
+                                    }
+
+                                    <button class="admin-btn"
+                                            @onclick="() => OpenWarningModal(user)"
+                                            disabled="@isActionInProgress">
+                                        Ostrzeż
+                                    </button>
+
+                                    @if (user.HasWarning)
+                                    {
+                                        <button class="admin-btn"
+                                                @onclick="() => ClearWarning(user)"
+                                                disabled="@isActionInProgress">
+                                            Usuń ostrzeżenie
+                                        </button>
+                                    }
+                                }
+
+                                <button class="admin-btn admin-btn-sm"
+                                        @onclick="() => OpenEditModal(user)">
+                                    Edytuj
                                 </button>
-                            }
+                            </div>
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
     </div>
+
+    <div class="admin-table-footer">
+        <div class="admin-selected-info">
+            @if (selectedUserIds.Any())
+            {
+                <span>
+                    Zaznaczono:
+                    <strong>@selectedUserIds.Count</strong>
+                    z @FilteredDeletable.Count()
+                </span>
+            }
+        </div>
+
+        <button class="admin-btn admin-btn-danger-solid"
+                disabled="@(!selectedUserIds.Any() || isDeleting)"
+                @onclick="OpenDeleteConfirmation">
+            Usuń @(selectedUserIds.Any() ? $"({selectedUserIds.Count})" : "")
+        </button>
+    </div>
+}
+
+@* Modal: Dodaj użytkownika *@
+@if (isAddModalOpen)
+{
+    <div class="admin-modal-backdrop" @onclick="CloseAddModal">
+        <div class="admin-modal" @onclick:stopPropagation="true">
+            <div class="admin-modal-header">
+                <div>
+                    <h2 class="admin-modal-title">Dodaj użytkownika</h2>
+                    <p class="admin-modal-desc">
+                        Wprowadź dane nowego konta oraz wybierz jego rolę.
+                    </p>
+                </div>
+
+                <button type="button"
+                        class="admin-modal-close"
+                        @onclick="CloseAddModal"
+                        aria-label="Zamknij">
+                    <svg width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(modalError))
+            {
+                <div class="admin-alert" style="margin: 0;">
+                    @modalError
+                </div>
+            }
+
+            <form @onsubmit="HandleCreateUser"
+                  @onsubmit:preventDefault="true"
+                  style="display: flex; flex-direction: column; gap: 14px;">
+
+                <div class="admin-form-group">
+                    <label for="new-username">Nazwa użytkownika *</label>
+                    <input id="new-username"
+                           class="admin-form-input"
+                           placeholder="np. jan_kowalski"
+                           @bind="newModel.UserName"
+                           required />
+                </div>
+
+                <div class="admin-form-group">
+                    <label for="new-email">Adres e-mail *</label>
+                    <input id="new-email"
+                           type="email"
+                           class="admin-form-input"
+                           placeholder="np. jan@example.com"
+                           @bind="newModel.Email"
+                           required />
+                </div>
+
+                <div class="admin-form-group">
+                    <label for="new-password">Hasło *</label>
+                    <input id="new-password"
+                           type="password"
+                           class="admin-form-input"
+                           placeholder="Minimum 8 znaków"
+                           @bind="newModel.Password"
+                           required />
+
+                    <span class="admin-form-hint">
+                        Wymagane min. 8 znaków, wielka i mała litera oraz cyfra.
+                    </span>
+                </div>
+
+                <div class="admin-form-group">
+                    <label>Uprawnienia</label>
+
+                    <label class="admin-role-card @(newModel.IsAdmin ? "selected" : "")">
+                        <input type="checkbox" @bind="newModel.IsAdmin" />
+
+                        <div class="admin-role-info">
+                            <strong>
+                                Rola Administratora
+                                <span class="admin-badge admin-badge-admin">Admin</span>
+                            </strong>
+
+                            <span>
+                                Zaznacz, aby nadać użytkownikowi pełne uprawnienia
+                                administratora i dostęp do panelu /admin.
+                            </span>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="admin-modal-actions">
+                    <button type="button"
+                            class="admin-btn admin-btn-secondary"
+                            @onclick="CloseAddModal"
+                            disabled="@isSubmitting">
+                        Anuluj
+                    </button>
+
+                    <button type="submit"
+                            class="admin-btn admin-btn-primary"
+                            disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span>Tworzenie...</span>
+                        }
+                        else
+                        {
+                            <span>Utwórz użytkownika</span>
+                        }
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@* Modal: Potwierdzenie zmiany roli *@
+@if (roleConfirmUser != null)
+{
+    <div class="admin-modal-backdrop" @onclick="CancelRoleChange">
+        <div class="admin-modal" @onclick:stopPropagation="true"
+             style="max-width: 440px;">
+
+            <div class="admin-modal-header">
+                <div>
+                    <h2 class="admin-modal-title">
+                        @(roleConfirmIsAdmin
+                            ? "Nadanie roli Administratora"
+                            : "Odebranie roli Administratora")
+                    </h2>
+                </div>
+
+                <button type="button"
+                        class="admin-modal-close"
+                        @onclick="CancelRoleChange"
+                        aria-label="Zamknij">
+                    <svg width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="18" x2="18" y2="6"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <p style="margin: 0; color: var(--ink); line-height: 1.5;">
+                @if (roleConfirmIsAdmin)
+                {
+                    <span>
+                        Czy na pewno chcesz nadać uprawnienia administratora
+                        użytkownikowi <strong>@roleConfirmUser.UserName</strong>?
+                        Użytkownik uzyska dostęp do panelu /admin.
+                    </span>
+                }
+                else
+                {
+                    <span>
+                        Czy na pewno chcesz odebrać uprawnienia administratora
+                        użytkownikowi <strong>@roleConfirmUser.UserName</strong>?
+                        Użytkownik straci uprawnienia i dostęp do panelu administracyjnego.
+                    </span>
+                }
+            </p>
+
+            <div class="admin-modal-actions">
+                <button type="button"
+                        class="admin-btn admin-btn-secondary"
+                        @onclick="CancelRoleChange"
+                        disabled="@isActionInProgress">
+                    Anuluj
+                </button>
+
+                <button type="button"
+                        class="admin-btn @(roleConfirmIsAdmin ? "admin-btn-primary" : "admin-btn-danger")"
+                        @onclick="ExecuteRoleChange"
+                        disabled="@isActionInProgress">
+                    @if (isActionInProgress)
+                    {
+                        <span>Zapisywanie...</span>
+                    }
+                    else
+                    {
+                        <span>
+                            @(roleConfirmIsAdmin
+                                ? "Nadaj uprawnienia"
+                                : "Odbierz uprawnienia")
+                        </span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Modal potwierdzenia usunięcia *@
+@if (showDeleteConfirmation)
+{
+    <div class="admin-modal-backdrop" @onclick="CloseDeleteConfirmation">
+        <div class="admin-modal-card admin-confirm-modal"
+             @onclick:stopPropagation="true">
+
+            <div class="admin-modal-header">
+                <h2 class="admin-modal-title">Potwierdzenie usunięcia</h2>
+
+                <button type="button"
+                        class="admin-modal-close"
+                        @onclick="CloseDeleteConfirmation">
+                    ✕
+                </button>
+            </div>
+
+            <div class="admin-modal-body">
+                @if (SelectedUsersToDisplay.Count == 1)
+                {
+                    <p class="admin-confirm-text">
+                        Czy na pewno chcesz usunąć użytkownika
+                        <strong>@SelectedUsersToDisplay.First().UserName</strong>?
+                    </p>
+                }
+                else
+                {
+                    <p class="admin-confirm-text">
+                        Czy na pewno chcesz usunąć zaznaczonych użytkowników
+                        (<strong>@SelectedUsersToDisplay.Count</strong>)?
+                    </p>
+
+                    <ul class="admin-confirm-list">
+                        @foreach (var u in SelectedUsersToDisplay)
+                        {
+                            <li>
+                                <strong>@u.UserName</strong> (@u.Email)
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+
+            <div class="admin-modal-footer">
+                <button type="button"
+                        class="admin-btn"
+                        @onclick="CloseDeleteConfirmation"
+                        disabled="@isDeleting">
+                    Anuluj
+                </button>
+
+                <button type="button"
+                        class="admin-btn admin-btn-danger-solid"
+                        @onclick="ConfirmSoftDelete"
+                        disabled="@isDeleting">
+                    @(isDeleting ? "Usuwanie..." : "Tak, usuń")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Modal edycji użytkownika *@
+@if (editingUser is not null)
+{
+    <div class="admin-modal-backdrop" @onclick="CloseEditModal">
+        <div class="admin-modal-card" @onclick:stopPropagation="true">
+            <div class="admin-modal-header">
+                <h2 class="admin-modal-title">
+                    Edycja profilu: @editingUser.UserName
+                </h2>
+
+                <button type="button"
+                        class="admin-modal-close"
+                        @onclick="CloseEditModal">
+                    ✕
+                </button>
+            </div>
+
+            <EditForm Model="@editModel" OnValidSubmit="SaveUserChanges">
+                <DataAnnotationsValidator />
+
+                <div class="admin-modal-body">
+                    @if (!string.IsNullOrEmpty(editModalMessage))
+                    {
+                        <div class="@(editModalMessageIsError
+                             ? "admin-alert"
+                             : "admin-alert-success")">
+                            @editModalMessage
+                        </div>
+                    }
+
+                    @* Zdjęcie profilowe *@
+                    <div class="admin-avatar-edit">
+                        @if (!string.IsNullOrEmpty(DisplayedAvatar))
+                        {
+                            <img class="admin-avatar-img"
+                                 src="@DisplayedAvatar"
+                                 alt="Avatar" />
+                        }
+                        else
+                        {
+                            <div class="admin-avatar-placeholder">
+                                @GetInitials(editModel.UserName)
+                            </div>
+                        }
+
+                        <div class="admin-avatar-actions">
+                            <div class="admin-avatar-btns">
+                                <label class="admin-avatar-btn">
+                                    Zmień zdjęcie
+                                    <InputFile OnChange="OnAvatarSelected"
+                                               accept="image/png,image/jpeg,image/webp"
+                                               hidden />
+                                </label>
+
+                                @if (!string.IsNullOrEmpty(DisplayedAvatar))
+                                {
+                                    <button type="button"
+                                            class="admin-avatar-del"
+                                            @onclick="RemoveAvatar">
+                                        Usuń zdjęcie
+                                    </button>
+                                }
+                            </div>
+
+                            <span class="admin-avatar-hint">
+                                JPG, PNG lub WebP, maks. 2 MB.
+                            </span>
+
+                            @if (!string.IsNullOrEmpty(avatarError))
+                            {
+                                <span class="admin-avatar-err">@avatarError</span>
+                            }
+                        </div>
+                    </div>
+
+                    @* Dane profilu *@
+                    <div class="admin-form-row">
+                        <div class="admin-form-group">
+                            <label class="admin-form-label">
+                                Nazwa użytkownika *
+                            </label>
+
+                            <InputText class="admin-form-input"
+                                       @bind-Value="editModel.UserName" />
+
+                            <ValidationMessage For="@(() => editModel.UserName)" />
+                        </div>
+
+                        <div class="admin-form-group">
+                            <label class="admin-form-label">
+                                Adres e-mail *
+                            </label>
+
+                            <InputText class="admin-form-input"
+                                       @bind-Value="editModel.Email" />
+
+                            <ValidationMessage For="@(() => editModel.Email)" />
+                        </div>
+                    </div>
+
+                    <div class="admin-form-row">
+                        <div class="admin-form-group">
+                            <label class="admin-form-label">
+                                Numer telefonu
+                            </label>
+
+                            <InputText class="admin-form-input"
+                                       @bind-Value="editModel.PhoneNumber"
+                                       placeholder="np. +48 123 456 789" />
+
+                            <ValidationMessage For="@(() => editModel.PhoneNumber)" />
+                        </div>
+
+                        <div class="admin-form-group">
+                            <label class="admin-form-label">
+                                Miejscowość
+                            </label>
+
+                            <InputText class="admin-form-input"
+                                       @bind-Value="editModel.City"
+                                       placeholder="np. Kraków" />
+
+                            <ValidationMessage For="@(() => editModel.City)" />
+                        </div>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label class="admin-form-label">
+                            O mnie (opis profilu)
+                        </label>
+
+                        <InputTextArea class="admin-form-textarea"
+                                       @bind-Value="editModel.Bio"
+                                       placeholder="Krótki opis użytkownika..."
+                                       rows="3" />
+
+                        <ValidationMessage For="@(() => editModel.Bio)" />
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label class="admin-form-checkbox">
+                            <InputCheckbox @bind-Value="editModel.IsActive"
+                                           disabled="@(editingUser.Id == currentUserId)" />
+
+                            Konto aktywne
+
+                            @if (editingUser.Id == currentUserId)
+                            {
+                                <small class="admin-muted">
+                                    (nie możesz zablokować własnego konta)
+                                </small>
+                            }
+                        </label>
+                    </div>
+
+                    <div class="admin-muted" style="font-size: .8rem;">
+                        Data rejestracji:
+                        @editingUser.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                    </div>
+                </div>
+
+                <div class="admin-modal-footer">
+                    <button type="button"
+                            class="admin-btn"
+                            @onclick="CloseEditModal"
+                            disabled="@isSavingUser">
+                        Anuluj
+                    </button>
+
+                    <button type="submit"
+                            class="admin-btn admin-btn-primary"
+                            disabled="@isSavingUser">
+                        @(isSavingUser ? "Zapisywanie..." : "Zapisz zmiany")
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@if (temporaryBlockUser != null)
+{
+    <div class="admin-modal-backdrop" @onclick="CloseTemporaryBlockModal">
+        <div class="admin-modal" @onclick:stopPropagation="true" style="max-width: 440px;">
+            <div class="admin-modal-header">
+                <div>
+                    <h2 class="admin-modal-title">Blokada czasowa</h2>
+                    <p class="admin-modal-desc">Użytkownik: <strong>@temporaryBlockUser.UserName</strong></p>
+                </div>
+                <button type="button" class="admin-modal-close" @onclick="CloseTemporaryBlockModal">✕</button>
+            </div>
+
+            <div class="admin-form-group">
+                <label class="admin-form-label" for="block-hours">Czas blokady (godziny)</label>
+                <input id="block-hours" class="admin-form-input" type="number" min="1" @bind="temporaryBlockHours" />
+            </div>
+
+            <div class="admin-modal-actions">
+                <button type="button" class="admin-btn" @onclick="CloseTemporaryBlockModal" disabled="@moderationInProgress">Anuluj</button>
+                <button type="button" class="admin-btn admin-btn-danger" @onclick="ExecuteTemporaryBlock" disabled="@moderationInProgress">
+                    @(moderationInProgress ? "Blokowanie..." : "Zablokuj")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (warningUser != null)
+{
+    <div class="admin-modal-backdrop" @onclick="CloseWarningModal">
+        <div class="admin-modal" @onclick:stopPropagation="true" style="max-width: 520px;">
+            <div class="admin-modal-header">
+                <div>
+                    <h2 class="admin-modal-title">Ostrzeżenie użytkownika</h2>
+                    <p class="admin-modal-desc">Użytkownik: <strong>@warningUser.UserName</strong></p>
+                </div>
+                <button type="button" class="admin-modal-close" @onclick="CloseWarningModal">✕</button>
+            </div>
+
+            <div class="admin-form-group">
+                <label class="admin-form-label" for="warning-message">Treść ostrzeżenia</label>
+                <textarea id="warning-message" class="admin-form-textarea" rows="5" maxlength="500" @bind="warningText"></textarea>
+            </div>
+
+            <div class="admin-modal-actions">
+                <button type="button" class="admin-btn" @onclick="CloseWarningModal" disabled="@moderationInProgress">Anuluj</button>
+                <button type="button" class="admin-btn admin-btn-primary" @onclick="ExecuteWarning" disabled="@moderationInProgress">
+                    @(moderationInProgress ? "Zapisywanie..." : "Wyślij ostrzeżenie")
+                </button>
+            </div>
+        </div>
+    </div>
 }
 
 @code {
+    private const long MaxAvatarBytes = 2 * 1024 * 1024;
+
+    private static readonly string[] AllowedTypes =
+    {
+        "image/png",
+        "image/jpeg",
+        "image/webp"
+    };
+
     private List<AdminUserDTO>? users;
     private string search = "";
+
+    private string? errorMessage;
+    private string? successMessage;
     private string? message;
+
+    private bool messageIsError;
     private int currentUserId;
 
+    // Modal dodawania
+    private bool isAddModalOpen = false;
+    private bool isSubmitting = false;
+    private string? modalError;
+
+    private AdminCreateUserRequest newModel = new();
+
+    // Modal potwierdzenia roli
+    private AdminUserDTO? roleConfirmUser;
+    private bool roleConfirmIsAdmin;
+    private bool isActionInProgress = false;
+
+    private AdminUserDTO? temporaryBlockUser;
+    private int temporaryBlockHours = 24;
+    private AdminUserDTO? warningUser;
+    private string warningText = "";
+    private bool moderationInProgress;
+
+    // Zaznaczenia użytkowników do usunięcia
+    private HashSet<int> selectedUserIds = new();
+
+    private bool showDeleteConfirmation;
+    private bool isDeleting;
+
+    // Stan edycji użytkownika
+    private AdminUserDTO? editingUser;
+    private AdminUpdateUserDTO editModel = new();
+
+    private string? editModalMessage;
+    private bool editModalMessageIsError;
+    private bool isSavingUser;
+
+    // Stan avatara w modalu
+    private string? currentAvatarUrl;
+    private string? pendingAvatarPreview;
+    private byte[]? pendingAvatarBytes;
+    private string? pendingAvatarFileName;
+    private string? pendingAvatarContentType;
+
+    private bool removeAvatarRequested;
+    private string? avatarError;
+
+    private string? DisplayedAvatar =>
+        pendingAvatarPreview ??
+        (removeAvatarRequested ? null : currentAvatarUrl);
+
+    // Filtrowanie użytkowników
     private IEnumerable<AdminUserDTO> Filtered =>
-        users!.Where(u =>
-            string.IsNullOrWhiteSpace(search)
-            || u.UserName.Contains(search, StringComparison.OrdinalIgnoreCase)
-            || u.Email.Contains(search, StringComparison.OrdinalIgnoreCase));
+        (users ?? Enumerable.Empty<AdminUserDTO>())
+            .Where(u =>
+                string.IsNullOrWhiteSpace(search)
+                || u.UserName.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || u.Email.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (!string.IsNullOrEmpty(u.City) &&
+                    u.City.Contains(search, StringComparison.OrdinalIgnoreCase))
+                || (u.IsAdmin &&
+                    "administrator admin".Contains(
+                        search,
+                        StringComparison.OrdinalIgnoreCase))
+                || (!u.IsAdmin &&
+                    "użytkownik user".Contains(
+                        search,
+                        StringComparison.OrdinalIgnoreCase)));
+
+    private IEnumerable<AdminUserDTO> FilteredDeletable =>
+        Filtered.Where(u => u.Id != currentUserId);
+
+    private bool IsAllSelected =>
+        FilteredDeletable.Any() &&
+        FilteredDeletable.All(u => selectedUserIds.Contains(u.Id));
+
+    private List<AdminUserDTO> SelectedUsersToDisplay =>
+        users?.Where(u => selectedUserIds.Contains(u.Id)).ToList() ?? new();
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await authStateProvider.GetAuthenticationStateAsync();
-        int.TryParse(authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out currentUserId);
 
+        int.TryParse(
+            authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+            out currentUserId);
+
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
         users = await adminApi.GetUsersAsync();
+
+        if (users != null)
+        {
+            var existingIds = users.Select(u => u.Id).ToHashSet();
+            selectedUserIds.RemoveWhere(id => !existingIds.Contains(id));
+        }
+    }
+
+    private void OpenTemporaryBlockModal(AdminUserDTO user)
+    {
+        if (user.Id == currentUserId || isActionInProgress)
+            return;
+
+        temporaryBlockUser = user;
+        temporaryBlockHours = 24;
+        errorMessage = null;
+    }
+
+    private void CloseTemporaryBlockModal()
+    {
+        if (!moderationInProgress)
+            temporaryBlockUser = null;
+    }
+
+    private async Task ExecuteTemporaryBlock()
+    {
+        if (temporaryBlockUser == null || moderationInProgress)
+            return;
+
+        if (temporaryBlockHours < 1)
+        {
+            errorMessage = "Czas blokady musi wynosić co najmniej 1 godzinę.";
+            return;
+        }
+
+        moderationInProgress = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var user = temporaryBlockUser;
+            var ok = await adminApi.SetTemporaryBlockAsync(user.Id, temporaryBlockHours);
+
+            if (ok)
+            {
+                successMessage = $"Użytkownik '{user.UserName}' został zablokowany na {temporaryBlockHours} h.";
+                temporaryBlockUser = null;
+                await LoadUsers();
+            }
+            else
+            {
+                errorMessage = "Nie udało się ustawić blokady czasowej.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił błąd: {ex.Message}";
+        }
+        finally
+        {
+            moderationInProgress = false;
+        }
+    }
+
+    private async Task UnblockUser(AdminUserDTO user)
+    {
+        if (user.Id == currentUserId || moderationInProgress)
+            return;
+
+        moderationInProgress = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var ok = await adminApi.UnblockUserAsync(user.Id);
+
+            if (ok)
+            {
+                successMessage = $"Użytkownik '{user.UserName}' został odblokowany.";
+                await LoadUsers();
+            }
+            else
+            {
+                errorMessage = "Nie udało się odblokować użytkownika.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił błąd: {ex.Message}";
+        }
+        finally
+        {
+            moderationInProgress = false;
+        }
+    }
+
+    private void OpenWarningModal(AdminUserDTO user)
+    {
+        if (user.Id == currentUserId || isActionInProgress)
+            return;
+
+        warningUser = user;
+        warningText = user.WarningMessage ?? "";
+        errorMessage = null;
+    }
+
+    private void CloseWarningModal()
+    {
+        if (!moderationInProgress)
+            warningUser = null;
+    }
+
+    private async Task ExecuteWarning()
+    {
+        if (warningUser == null || moderationInProgress)
+            return;
+
+        moderationInProgress = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var user = warningUser;
+            var ok = await adminApi.WarnUserAsync(user.Id, warningText);
+
+            if (ok)
+            {
+                successMessage = $"Wysłano ostrzeżenie użytkownikowi '{user.UserName}'.";
+                warningUser = null;
+                await LoadUsers();
+            }
+            else
+            {
+                errorMessage = "Nie udało się wysłać ostrzeżenia.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił błąd: {ex.Message}";
+        }
+        finally
+        {
+            moderationInProgress = false;
+        }
+    }
+
+    private async Task ClearWarning(AdminUserDTO user)
+    {
+        if (user.Id == currentUserId || moderationInProgress)
+            return;
+
+        moderationInProgress = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var ok = await adminApi.ClearWarningAsync(user.Id);
+
+            if (ok)
+            {
+                successMessage = $"Usunięto ostrzeżenie użytkownika '{user.UserName}'.";
+                await LoadUsers();
+            }
+            else
+            {
+                errorMessage = "Nie udało się usunąć ostrzeżenia.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił błąd: {ex.Message}";
+        }
+        finally
+        {
+            moderationInProgress = false;
+        }
+    }
+
+    private void OpenAddModal()
+    {
+        newModel = new AdminCreateUserRequest
+        {
+            IsAdmin = true
+        };
+
+        modalError = null;
+        isAddModalOpen = true;
+    }
+
+    private void CloseAddModal()
+    {
+        if (isSubmitting)
+            return;
+
+        isAddModalOpen = false;
+        modalError = null;
+    }
+
+    private async Task HandleCreateUser()
+    {
+        modalError = null;
+
+        if (string.IsNullOrWhiteSpace(newModel.UserName) ||
+            newModel.UserName.Trim().Length < 3)
+        {
+            modalError = "Nazwa użytkownika musi mieć co najmniej 3 znaki.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newModel.Email) ||
+            !newModel.Email.Contains("@"))
+        {
+            modalError = "Podaj poprawny adres e-mail.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newModel.Password) ||
+            newModel.Password.Length < 8)
+        {
+            modalError = "Hasło musi mieć co najmniej 8 znaków.";
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            var (success, error, createdUser) =
+                await adminApi.CreateUserAsync(newModel);
+
+            if (success && createdUser != null)
+            {
+                isAddModalOpen = false;
+                errorMessage = null;
+
+                successMessage =
+                    $"Użytkownik '{createdUser.UserName}' został pomyślnie utworzony" +
+                    (createdUser.IsAdmin
+                        ? " z rolą Administratora."
+                        : ".");
+
+                await LoadUsers();
+            }
+            else
+            {
+                modalError = error ??
+                    "Wystąpił błąd podczas tworzenia użytkownika.";
+            }
+        }
+        catch (Exception ex)
+        {
+            modalError = $"Wystąpił błąd: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void PromptToggleRole(AdminUserDTO user)
+    {
+        roleConfirmUser = user;
+        roleConfirmIsAdmin = !user.IsAdmin;
+    }
+
+    private void CancelRoleChange()
+    {
+        if (isActionInProgress)
+            return;
+
+        roleConfirmUser = null;
+    }
+
+    private async Task ExecuteRoleChange()
+    {
+        if (roleConfirmUser == null || isActionInProgress)
+            return;
+
+        isActionInProgress = true;
+        errorMessage = null;
+        successMessage = null;
+
+        var targetUser = roleConfirmUser;
+        var newAdminState = roleConfirmIsAdmin;
+
+        try
+        {
+            var (ok, error) = await adminApi.SetUserRoleAsync(
+                targetUser.Id,
+                newAdminState);
+
+            if (ok)
+            {
+                roleConfirmUser = null;
+
+                successMessage = newAdminState
+                    ? $"Nadano rolę administratora użytkownikowi '{targetUser.UserName}'."
+                    : $"Odebrano rolę administratora użytkownikowi '{targetUser.UserName}'.";
+
+                await LoadUsers();
+            }
+            else
+            {
+                errorMessage = error ?? "Nie udało się zmienić roli użytkownika.";
+                roleConfirmUser = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił błąd: {ex.Message}";
+            roleConfirmUser = null;
+        }
+        finally
+        {
+            isActionInProgress = false;
+        }
     }
 
     private async Task ToggleActive(AdminUserDTO user)
     {
-        message = null;
-        var ok = await adminApi.SetUserActiveAsync(user.Id, !user.IsActive);
-        if (ok)
-            user.IsActive = !user.IsActive;
+        if (user.Id == currentUserId || isActionInProgress)
+            return;
+
+        isActionInProgress = true;
+        errorMessage = null;
+        successMessage = null;
+
+        var newState = !user.IsActive;
+
+        try
+        {
+            var ok = await adminApi.SetUserActiveAsync(user.Id, newState);
+            if (ok)
+            {
+                successMessage = newState
+                    ? $"Odblokowano użytkownika '{user.UserName}'."
+                    : $"Zablokowano użytkownika '{user.UserName}'.";
+
+                await LoadUsers();
+            }
+            else
+            {
+                errorMessage = "Nie udało się zmienić statusu aktywacji użytkownika.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił błąd: {ex.Message}";
+        }
+        finally
+        {
+            isActionInProgress = false;
+        }
+    }
+
+    private void ToggleSelectAll(ChangeEventArgs e)
+    {
+        if (e.Value is bool isChecked && isChecked)
+        {
+            foreach (var u in FilteredDeletable)
+            {
+                selectedUserIds.Add(u.Id);
+            }
+        }
         else
-            message = "Nie udało się zmienić statusu użytkownika.";
+        {
+            foreach (var u in FilteredDeletable)
+            {
+                selectedUserIds.Remove(u.Id);
+            }
+        }
+    }
+
+    private void ToggleSelectUser(int userId, object? value)
+    {
+        if (value is bool isChecked)
+        {
+            if (isChecked)
+                selectedUserIds.Add(userId);
+            else
+                selectedUserIds.Remove(userId);
+        }
+    }
+
+    private void OpenDeleteConfirmation()
+    {
+        if (!selectedUserIds.Any())
+            return;
+
+        showDeleteConfirmation = true;
+    }
+
+    private void CloseDeleteConfirmation()
+    {
+        if (isDeleting)
+            return;
+
+        showDeleteConfirmation = false;
+    }
+
+    private async Task ConfirmSoftDelete()
+    {
+        if (!selectedUserIds.Any() || isDeleting)
+            return;
+
+        isDeleting = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            int deletedCount = 0;
+            foreach (var id in selectedUserIds.ToList())
+            {
+                var (success, error) = await adminApi.DeleteUserAsync(id);
+                if (success)
+                {
+                    deletedCount++;
+                }
+            }
+
+            successMessage = $"Pomyślnie usunięto {deletedCount} użytkowników.";
+            selectedUserIds.Clear();
+            showDeleteConfirmation = false;
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił błąd podczas usuwania: {ex.Message}";
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+
+    private void OpenEditModal(AdminUserDTO user)
+    {
+        editingUser = user;
+        editModel = new AdminUpdateUserDTO
+        {
+            UserName = user.UserName,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            City = user.City,
+            Bio = user.Bio,
+            IsActive = user.IsActive
+        };
+
+        currentAvatarUrl = user.AvatarUrl;
+        pendingAvatarPreview = null;
+        pendingAvatarBytes = null;
+        pendingAvatarFileName = null;
+        pendingAvatarContentType = null;
+        removeAvatarRequested = false;
+        avatarError = null;
+        editModalMessage = null;
+    }
+
+    private void CloseEditModal()
+    {
+        if (isSavingUser)
+            return;
+
+        editingUser = null;
+    }
+
+    private async Task OnAvatarSelected(InputFileChangeEventArgs e)
+    {
+        avatarError = null;
+        var file = e.File;
+        if (file == null) return;
+
+        if (!AllowedTypes.Contains(file.ContentType))
+        {
+            avatarError = "Dozwolone formaty to tylko JPG, PNG lub WebP.";
+            return;
+        }
+
+        if (file.Size > MaxAvatarBytes)
+        {
+            avatarError = "Plik jest za duży (maksymalnie 2 MB).";
+            return;
+        }
+
+        try
+        {
+            using var stream = file.OpenReadStream(MaxAvatarBytes);
+            var buffer = new byte[file.Size];
+            await stream.ReadAsync(buffer);
+
+            pendingAvatarBytes = buffer;
+            pendingAvatarFileName = file.Name;
+            pendingAvatarContentType = file.ContentType;
+
+            using var memStream = new MemoryStream();
+            await file.OpenReadStream(MaxAvatarBytes).CopyToAsync(memStream);
+            var base64 = Convert.ToBase64String(memStream.ToArray());
+            pendingAvatarPreview = $"data:{file.ContentType};base64,{base64}";
+            removeAvatarRequested = false;
+        }
+        catch (Exception ex)
+        {
+            avatarError = $"Nie udało się wczytać pliku: {ex.Message}";
+        }
+    }
+
+    private void RemoveAvatar()
+    {
+        pendingAvatarPreview = null;
+        pendingAvatarBytes = null;
+        pendingAvatarFileName = null;
+        pendingAvatarContentType = null;
+        removeAvatarRequested = true;
+    }
+
+    private async Task SaveUserChanges()
+    {
+        if (editingUser == null || isSavingUser)
+            return;
+
+        isSavingUser = true;
+        editModalMessage = null;
+
+        try
+        {
+            var (success, error, updatedUser) = await adminApi.UpdateUserAsync(editingUser.Id, editModel);
+            if (!success)
+            {
+                editModalMessage = error ?? "Nie udało się zapisać zmian.";
+                editModalMessageIsError = true;
+                return;
+            }
+
+            if (removeAvatarRequested && !string.IsNullOrEmpty(currentAvatarUrl))
+            {
+                var (delOk, delErr) = await adminApi.DeleteUserAvatarAsync(editingUser.Id);
+                if (!delOk)
+                {
+                    editModalMessage = delErr ?? "Nie udało się usunąć avatara.";
+                    editModalMessageIsError = true;
+                    return;
+                }
+            }
+            else if (pendingAvatarBytes != null && pendingAvatarFileName != null && pendingAvatarContentType != null)
+            {
+                var (upOk, upErr, newUrl) = await adminApi.UploadUserAvatarAsync(
+                    editingUser.Id,
+                    pendingAvatarBytes,
+                    pendingAvatarFileName,
+                    pendingAvatarContentType);
+
+                if (!upOk)
+                {
+                    editModalMessage = upErr ?? "Nie udało się wgrać nowego avatara.";
+                    editModalMessageIsError = true;
+                    return;
+                }
+            }
+
+            successMessage = $"Zaktualizowano profil użytkownika '{editModel.UserName}'.";
+            editingUser = null;
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            editModalMessage = $"Wystąpił błąd: {ex.Message}";
+            editModalMessageIsError = true;
+        }
+        finally
+        {
+            isSavingUser = false;
+        }
+    }
+
+    private string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        return name[..Math.Min(2, name.Length)].ToUpper();
     }
 }

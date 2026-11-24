@@ -12,6 +12,12 @@ namespace ReShareBlazorApp.Web.ApiServices
         }
         public async Task<LoginResponse?> LoginAsync(LoginModel model)
         {
+            var (resp, _) = await LoginWithDetailsAsync(model);
+            return resp;
+        }
+
+        public async Task<(LoginResponse? Response, string? ErrorMessage)> LoginWithDetailsAsync(LoginModel model)
+        {
             var request = new LoginRequest
             {
                 Email = model.Email,
@@ -64,8 +70,6 @@ namespace ReShareBlazorApp.Web.ApiServices
         private class LoginErrorBody
         {
             public string? Message { get; set; }
-                return null;
-            return await response.Content.ReadFromJsonAsync<LoginResponse>();
         }
         public async Task<RegisterResponse?> RegisterAsync(RegisterModel model)
         {
@@ -83,5 +87,47 @@ namespace ReShareBlazorApp.Web.ApiServices
 
             return await response.Content.ReadFromJsonAsync<RegisterResponse>();
         }
+        public async Task<bool> ForgotPasswordAsync(string email)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync(
+                    "api/auth/forgot-password",
+                    new ForgotPasswordRequest { Email = email });
+                return response.IsSuccessStatusCode;
+            }
+            catch (HttpRequestException)
+            {
+                return false;
+            }
+        }
+
+        // Zwraca null gdy hasło zmieniono, w przeciwnym razie komunikat błędu.
+        public async Task<string?> ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync(
+                    "api/auth/reset-password",
+                    request);
+                if (response.IsSuccessStatusCode)
+                    return null;
+
+                try
+                {
+                    var body = await response.Content.ReadFromJsonAsync<ErrorBody>();
+                    if (!string.IsNullOrWhiteSpace(body?.Message))
+                        return body.Message;
+                }
+                catch { }
+                return "Nie udało się zmienić hasła. Spróbuj ponownie.";
+            }
+            catch (HttpRequestException)
+            {
+                return "Nie udało się połączyć z serwerem. Spróbuj ponownie później.";
+            }
+        }
+
+        private class ErrorBody { public string? Message { get; set; } }
     }
 }

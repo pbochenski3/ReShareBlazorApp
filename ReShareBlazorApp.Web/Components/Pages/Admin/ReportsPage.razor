@@ -1,72 +1,67 @@
-@page "/reports"
-@attribute [Authorize]
-
+@page "/admin/reports"
+@layout AdminLayout
 @using Microsoft.AspNetCore.Authorization
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Shared.Enums
 @using ReShareBlazorApp.Web.ApiServices
-@using ReShareBlazorApp.Web.Components.Pages.NavBar
-
+@attribute [Authorize(Roles = "Admin")]
 @inject ReportApiService reportApi
-@inject NotificationService notify
 
-<PageTitle>Zgłoszenia – ODDAJ DALEJ</PageTitle>
+<h1 class="admin-title">Zgłoszenia</h1>
 
-<PageHeader Title="Zgłoszenia"
-            Subtitle="Ogłoszenia zgłoszone przez użytkowników." />
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="admin-alert @(messageOk ? "admin-alert-ok" : "")">@message</div>
+}
 
-<section class="home-section">
-    <div class="home-container">
+@if (isLoading)
+{
+    <p class="admin-muted">Ładowanie...</p>
+}
+else if (loadFailed)
+{
+    <div class="admin-alert">Nie udało się pobrać zgłoszeń. Sprawdź, czy API działa.</div>
+}
+else if (!reports.Any())
+{
+    <p class="admin-muted">Brak zgłoszeń.</p>
+}
+else
+{
+    <p class="admin-muted">Liczba zgłoszeń: @reports.Count. Kliknij zgłoszenie, aby je rozwinąć.</p>
 
-        @if (isLoading)
-        {
-            <p>Ładowanie zgłoszeń...</p>
-        }
-        else if (loadFailed)
-        {
-            <div class="reports-empty">
-                <h3>Nie udało się pobrać zgłoszeń</h3>
-                <p>Spróbuj odświeżyć stronę lub zalogować się ponownie.</p>
-            </div>
-        }
-        else if (!reports.Any())
-        {
-            <div class="reports-empty">
-                <h3>Brak zgłoszeń</h3>
-                <p>Nikt jeszcze nie zgłosił żadnego ogłoszenia.</p>
-            </div>
-        }
-        else
-        {
-            <p class="page-count">Liczba zgłoszeń: @reports.Count</p>
-
-            <div class="reports-list">
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Kategoria</th>
+                    <th>Ogłoszenie</th>
+                    <th>Zgłosił</th>
+                    <th>Data</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
                 @foreach (var report in reports)
                 {
                     var isOpen = expandedReportId == report.ReportId;
 
-                    <article class="report-item @(isOpen ? "open" : "")">
+                    <tr class="admin-row-click @(isOpen ? "admin-row-open" : "")"
+                        tabindex="0"
+                        aria-expanded="@(isOpen ? "true" : "false")"
+                        @onclick="() => ToggleReport(report.ReportId)"
+                        @onkeydown="e => OnRowKeyDown(e, report.ReportId)">
+                        <td><span class="admin-badge admin-badge-bad">@GetCategoryName(report.Category)</span></td>
+                        <td>@report.ProductName</td>
+                        <td>@report.ReportedBy</td>
+                        <td>@report.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td class="admin-actions">@(isOpen ? "▲" : "▼")</td>
+                    </tr>
 
-                        <button type="button"
-                                class="report-head"
-                                aria-expanded="@(isOpen ? "true" : "false")"
-                                @onclick="() => ToggleReport(report.ReportId)">
-                            <span class="report-badge">@GetCategoryName(report.Category)</span>
-
-                            <span class="report-head-text">
-                                <strong>@report.ProductName</strong>
-                                <small>
-                                    Zgłosił: @report.ReportedBy ·
-                                    @report.CreatedAt.ToString("dd.MM.yyyy HH:mm")
-                                </small>
-                            </span>
-
-                            <span class="report-arrow">@(isOpen ? "▲" : "▼")</span>
-                        </button>
-
-                        @if (isOpen)
-                        {
-                            <div class="report-body">
+                    @if (isOpen)
+                    {
+                        <tr class="admin-detail">
+                            <td colspan="5" class="admin-detail-cell">
 
                                 <div class="report-info-grid">
                                     <div>
@@ -90,8 +85,8 @@
                                 <span class="report-label">Treść zgłoszenia</span>
                                 <p class="report-description">@report.Description</p>
 
-                                <div class="report-actions">
-                                    <a class="home-btn home-btn-outline"
+                                <div class="admin-detail-actions">
+                                    <a class="admin-btn"
                                        href="@($"/details/{report.ProductId}")"
                                        target="_blank"
                                        rel="noopener">
@@ -99,29 +94,28 @@
                                     </a>
 
                                     <button type="button"
-                                            class="home-btn home-btn-outline"
+                                            class="admin-btn"
                                             disabled="@isBusy"
                                             @onclick="() => AskDismiss(report)">
                                         Usuń zgłoszenie (ogłoszenie zostaje)
                                     </button>
 
                                     <button type="button"
-                                            class="home-btn home-btn-danger"
+                                            class="admin-btn admin-btn-danger"
                                             disabled="@isBusy"
                                             @onclick="() => AskDeleteProduct(report)">
                                         Usuń ogłoszenie
                                     </button>
                                 </div>
 
-                            </div>
-                        }
-                    </article>
+                            </td>
+                        </tr>
+                    }
                 }
-            </div>
-        }
-
+            </tbody>
+        </table>
     </div>
-</section>
+}
 
 @if (pendingReport != null)
 {
@@ -175,6 +169,8 @@
     private int? expandedReportId;
     private ReportDTO? pendingReport;
     private bool pendingDeleteProduct;
+    private string? message;
+    private bool messageOk;
 
     protected override async Task OnInitializedAsync()
     {
@@ -192,6 +188,12 @@
     private void ToggleReport(int reportId)
     {
         expandedReportId = expandedReportId == reportId ? null : reportId;
+    }
+
+    private void OnRowKeyDown(KeyboardEventArgs e, int reportId)
+    {
+        if (e.Key == "Enter")
+            ToggleReport(reportId);
     }
 
     private void AskDismiss(ReportDTO report)
@@ -234,13 +236,13 @@
 
         if (result)
         {
-            notify.AddNotification("Zgłoszenie", "Zgłoszenie zostało usunięte.");
+            SetMessage("Zgłoszenie zostało usunięte.", true);
             expandedReportId = null;
             await LoadReports();
         }
         else
         {
-            notify.AddNotification("Zgłoszenie", "Nie udało się usunąć zgłoszenia.");
+            SetMessage("Nie udało się usunąć zgłoszenia.", false);
         }
     }
 
@@ -252,14 +254,20 @@
 
         if (result)
         {
-            notify.AddNotification("Ogłoszenie", "Ogłoszenie zostało usunięte.");
+            SetMessage("Ogłoszenie zostało usunięte.", true);
             expandedReportId = null;
             await LoadReports();
         }
         else
         {
-            notify.AddNotification("Ogłoszenie", "Nie udało się usunąć ogłoszenia.");
+            SetMessage("Nie udało się usunąć ogłoszenia.", false);
         }
+    }
+
+    private void SetMessage(string text, bool ok)
+    {
+        message = text;
+        messageOk = ok;
     }
 
     private string GetCategoryName(ReportCategory category)

@@ -8,10 +8,16 @@ namespace ReShareBlazorApp.Api.Services
 {
     public class ReportService : IReportService
     {
+        private const string ImageFolder = "products";
+
         private readonly IReportRepository _reportRepository;
-        public ReportService(IReportRepository reportRepository)
+        private readonly IImageStorage _imageStorage;
+        public ReportService(
+            IReportRepository reportRepository,
+            IImageStorage imageStorage)
         {
             _reportRepository = reportRepository;
+            _imageStorage = imageStorage;
         }
         public async Task<bool> AddReportAsync(ReportDTO report)
         {
@@ -61,7 +67,15 @@ namespace ReShareBlazorApp.Api.Services
         }
         public async Task<bool> DeleteReportedProductAsync(int reportId)
         {
-            return await _reportRepository.DeleteReportedProductAsync(reportId);
+            var fileNames = await _reportRepository.DeleteReportedProductAsync(reportId);
+            if (fileNames == null)
+                return false;
+
+            foreach (var fileName in fileNames)
+            {
+                _imageStorage.Delete(fileName, ImageFolder);
+            }
+            return true;
         }
     }
 }

@@ -6,6 +6,7 @@
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Models
 @inject UserApiService UserApi
+@inject AuthApiService AuthApi
 @inject NavigationManager Nav
 
 <PageTitle>Edytuj profil – ODDAJ DALEJ</PageTitle>
@@ -62,7 +63,13 @@
                 <InputTextArea @bind-Value="model.Bio" class="register-input" rows="4" placeholder="Napisz kilka słów o sobie" />
                 <ValidationMessage For="@(() => model.Bio)" />
             </div>
-
+            <div class="register-field">
+    <label>Hasło</label>
+    <button type="button" class="home-btn home-btn-outline" disabled="@sendingReset" @onclick="SendPasswordReset">
+        @(sendingReset ? "Wysyłanie..." : "Zmień hasło")
+    </button>
+    <small>Wyślemy na Twój adres e-mail link do ustawienia nowego hasła.</small>
+</div>
             <button type="submit" class="register-button" disabled="@saving">@(saving ? "Zapisywanie..." : "Zapisz zmiany")</button>
             <button type="button" class="login-secondary" @onclick="Cancel">Anuluj</button>
         </div>
@@ -75,6 +82,8 @@
 
     private EditProfileModel model = new();
     private bool saving;
+    private bool sendingReset;
+    private string? userEmail;
     private string? message;
     private bool messageIsError;
 
@@ -102,6 +111,7 @@
         model.Username = me.UserName;
         model.City = me.City;
         model.Bio = me.Bio;
+        userEmail = me.Email;
         currentAvatarUrl = UserApi.GetAvatarUrl(me.AvatarUrl);
     }
 
@@ -177,6 +187,24 @@
         message = "✔ Zmiany zostały zapisane.";
         messageIsError = false;
     }
+    private async Task SendPasswordReset()
+{
+    if (string.IsNullOrWhiteSpace(userEmail))
+    {
+        message = "Nie udało się ustalić Twojego adresu e-mail.";
+        messageIsError = true;
+        return;
+    }
 
+    sendingReset = true;
+    message = null;
+    var ok = await AuthApi.ForgotPasswordAsync(userEmail);
+    sendingReset = false;
+
+    message = ok
+        ? "✔ Wysłaliśmy na Twój e-mail link do zmiany hasła."
+        : "Nie udało się wysłać wiadomości. Spróbuj ponownie później.";
+    messageIsError = !ok;
+}
     private void Cancel() => Nav.NavigateTo($"/user/{Uri.EscapeDataString(model.Username)}");
 }

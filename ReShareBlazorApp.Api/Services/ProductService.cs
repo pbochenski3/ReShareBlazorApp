@@ -1,8 +1,10 @@
-﻿using ReShareBlazorApp.Api.Date;
+﻿using Microsoft.Extensions.Logging;
+using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared.DTOs;
+using ReShareBlazorApp.Shared.Enums;
 
 namespace ReShareBlazorApp.Api.Services
 {
@@ -15,17 +17,43 @@ namespace ReShareBlazorApp.Api.Services
 
         private readonly IProductRepository _productRepository;
         private readonly IImageStorage _imageStorage;
+        private readonly INotificationService _notificationService;
+        private readonly IBadgeService _badgeService;
+        private readonly ILogger<ProductService> _logger;
 
         public ProductService(
             IProductRepository productRepository,
-            IImageStorage imageStorage)
+            IImageStorage imageStorage,
+            INotificationService notificationService,
+            IBadgeService badgeService,
+            ILogger<ProductService> logger)
         {
             _productRepository = productRepository;
             _imageStorage = imageStorage;
+            _notificationService = notificationService;
+            _badgeService = badgeService;
+            _logger = logger;
         }
 
         public async Task<bool> AddProductAsync(ProductDTO product)
         {
+            if (product == null ||
+                string.IsNullOrWhiteSpace(product.Name) ||
+                product.Name.Trim().Length is < 3 or > 50 ||
+                string.IsNullOrWhiteSpace(product.Description) ||
+                product.Description.Trim().Length > 5000 ||
+                string.IsNullOrWhiteSpace(product.City) ||
+                product.City.Trim().Length > 60 ||
+                 product.PriceMin < 0.01m ||
+                 product.PriceMax < product.PriceMin ||
+                 product.PriceMax > 100000 ||
+                !Enum.IsDefined(product.Type) ||
+                !Enum.IsDefined(product.Category) ||
+                product.ExpiresAt <= DateTime.UtcNow)
+            {
+                return false;
+            }
+
             var images = new List<ProductImage>();
             var savedFiles = new List<string>();
 
@@ -64,10 +92,13 @@ namespace ReShareBlazorApp.Api.Services
                 {
                     Name = product.Name,
                     Description = product.Description,
-                    Price = product.Price,
+                    Price = product.PriceMin,
+                    PriceMin = product.PriceMin,
+                    PriceMax = product.PriceMax,
                     AddedAt = product.AddedAt,
                     ExpiresAt = product.ExpiresAt,
                     Category = product.Category,
+                    Condition = product.Condition,
                     Type = product.Type,
                     City = product.City,
                     UserId = product.UserId,
@@ -78,6 +109,28 @@ namespace ReShareBlazorApp.Api.Services
 
                 if (!result)
                     DeleteFiles(savedFiles);
+                else
+                {
+                    try
+                    {
+                        if (productModel.Type == ProductType.LookingFor)
+                        {
+                            await _notificationService.CreateForMatchingOffersAsync(productModel);
+                        }
+                        else
+                        {
+                            await _notificationService.CreateForMatchingWantedListingsAsync(productModel);
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.LogError(exception,
+                            "Nie udało się utworzyć powiadomień dla nowego ogłoszenia {ProductId}",
+                            productModel.Id);
+                    }
+
+                    await AwardProductBadgesAsync(productModel.UserId);
+                }
 
                 return result;
             }
@@ -88,6 +141,64 @@ namespace ReShareBlazorApp.Api.Services
             }
         }
 
+        private async Task AwardProductBadgesAsync(int userId)
+        {
+            try
+            {
+                var productCount = await _productRepository.CountUserProductsAsync(userId);
+
+                if (productCount == 1)
+                {
+                    await _badgeService.AwardBadgeAsync(userId, "Pierwsze ogłoszenie");
+                }
+
+                if (productCount >= 5)
+                {
+                    await _badgeService.AwardBadgeAsync(userId, "Aktywny sprzedawca");
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception,
+                    "Nie udało się przyznać odznak za ogłoszenia użytkownikowi {UserId}", userId);
+            }
+        }
+
+        public Task<bool?> ToggleFavoriteAsync(int userId, int productId)
+        {
+            return _productRepository.ToggleFavoriteAsync(userId, productId);
+        }
+
+        public Task<List<int>> GetFavoriteIdsAsync(int userId)
+        {
+            return _productRepository.GetFavoriteProductIdsAsync(userId);
+        }
+
+        public async Task<List<ProductDTO>> GetFavoritesAsync(int userId)
+        {
+            var products = await _productRepository.GetFavoriteProductsAsync(userId);
+
+            var imageIds = await _productRepository.GetImageIdsAsync(
+                products.Select(p => p.Id));
+
+            return products.Select(p => new ProductDTO
+            {
+                Name = p.Name,
+                Description = p.Description,
+                ProductId = p.Id,
+                 Price = p.Price,
+                 PriceMin = p.PriceMin,
+                 PriceMax = p.PriceMax,
+                AddedAt = p.AddedAt,
+                ExpiresAt = p.ExpiresAt,
+                Category = p.Category,
+                City = p.City,
+                Type = p.Type,
+                UserId = p.UserId,
+                ImageIds = imageIds.GetValueOrDefault(p.Id) ?? new List<int>()
+            }).ToList();
+        }
+
         public async Task<List<ProductDTO>> GetProductsAsync(
             int number = 5,
             ProductCategory? category = null,
@@ -95,7 +206,9 @@ namespace ReShareBlazorApp.Api.Services
             string? location = null,
             decimal? minPrice = null,
             decimal? maxPrice = null,
-            string? sort = null)
+            string? sort = null,
+            int? userId = null,
+            ProductType? type = null)
         {
             var products = await _productRepository.GetProducts(
                 number,
@@ -104,7 +217,9 @@ namespace ReShareBlazorApp.Api.Services
                 location,
                 minPrice,
                 maxPrice,
-                sort
+                sort,
+                userId,
+                type
             );
 
             var imageIds = await _productRepository.GetImageIdsAsync(
@@ -115,10 +230,13 @@ namespace ReShareBlazorApp.Api.Services
                 Name = p.Name,
                 Description = p.Description,
                 ProductId = p.Id,
-                Price = p.Price,
+                 Price = p.Price,
+                 PriceMin = p.PriceMin,
+                 PriceMax = p.PriceMax,
                 AddedAt = p.AddedAt,
                 ExpiresAt = p.ExpiresAt,
                 Category = p.Category,
+                Condition = p.Condition,
                 City = p.City,
                 Type = p.Type,
                 UserId = p.UserId,
@@ -131,6 +249,23 @@ namespace ReShareBlazorApp.Api.Services
             int userId,
             ProductUpdateDTO product)
         {
+            if (product == null ||
+                string.IsNullOrWhiteSpace(product.Name) ||
+                product.Name.Trim().Length is < 3 or > 50 ||
+                string.IsNullOrWhiteSpace(product.Description) ||
+                product.Description.Trim().Length > 5000 ||
+                string.IsNullOrWhiteSpace(product.City) ||
+                product.City.Trim().Length > 60 ||
+                 product.PriceMin < 0.01m ||
+                 product.PriceMax < product.PriceMin ||
+                 product.PriceMax > 100000 ||
+                !Enum.IsDefined(product.Type) ||
+                !Enum.IsDefined(product.Category) ||
+                product.ExpiresAt <= DateTime.UtcNow)
+            {
+                return false;
+            }
+
             return await _productRepository.UpdateProductAsync(
                 productId,
                 userId,
@@ -156,6 +291,46 @@ namespace ReShareBlazorApp.Api.Services
             return deleted;
         }
 
+        public async Task<bool> MarkAsSoldAsync(int productId, int userId)
+        {
+            var product = await _productRepository.GetProductById(productId);
+
+            if (product == null || product.UserId != userId)
+                return false;
+
+            var marked = await _productRepository.MarkAsSoldAsync(productId, userId);
+
+            if (marked)
+            {
+                DeleteFiles(product.Images.Select(image => image.StoredFileName));
+            }
+
+            return marked;
+        }
+
+        public async Task<CompletedStatsDTO> GetCompletedStatsAsync()
+        {
+            var counts = await _productRepository.GetCompletedCountsByCategoryAsync();
+
+            var stats = new CompletedStatsDTO
+            {
+                TotalCompleted = counts.Values.Sum(),
+                TopCategory = ProductCategory.Tickets,
+                TopCategoryCount = counts.GetValueOrDefault(ProductCategory.Tickets)
+            };
+
+            foreach (var (category, count) in counts.OrderBy(c => c.Key))
+            {
+                if (count > stats.TopCategoryCount)
+                {
+                    stats.TopCategory = category;
+                    stats.TopCategoryCount = count;
+                }
+            }
+
+            return stats;
+        }
+
         public async Task<ProductDTO?> GetProductById(int id)
         {
             var product = await _productRepository.GetProductById(id);
@@ -175,9 +350,12 @@ namespace ReShareBlazorApp.Api.Services
                 UserId = product.UserId,
                 Name = product.Name,
                 Description = product.Description,
-                Price = product.Price,
+                 Price = product.PriceMin,
+                 PriceMin = product.PriceMin,
+                 PriceMax = product.PriceMax,
                 City = product.City,
                 Category = product.Category,
+                Condition = product.Condition,
                 AddedAt = product.AddedAt,
                 ExpiresAt = product.ExpiresAt,
                 Type = product.Type,
@@ -296,6 +474,5 @@ namespace ReShareBlazorApp.Api.Services
 
             return null;
         }
-
     }
 }

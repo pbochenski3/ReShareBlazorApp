@@ -75,29 +75,43 @@ namespace ReShareBlazorApp.Api.Repositories
                 return false;
             }
         }
-        public async Task<bool> DeleteReportedProductAsync(int reportId)
+        public async Task<List<string>?> DeleteReportedProductAsync(int reportId)
         {
             try
             {
                 var report = await _context.Reports
                     .FirstOrDefaultAsync(r => r.Id == reportId);
                 if (report == null)
-                    return false;
+                    return null;
 
                 var product = await _context.Products
+                    .Include(p => p.Images)
                     .FirstOrDefaultAsync(p => p.Id == report.ProductId);
                 if (product == null)
-                    return false;
+                    return null;
 
-                // Usunięcie ogłoszenia usuwa kaskadowo wszystkie jego zgłoszenia.
-                _context.Products.Remove(product);
+                var fileNames = product.Images
+                    .Select(image => image.StoredFileName)
+                    .ToList();
+
+                // Ogłoszenia są usuwane "miękko" (isDeleted), tak jak przy usuwaniu przez autora.
+                product.isDeleted = true;
+
+                // Wszystkie zgłoszenia tego ogłoszenia przestają być potrzebne.
+                var productReports = await _context.Reports
+                    .Where(r => r.ProductId == product.Id)
+                    .ToListAsync();
+                _context.Reports.RemoveRange(productReports);
+
+                // Ogłoszenia są usuwane logicznie, tak samo jak w zwykłym endpointcie.
+                product.isDeleted = true;
                 await _context.SaveChangesAsync();
-                return true;
+                return fileNames;
             }
             catch (Exception ex)
             {
                 _logger.LogError($"[ReportRepository] Error occured in DeleteReportedProductAsync : {ex}");
-                return false;
+                return null;
             }
         }
     }

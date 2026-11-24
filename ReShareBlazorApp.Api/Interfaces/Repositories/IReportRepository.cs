@@ -8,6 +8,7 @@ namespace ReShareBlazorApp.Api.Interfaces.Repositories
         Task<bool> AddReportAsync(Report report);
         Task<List<Report>> GetReportsAsync();
         Task<bool> DeleteReportAsync(int reportId);
-        Task<bool> DeleteReportedProductAsync(int reportId);
+        // Zwraca nazwy plików zdjęć usuniętego ogłoszenia albo null, gdy się nie udało.
+        Task<List<string>?> DeleteReportedProductAsync(int reportId);
     }
 }

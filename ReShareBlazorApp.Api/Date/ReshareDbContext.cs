@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ReShareBlazorApp.Api.Date
 {
+
 	public class ReshareDbContext : IdentityDbContext<User, IdentityRole<int>, int>
 	{
 		public DbSet<User> Users { get; set; }
@@ -15,8 +16,17 @@ namespace ReShareBlazorApp.Api.Date
 		public DbSet<Report> Reports { get; set; }
 		public DbSet<RecentlyViewedProduct> RecentlyViewedProducts { get; set; }
 		public DbSet<PromoBanner> PromoBanners { get; set; }
+        public DbSet<ActivityLog> ActivityLogs { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<ContactMessage> ContactMessages { get; set; }
+		public DbSet<LockdownSettings> LockdownSettings { get; set; }
+        public DbSet<Badge> Badges { get; set; }
+        public DbSet<UserBadge> UserBadges { get; set; }
+        public DbSet<FavoriteProduct> FavoriteProducts { get; set; }
 
-		public ReshareDbContext(DbContextOptions<ReshareDbContext> options)
+
+
+        public ReshareDbContext(DbContextOptions<ReshareDbContext> options)
 			: base(options)
 		{
 		}
@@ -25,11 +35,25 @@ namespace ReShareBlazorApp.Api.Date
 		{
 			base.OnModelCreating(builder);
 
+            builder.Entity<ActivityLog>(entity =>
+            {
+                entity.Property(x => x.CreatedAt).HasColumnType("datetime2");
+                // Szukanie po użytkowniku i sortowanie po dacie.
+                entity.HasIndex(x => x.UserName);
+                entity.HasIndex(x => x.UserId);
+                entity.HasIndex(x => x.CreatedAt);
+            });
+
+            builder.Entity<UserFollow>()
+                .HasKey(f => new { f.FollowerId, f.FollowingId });
 			builder.Entity<UserFollow>()
 				.HasKey(f => new { f.FollowerId, f.FollowingId });
 
 			builder.Entity<Product>()
 				.HasQueryFilter(p => !p.isDeleted);
+
+            builder.Entity<User>()
+                .HasQueryFilter(u => !u.IsDeleted);
 
 			builder.Entity<Report>()
 				.HasOne(r => r.Product)
@@ -83,6 +107,29 @@ namespace ReShareBlazorApp.Api.Date
 				entity.Property(x => x.CreatedAt).HasColumnType("datetime2");
 				entity.Property(x => x.ExpiresAt).HasColumnType("datetime2");
 			});
-		}
+
+            // Użytkownik może zdobyć daną odznakę tylko raz.
+            builder.Entity<UserBadge>()
+                .HasIndex(ub => new { ub.UserId, ub.BadgeId })
+                .IsUnique();
+
+			builder.Entity<FavoriteProduct>(entity =>
+			{
+				entity.HasKey(f => new { f.UserId, f.ProductId });
+
+				entity.HasOne(f => f.User)
+					.WithMany()
+					.HasForeignKey(f => f.UserId)
+					.OnDelete(DeleteBehavior.NoAction);
+
+				entity.HasOne(f => f.Product)
+					.WithMany()
+					.HasForeignKey(f => f.ProductId)
+					.OnDelete(DeleteBehavior.NoAction);
+
+				entity.Property(f => f.AddedAt)
+					.HasColumnType("datetime2");
+			});
+        }
 	}
 }

@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
+using ReShareBlazorApp.Shared.Enums;
 using System.Security.Claims;
 
 namespace ReShareBlazorApp.Api.Controllers
@@ -13,28 +15,39 @@ namespace ReShareBlazorApp.Api.Controllers
     public class ProductController : ControllerBase
     {
         private readonly IProductService _productService;
-        public ProductController(IProductService productService)
+        private readonly IActivityLogger _activityLogger;
+        public ProductController(IProductService productService, IActivityLogger activityLogger)
         {
             _productService = productService;
+            _activityLogger = activityLogger;
         }
+
         [Authorize]
         [HttpPost("addProduct")]
         public async Task<IActionResult> AddProduct(ProductDTO product)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
             if (!int.TryParse(userId, out var id))
                 return Unauthorized();
+
             product.UserId = id;
+
             var imagesError = _productService.ValidateImages(product.Images);
+
             if (imagesError != null)
                 return BadRequest(imagesError);
+
             var result = await _productService.AddProductAsync(product);
+
             if (!result)
-            {
                 return BadRequest();
-            }
+
+            await _activityLogger.LogAsync(User, ActivityActions.ProductAdded,
+                $"Dodano ogłoszenie „{product.Name}”", "Product");
             return Ok();
         }
+
 
         [Authorize]
         [HttpPut("{id:int}")]
@@ -47,6 +60,9 @@ namespace ReShareBlazorApp.Api.Controllers
             var result = await _productService.UpdateProductAsync(id, currentUserId, product);
             if (!result)
                 return NotFound();
+
+            await _activityLogger.LogAsync(User, ActivityActions.ProductUpdated,
+                $"Zmieniono ogłoszenie „{product.Name}” (id: {id})", "Product", id);
 
             return NoContent();
         }
@@ -63,7 +79,70 @@ namespace ReShareBlazorApp.Api.Controllers
             if (!result)
                 return NotFound();
 
+            await _activityLogger.LogAsync(User, ActivityActions.ProductDeleted,
+                $"Usunięto ogłoszenie (id: {id})", "Product", id);
+
             return NoContent();
+        }
+
+        [Authorize]
+        [HttpPost("{id:int}/sold")]
+        public async Task<IActionResult> MarkAsSold(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            var result = await _productService.MarkAsSoldAsync(id, currentUserId);
+            if (!result)
+                return NotFound();
+
+            return NoContent();
+        }
+
+        [Authorize]
+        [HttpGet("favorites")]
+        public async Task<ActionResult<List<ProductDTO>>> GetFavorites()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            return Ok(await _productService.GetFavoritesAsync(currentUserId));
+        }
+
+        [Authorize]
+        [HttpGet("favorites/ids")]
+        public async Task<ActionResult<List<int>>> GetFavoriteIds()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            return Ok(await _productService.GetFavoriteIdsAsync(currentUserId));
+        }
+
+        // Przełącza gwiazdkę: dodaje do ulubionych albo usuwa z ulubionych.
+        [Authorize]
+        [HttpPost("{id:int}/favorite")]
+        public async Task<ActionResult<FavoriteToggleDTO>> ToggleFavorite(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var currentUserId))
+                return Unauthorized();
+
+            var isFavorite = await _productService.ToggleFavoriteAsync(currentUserId, id);
+            if (isFavorite == null)
+                return NotFound();
+
+            return Ok(new FavoriteToggleDTO { IsFavorite = isFavorite.Value });
+        }
+
+        [HttpGet("stats")]
+        public async Task<ActionResult<CompletedStatsDTO>> GetCompletedStats()
+        {
+            var stats = await _productService.GetCompletedStatsAsync();
+            return Ok(stats);
         }
 
         [HttpGet]
@@ -74,7 +153,9 @@ namespace ReShareBlazorApp.Api.Controllers
         [FromQuery] string? lokalizacja = null,
         [FromQuery] decimal? cenaMin = null,
         [FromQuery] decimal? cenaMax = null,
-        [FromQuery] string? sortowanie = null)
+         [FromQuery] string? sortowanie = null,
+         [FromQuery] int? userId = null,
+         [FromQuery] ProductType? type = null)
         {
             var products = await _productService.GetProductsAsync(
                 number,
@@ -83,7 +164,9 @@ namespace ReShareBlazorApp.Api.Controllers
                 lokalizacja,
                 cenaMin,
                 cenaMax,
-                sortowanie
+                sortowanie,
+                userId,
+                type
             );
 
             return Ok(products);

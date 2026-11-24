@@ -3,6 +3,7 @@ using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Shared.DTOs;
+using ReShareBlazorApp.Shared.Enums;
 
 namespace ReShareBlazorApp.Api.Repositories
 {
@@ -42,10 +43,13 @@ namespace ReShareBlazorApp.Api.Repositories
 
                 existingProduct.Name = product.Name;
                 existingProduct.Description = product.Description;
-                existingProduct.Price = product.Price;
+                existingProduct.Price = product.PriceMin;
+                existingProduct.PriceMin = product.PriceMin;
+                existingProduct.PriceMax = product.PriceMax;
                 existingProduct.ExpiresAt = product.ExpiresAt;
                 existingProduct.Type = product.Type;
                 existingProduct.Category = product.Category;
+                existingProduct.Condition = product.Condition;
                 existingProduct.City = product.City;
 
                 await _context.SaveChangesAsync();
@@ -66,15 +70,68 @@ namespace ReShareBlazorApp.Api.Repositories
         {
             try
             {
-                await _context.Products.Where(p => p.Id == productId && p.UserId == userId)
+                var rows = await _context.Products.Where(p => p.Id == productId && p.UserId == userId)
                     .ExecuteUpdateAsync(p => p.SetProperty(p => p.isDeleted, true));
-                await _context.SaveChangesAsync();
-                return true;
+                return rows > 0;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[ProductRepository] Error occurred in DeleteProductAsync");
                 return false;
+            }
+        }
+
+        // Oznaczenie jako sprzedane: isDeleted = true (ogłoszenie znika ze strony, a wiersz zostaje
+        // w bazie i jest liczony przez licznik na stronie głównej).
+        public async Task<bool> MarkAsSoldAsync(int productId, int userId)
+        {
+            try
+            {
+                var rows = await _context.Products
+                    .Where(p => p.Id == productId && p.UserId == userId)
+                    .ExecuteUpdateAsync(p => p.SetProperty(x => x.isDeleted, true));
+                return rows > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ProductRepository] Error occurred in MarkAsSoldAsync");
+                return false;
+            }
+        }
+
+        // Licznik: ogłoszenia oznaczone jako sprzedane (isDeleted = true), pogrupowane po kategorii
+        public async Task<Dictionary<ProductCategory, int>> GetCompletedCountsByCategoryAsync()
+        {
+            try
+            {
+                var rows = await _context.Products
+                    .AsNoTracking()
+                    .IgnoreQueryFilters()
+                    .Where(p => p.isDeleted)
+                    .GroupBy(p => p.Category)
+                    .Select(g => new { Category = g.Key, Count = g.Count() })
+                    .ToListAsync();
+
+                return rows.ToDictionary(r => r.Category, r => r.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ProductRepository] Error occurred in GetCompletedCountsByCategoryAsync");
+                throw;
+            }
+        }
+
+        public async Task<int> CountUserProductsAsync(int userId)
+        {
+            try
+            {
+                return await _context.Products
+                    .CountAsync(p => p.UserId == userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred in CountUserProductsAsync for user {UserId}", userId);
+                throw;
             }
         }
 
@@ -85,11 +142,24 @@ namespace ReShareBlazorApp.Api.Repositories
     string? location = null,
     decimal? minPrice = null,
     decimal? maxPrice = null,
-    string? sort = null)
+    string? sort = null,
+    int? userId = null,
+    ProductType? type = null)
         {
             try
             {
-                var query = _context.Products.AsNoTracking().AsQueryable();
+                var query = _context.Products
+                    .AsNoTracking()
+                    .Where(p => !p.isDeleted)
+                    .AsQueryable();
+                if (userId.HasValue)
+                {
+                    query = query.Where(p => p.UserId == userId.Value);
+                }
+                if (type.HasValue)
+                {
+                    query = query.Where(p => p.Type == type.Value);
+                }
                 if (!string.IsNullOrWhiteSpace(search))
                 {
                     var phrase = search.Trim().ToLower();
@@ -111,17 +181,17 @@ namespace ReShareBlazorApp.Api.Repositories
                 }
                 if (minPrice.HasValue)
                 {
-                    query = query.Where(p => p.Price >= minPrice.Value);
+                    query = query.Where(p => p.PriceMax >= minPrice.Value);
                 }
                 if (maxPrice.HasValue)
                 {
-                    query = query.Where(p => p.Price <= maxPrice.Value);
+                    query = query.Where(p => p.PriceMin <= maxPrice.Value);
                 }
                 query = sort switch
                 {
-                    "cenaRosnaco" => query.OrderBy(p => p.Price),
+                    "cenaRosnaco" => query.OrderBy(p => p.PriceMin),
 
-                    "cenaMalejaco" => query.OrderByDescending(p => p.Price),
+                    "cenaMalejaco" => query.OrderByDescending(p => p.PriceMax),
 
                     _ => query.OrderByDescending(p => p.AddedAt)
                 };
@@ -181,6 +251,71 @@ namespace ReShareBlazorApp.Api.Repositories
                 .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == imageId);
         }
+        public async Task<bool?> ToggleFavoriteAsync(int userId, int productId)
+        {
+            try
+            {
+                var favorite = await _context.FavoriteProducts
+                    .FirstOrDefaultAsync(f => f.UserId == userId && f.ProductId == productId);
+
+                if (favorite != null)
+                {
+                    _context.FavoriteProducts.Remove(favorite);
+                    await _context.SaveChangesAsync();
+                    return false;
+                }
+
+                // Products ma filtr isDeleted, więc sprzedane/usunięte ogłoszenia tu nie przejdą
+                var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+                if (!productExists)
+                    return null;
+
+                _context.FavoriteProducts.Add(new FavoriteProduct
+                {
+                    UserId = userId,
+                    ProductId = productId
+                });
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateException ex)
+            {
+                // np. podwójne kliknięcie - para (użytkownik, ogłoszenie) już istnieje
+                _logger.LogWarning(ex, "[ProductRepository] DbUpdateException in ToggleFavoriteAsync");
+                return await _context.FavoriteProducts
+                    .AsNoTracking()
+                    .AnyAsync(f => f.UserId == userId && f.ProductId == productId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ProductRepository] Error occurred in ToggleFavoriteAsync");
+                throw;
+            }
+        }
+
+        // Tylko ogłoszenia, które nadal istnieją (filtr isDeleted działa na Products).
+        public async Task<List<int>> GetFavoriteProductIdsAsync(int userId)
+        {
+            return await _context.Products
+                .AsNoTracking()
+                .Where(p => _context.FavoriteProducts
+                    .Any(f => f.UserId == userId && f.ProductId == p.Id))
+                .Select(p => p.Id)
+                .ToListAsync();
+        }
+
+        // Od ostatnio dodanego do ulubionych.
+        public async Task<List<Product>> GetFavoriteProductsAsync(int userId)
+        {
+            return await (
+                from f in _context.FavoriteProducts.AsNoTracking()
+                where f.UserId == userId
+                join p in _context.Products.AsNoTracking() on f.ProductId equals p.Id
+                orderby f.AddedAt descending
+                select p
+            ).ToListAsync();
+        }
+
         public async Task<List<LocationDTO>> GetLocationsAsync(string query)
         {
             var locations = await _context.Locations

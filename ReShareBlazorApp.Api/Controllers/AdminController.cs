@@ -1,36 +1,79 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
+using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Security.Claims;
 
-[ApiController]
-[Route("api/admin")]
-[Authorize(Roles = "Admin")]
-public class AdminController : ControllerBase
+namespace ReShareBlazorApp.Api.Controllers
 {
-    private readonly ReshareDbContext _context;
-
-    public AdminController(ReshareDbContext context)
+    [ApiController]
+    [Route("api/admin")]
+    [Authorize(Roles = "Admin")]
+    public class AdminController : ControllerBase
     {
-        _context = context;
-    }
+        private readonly ReshareDbContext _context;
+        private readonly UserManager<User> _userManager;
+        private readonly RoleManager<IdentityRole<int>> _roleManager;
+        private readonly IUserService _userService;
+        private readonly IActivityLogger _activityLogger;
 
-    [HttpGet("users")]
-    public async Task<ActionResult<List<AdminUserDTO>>> GetUsers()
-    {
-        var users = await _context.Users
-            .Select(u => new AdminUserDTO
+        public AdminController(
+            ReshareDbContext context,
+            UserManager<User> userManager,
+            RoleManager<IdentityRole<int>> roleManager,
+            IUserService userService,
+            IActivityLogger activityLogger)
+        {
+            _context = context;
+            _userManager = userManager;
+            _roleManager = roleManager;
+            _userService = userService;
+            _activityLogger = activityLogger;
+        }
+
+        // Pobieranie wszystkich użytkowników
+        [HttpGet("users")]
+        public async Task<ActionResult<List<AdminUserDTO>>> GetUsers()
+        {
+            var users = await _context.Users
+                .Where(u => !u.IsDeleted)
+                .OrderByDescending(u => u.CreatedAt)
+                .ToListAsync();
+
+            var adminRole = await _roleManager.FindByNameAsync("Admin");
+
+            var adminUserIds = adminRole != null
+                ? await _context.UserRoles
+                    .Where(ur => ur.RoleId == adminRole.Id)
+                    .Select(ur => ur.UserId)
+                    .ToHashSetAsync()
+                : new HashSet<int>();
+
+            var result = users.Select(u => new AdminUserDTO
             {
                 Id = u.Id,
-                UserName = u.UserName,
-                Email = u.Email,
+                UserName = u.UserName ?? "",
+                Email = u.Email ?? "",
+                PhoneNumber = u.PhoneNumber,
+                City = u.City,
+                Bio = u.Bio,
+                AvatarUrl = string.IsNullOrEmpty(u.AvatarPath)
+                    ? null
+                    : $"/avatars/{u.AvatarPath}",
                 IsActive = u.IsActive,
-            })
-            .ToListAsync();
-        return Ok(users);
-    }
+                IsAdmin = adminUserIds.Contains(u.Id),
+                LockoutEnd = u.LockoutEnd,
+                WarningMessage = u.WarningMessage,
+                CreatedAt = u.CreatedAt
+            }).ToList();
+
+            return Ok(result);
+        }
 
         // Tworzenie użytkownika
         [HttpPost("users")]
@@ -350,18 +393,6 @@ public class AdminController : ControllerBase
                     p.AddedAt >= weekAgo)
             });
         }
-    [HttpGet("stats")]
-    public async Task<ActionResult<AdminStatsDTO>> GetStats()
-    {
-        var weekAgo = DateTime.Now.AddDays(-7);
-        return Ok(new AdminStatsDTO
-        {
-            TotalUsers = await _context.Users.CountAsync(),
-            ActiveUsers = await _context.Users.CountAsync(u => u.IsActive),
-            TotalProducts = await _context.Products.CountAsync(),
-            ProductsLast7Days = await _context.Products.CountAsync(p => p.AddedAt >= weekAgo)
-        });
-    }
 
         // Dodawanie zdjęcia profilowego
         [HttpPost("users/{id:int}/avatar")]
@@ -437,14 +468,11 @@ public class AdminController : ControllerBase
             {
                 return NotFound(new { message = "Nie znaleziono użytkownika." });
             }
-    [HttpPost("users/{id:int}/active")]
-    public async Task<IActionResult> SetUserActive(int id, [FromQuery] bool value)
-    {
-        if (User.FindFirstValue(ClaimTypes.NameIdentifier) == id.ToString())
-            return BadRequest();   // nie blokuj samego siebie
 
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-        if (user == null) return NotFound();
+            if (string.Equals(user.UserName, "admin12345", StringComparison.OrdinalIgnoreCase) && !value)
+            {
+                return BadRequest(new { message = "Główny administrator nie może zostać zablokowany." });
+            }
 
             user.IsActive = value;
 
@@ -577,10 +605,6 @@ public class AdminController : ControllerBase
 
             return Ok();
         }
-        user.IsActive = value;
-        await _context.SaveChangesAsync();
-        return Ok();
-    }
 
         // Soft delete użytkownika
         [HttpDelete("users/{id:int}")]
@@ -649,28 +673,6 @@ public class AdminController : ControllerBase
 
             return Ok(products);
         }
-    [HttpGet("products")]
-    public async Task<ActionResult<List<ProductDTO>>> GetProducts()
-    {
-        var products = await _context.Products
-            .OrderByDescending(p => p.AddedAt)
-            .Select(p => new ProductDTO
-            {
-                ProductId = p.Id,
-                Name = p.Name,
-                Description = p.Description,
-                City = p.City,
-                Price = p.Price,
-                AddedAt = p.AddedAt,
-                ExpiresAt = p.ExpiresAt,
-                Type = p.Type,
-                Category = p.Category,
-                UserId = p.UserId,
-                AddedBy = p.user.UserName ?? ""
-            })
-            .ToListAsync();
-        return Ok(products);
-    }
 
         // Usuwanie ogłoszenia przez administratora
         [HttpDelete("products/{id:int}")]
@@ -743,11 +745,6 @@ public class AdminController : ControllerBase
 
             if (review == null)
                 return NotFound();
-    [HttpDelete("products/{id:int}")]
-    public async Task<IActionResult> DeleteProduct(int id)
-    {
-        var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
-        if (product == null) return NotFound();
 
             var reviewAuthor = review.AuthorName;
 
@@ -809,9 +806,5 @@ public class AdminController : ControllerBase
                 PageSize = pageSize
             });
         }
-    }
-        _context.Products.Remove(product);
-        await _context.SaveChangesAsync();
-        return NoContent();
     }
 }
