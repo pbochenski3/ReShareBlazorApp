@@ -22,12 +22,14 @@ namespace ReShareBlazorApp.Api.Services
             string title,
             string message,
             int? productId = null,
+            string? actorName = null,
             CancellationToken cancellationToken = default)
         {
             _context.Notifications.Add(new Notification
             {
                 UserId = userId,
                 ProductId = productId,
+                ActorName = string.IsNullOrWhiteSpace(actorName) ? null : Limit(actorName.Trim(), 256),
                 Type = type,
                 Title = Limit(title, 200),
                 Message = Limit(message, 1000),

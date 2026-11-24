@@ -11,6 +11,7 @@ namespace ReShareBlazorApp.Api.Interfaces.Services
             string title,
             string message,
             int? productId = null,
+            string? actorName = null,
             CancellationToken cancellationToken = default);
 
         Task CreateForMatchingWantedListingsAsync(

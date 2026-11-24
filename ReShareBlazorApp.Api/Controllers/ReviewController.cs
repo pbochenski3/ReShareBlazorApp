@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Services;
@@ -15,11 +15,13 @@ namespace ReShareBlazorApp.Api.Controllers
         private readonly ReshareDbContext _context;
 
         private readonly IActivityLogger _activityLogger;
+        private readonly INotificationService _notificationService;
 
-        public ReviewController(ReshareDbContext context, IActivityLogger activityLogger)
+        public ReviewController(ReshareDbContext context, IActivityLogger activityLogger, INotificationService notificationService)
         {
             _context = context;
             _activityLogger = activityLogger;
+            _notificationService = notificationService;
         }
 
         [HttpGet("product/{productId:int}")]
@@ -99,7 +101,7 @@ namespace ReShareBlazorApp.Api.Controllers
 
             var product = await _context.Products
                 .Where(p => p.Id == request.ProductId)
-                .Select(p => new { p.UserId })
+                .Select(p => new { p.UserId, p.Name })
                 .FirstOrDefaultAsync();
 
             if (product == null)
@@ -123,6 +125,14 @@ namespace ReShareBlazorApp.Api.Controllers
 
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
+
+            await _notificationService.CreateAsync(
+                product.UserId,
+                ReShareBlazorApp.Shared.Enums.NotificationType.NewReview,
+                "Nowa opinia",
+                $"{authorName} wystawił(a) opinię ({review.Rating}/5) dla ogłoszenia „{product.Name}”.",
+                review.ProductId,
+                authorName);
 
             var description = $"Dodano opinię ({review.Rating}/5) do ogłoszenia (id: {review.ProductId})";
             if (User.Identity?.IsAuthenticated == true)

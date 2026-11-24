@@ -1,0 +1,165 @@
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Shared.Enums
+@using ReShareBlazorApp.Web.ApiServices
+@implements IDisposable
+@inject NotificationApiService NotificationApi
+@inject NavigationManager Navigation
+
+<div class="notification-center">
+    <button type="button"
+            class="notification-bell"
+            aria-label="Powiadomienia"
+            aria-expanded="@isOpen"
+            title="Powiadomienia"
+            @onclick="Toggle">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+            <path d="M10 21h4" />
+        </svg>
+        @if (UnreadCount > 0)
+        {
+            <span class="notification-bell-count">@UnreadCountLabel</span>
+        }
+    </button>
+
+    @if (isOpen)
+    {
+        <section class="notification-dropdown" aria-label="Lista powiadomień">
+            <header class="notification-dropdown-header">
+                <div>
+                    <strong>Powiadomienia</strong>
+                    <span>@(UnreadCount == 0 ? "Wszystko przeczytane" : $"{UnreadCount} nieprzeczytanych")</span>
+                </div>
+                <button type="button" class="notification-refresh" @onclick="RefreshAsync" title="Odśwież">↻</button>
+            </header>
+
+            @if (isLoading)
+            {
+                <div class="notification-empty">Ładowanie powiadomień…</div>
+            }
+            else if (notifications.Count == 0)
+            {
+                <div class="notification-empty">
+                    <span class="notification-empty-icon">♧</span>
+                    <strong>Brak powiadomień</strong>
+                    <span>W tym miejscu zobaczysz nowe opinie i ważne aktywności konta.</span>
+                </div>
+            }
+            else
+            {
+                <div class="notification-list">
+                    @foreach (var item in notifications)
+                    {
+                        <article class="notification-item @(item.IsRead ? "" : "unread")" @key="item.Id">
+                            <button type="button" class="notification-item-main" @onclick="() => OpenAsync(item)">
+                                <span class="notification-item-icon">@GetIcon(item.Type)</span>
+                                <span class="notification-item-content">
+                                    <strong>@item.Title</strong>
+                                    @if (!string.IsNullOrWhiteSpace(item.ActorName))
+                                    {
+                                        <span class="notification-actor">@item.ActorName</span>
+                                    }
+                                    <span class="notification-message">@item.Message</span>
+                                    <time>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy, HH:mm")</time>
+                                </span>
+                                @if (!item.IsRead)
+                                {
+                                    <span class="notification-unread-dot" aria-label="Nieprzeczytane"></span>
+                                }
+                            </button>
+                            <button type="button" class="notification-delete" title="Usuń powiadomienie" aria-label="Usuń powiadomienie" @onclick="() => DeleteAsync(item.Id)">×</button>
+                        </article>
+                    }
+                </div>
+            }
+            <footer class="notification-dropdown-footer">
+                <span>Ostatnie 100 powiadomień</span>
+            </footer>
+        </section>
+    }
+</div>
+
+@code {
+    private List<NotificationDTO> notifications = new();
+    private bool isOpen;
+    private bool isLoading;
+    private bool disposed;
+    private CancellationTokenSource? pollingCts;
+
+    private int UnreadCount => notifications.Count(item => !item.IsRead);
+    private string UnreadCountLabel => UnreadCount > 99 ? "99+" : UnreadCount.ToString();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        pollingCts = new CancellationTokenSource();
+        _ = PollAsync(pollingCts.Token);
+    }
+
+    private async Task PollAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                var latest = await NotificationApi.GetNotificationsAsync();
+                if (disposed) return;
+                await InvokeAsync(() =>
+                {
+                    notifications = latest;
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void Toggle() => isOpen = !isOpen;
+
+    private async Task RefreshAsync()
+    {
+        isLoading = true;
+        try
+        {
+            notifications = await NotificationApi.GetNotificationsAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OpenAsync(NotificationDTO item)
+    {
+        if (!item.IsRead && await NotificationApi.MarkAsReadAsync(item.Id))
+            item.IsRead = true;
+
+        isOpen = false;
+        if (item.ProductId.HasValue)
+            Navigation.NavigateTo($"/details/{item.ProductId.Value}");
+        else if (item.Type == NotificationType.NewMessage)
+            Navigation.NavigateTo("/wiadomosci");
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        if (await NotificationApi.DeleteAsync(id))
+            notifications.RemoveAll(item => item.Id == id);
+    }
+
+    private static string GetIcon(NotificationType type) => type switch
+    {
+        NotificationType.NewReview => "★",
+        NotificationType.NewMessage => "✉",
+        NotificationType.OfferMatch => "⌕",
+        _ => "•"
+    };
+
+    public void Dispose()
+    {
+        disposed = true;
+        pollingCts?.Cancel();
+        pollingCts?.Dispose();
+    }
+}

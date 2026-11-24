@@ -9,6 +9,8 @@ namespace ReShareBlazorApp.Api.Date
         public int UserId { get; set; }
         public User User { get; set; } = null!;
         public int? ProductId { get; set; }
+        [MaxLength(256)]
+        public string? ActorName { get; set; }
         public Product? Product { get; set; }
         public NotificationType Type { get; set; }
         [MaxLength(200)]

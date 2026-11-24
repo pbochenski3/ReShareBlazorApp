@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 
 <nav class="main-navbar" aria-label="Główna nawigacja">
     <div class="main-navbar-container">
@@ -14,7 +14,10 @@
 
             <AuthorizeView>
                 <Authorized>
-                    @* zalogowany: ulubione, wiadomości, profil i wylogowanie *@
+                    @* zalogowany: centrum powiadomień, ulubione, wiadomości, profil i wylogowanie *@
+                    <li class="main-navbar-item notification-nav-item">
+                        <NotificationBell />
+                    </li>
                     <li class="main-navbar-item">
                         <NavLink class="main-navbar-link" ActiveClass="active" href="/ulubione">Ulubione</NavLink>
                     </li>

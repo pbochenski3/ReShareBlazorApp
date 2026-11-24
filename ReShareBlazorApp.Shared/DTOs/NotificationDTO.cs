@@ -1,4 +1,4 @@
-﻿using ReShareBlazorApp.Shared.Enums;
+using ReShareBlazorApp.Shared.Enums;
 
 namespace ReShareBlazorApp.Shared.DTOs
 {
@@ -6,6 +6,7 @@ namespace ReShareBlazorApp.Shared.DTOs
     {
         public int Id { get; set; }
         public int? ProductId { get; set; }
+        public string? ActorName { get; set; }
         public NotificationType Type { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;

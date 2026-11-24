@@ -5494,3 +5494,67 @@ textarea.details-report-input {
     background-color: var(--surface);
     color: var(--ink);
 }
+
+
+/* Centrum powiadomień – dzwonek w nawigacji */
+.notification-nav-item { position: relative; }
+.notification-center { position: relative; display: inline-flex; align-items: center; }
+.notification-bell {
+    position: relative; display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; border: 0; border-radius: 50%;
+    background: transparent; color: var(--ink, #172033); cursor: pointer;
+    transition: background .18s ease, color .18s ease;
+}
+.notification-bell:hover { background: var(--gray, #f1f5f5); color: var(--brand, #097171); }
+.notification-bell svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.notification-bell-count {
+    position: absolute; top: 0; right: -2px; min-width: 18px; height: 18px;
+    padding: 0 4px; display: grid; place-items: center; border-radius: 20px;
+    background: #d94841; color: white; font-size: 10px; font-weight: 800;
+    border: 2px solid white;
+}
+.notification-dropdown {
+    position: absolute; z-index: 500; top: calc(100% + 12px); right: -10px;
+    width: min(390px, calc(100vw - 24px)); max-height: min(580px, 75vh);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: #fff; border: 1px solid #e5e9ed; border-radius: 16px;
+    box-shadow: 0 18px 50px rgba(15, 23, 42, .18); color: #172033;
+}
+.notification-dropdown-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 17px 18px; border-bottom: 1px solid #edf0f2;
+}
+.notification-dropdown-header div { display: flex; flex-direction: column; gap: 3px; }
+.notification-dropdown-header strong { font-size: 16px; }
+.notification-dropdown-header span, .notification-dropdown-footer { color: #7a8792; font-size: 12px; }
+.notification-refresh { border: 0; background: #f3f6f6; border-radius: 9px; width: 32px; height: 32px; cursor: pointer; font-size: 21px; color: #52616b; }
+.notification-list { overflow-y: auto; }
+.notification-item { position: relative; display: flex; align-items: stretch; border-bottom: 1px solid #f0f2f4; }
+.notification-item.unread { background: #f2f9f8; }
+.notification-item-main {
+    flex: 1; min-width: 0; display: flex; gap: 12px; align-items: flex-start;
+    padding: 14px 10px 14px 16px; border: 0; background: transparent; text-align: left; cursor: pointer;
+}
+.notification-item-main:hover { background: rgba(9, 113, 113, .06); }
+.notification-item-icon {
+    flex: 0 0 34px; width: 34px; height: 34px; display: grid; place-items: center;
+    border-radius: 50%; background: #e5f2f0; color: #08716f; font-size: 18px; font-weight: 700;
+}
+.notification-item-content { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.notification-item-content strong { color: #1d2935; font-size: 13px; }
+.notification-actor { color: #08716f; font-size: 12px; font-weight: 700; }
+.notification-message { color: #596875; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.notification-item-content time { margin-top: 3px; color: #8b969f; font-size: 10px; }
+.notification-unread-dot { flex: 0 0 8px; width: 8px; height: 8px; margin: 6px 5px 0 0; border-radius: 50%; background: #0a8983; }
+.notification-delete { align-self: flex-start; margin: 10px 8px 0 0; border: 0; background: transparent; color: #9aa4ac; font-size: 20px; cursor: pointer; }
+.notification-delete:hover { color: #c0392b; }
+.notification-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 35px 24px; text-align: center; color: #87929b; font-size: 12px; }
+.notification-empty strong { color: #34434e; font-size: 14px; }
+.notification-empty-icon { font-size: 26px; color: #0a8983; }
+.notification-dropdown-footer { padding: 11px 16px; background: #fafbfb; border-top: 1px solid #edf0f2; }
+@media (max-width: 700px) {
+    .notification-dropdown { right: -65px; }
+}
+@media (max-width: 420px) {
+    .notification-dropdown { right: -56px; width: calc(100vw - 20px); }
+}
