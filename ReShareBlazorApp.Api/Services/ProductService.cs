@@ -35,7 +35,7 @@ namespace ReShareBlazorApp.Api.Services
             _logger = logger;
         }
 
-        public async Task<bool> AddProductAsync(ProductDTO product)
+        public async Task<int?> AddProductAsync(ProductDTO product)
         {
             if (product == null ||
                 string.IsNullOrWhiteSpace(product.Name) ||
@@ -51,7 +51,7 @@ namespace ReShareBlazorApp.Api.Services
                 !Enum.IsDefined(product.Category) ||
                 product.ExpiresAt <= DateTime.UtcNow)
             {
-                return false;
+                return null;
             }
 
             var images = new List<ProductImage>();
@@ -60,7 +60,7 @@ namespace ReShareBlazorApp.Api.Services
             var validationError = ValidateImages(product.Images);
 
             if (validationError != null)
-                return false;
+                return null;
 
             try
             {
@@ -70,7 +70,7 @@ namespace ReShareBlazorApp.Api.Services
                     var contentType = DetectContentType(image.Data);
 
                     if (contentType == null)
-                        return false;
+                        return null;
 
                     var storedFileName = await _imageStorage.SaveAsync(
                         image.Data,
@@ -132,7 +132,7 @@ namespace ReShareBlazorApp.Api.Services
                     await AwardProductBadgesAsync(productModel.UserId);
                 }
 
-                return result;
+                return result ? productModel.Id : null;
             }
             catch
             {

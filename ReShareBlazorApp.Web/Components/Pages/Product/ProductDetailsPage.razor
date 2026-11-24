@@ -296,6 +296,13 @@
                                 }
 
                                 <span>Wystawiający ogłoszenie</span>
+                                @if (!string.IsNullOrWhiteSpace(Product.AddedBy))
+                                {
+                                    <a class="details-secondary-button d-block text-center mt-2"
+                                       href="@($"/user/{Uri.EscapeDataString(Product.AddedBy)}")">
+                                        Zobacz profil wystawiającego
+                                    </a>
+                                }
                             </div>
                         </div>
 

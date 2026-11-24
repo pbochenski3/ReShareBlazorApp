@@ -25,14 +25,14 @@ namespace ReShareBlazorApp.Web.ApiServices
             _authStateProvider = authStateProvider;
         }
 
-        public async Task<(bool Success, string Message)> AddProductAsync(ProductModel productModel)
+        public async Task<(bool Success, string Message, int? ProductId)> AddProductAsync(ProductModel productModel)
         {
             var request = await CreateAuthorizedRequestAsync(
                 HttpMethod.Post,
                 "api/product/addProduct");
 
             if (request == null)
-                return (false, "Brak tokenu uwierzytelniającego!");
+                return (false, "Brak tokenu uwierzytelniającego!", null);
 
             var product = new ProductDTO
             {
@@ -60,7 +60,10 @@ namespace ReShareBlazorApp.Web.ApiServices
                 using var response = await _httpClient.SendAsync(request);
 
                 if (response.IsSuccessStatusCode)
-                    return (true, "Produkt dodany pomyślnie!");
+                {
+                    var created = await response.Content.ReadFromJsonAsync<CreatedProductResponse>();
+                    return (true, "Produkt dodany pomyślnie!", created?.Id);
+                }
 
                 var error = response.StatusCode == HttpStatusCode.BadRequest
                     ? (await response.Content.ReadAsStringAsync()).Trim('"')
@@ -70,8 +73,13 @@ namespace ReShareBlazorApp.Web.ApiServices
 
                 return (false, string.IsNullOrWhiteSpace(error)
                     ? "Nie udało się dodać produktu!"
-                    : error);
+                    : error, null);
             }
+        }
+
+        private sealed class CreatedProductResponse
+        {
+            public int Id { get; set; }
         }
 
         public async Task<string> UpdateProductAsync(int productId, ProductModel productModel)

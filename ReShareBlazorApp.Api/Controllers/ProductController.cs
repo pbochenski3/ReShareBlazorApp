@@ -40,12 +40,12 @@ namespace ReShareBlazorApp.Api.Controllers
 
             var result = await _productService.AddProductAsync(product);
 
-            if (!result)
+            if (!result.HasValue)
                 return BadRequest();
 
             await _activityLogger.LogAsync(User, ActivityActions.ProductAdded,
                 $"Dodano ogłoszenie „{product.Name}”", "Product");
-            return Ok();
+            return Ok(new { id = result.Value });
         }
 
 
