@@ -1,6 +1,5 @@
 ﻿using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Api.Interfaces.Services;
-using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Shared.DTOs;
 
 namespace ReShareBlazorApp.Api.Services
@@ -13,7 +12,6 @@ namespace ReShareBlazorApp.Api.Services
         public BadgeService(
             IBadgeRepository badgeRepository,
             ILogger<BadgeService> logger)
-        public BadgeService(IBadgeRepository badgeRepository)
         {
             _badgeRepository = badgeRepository;
             _logger = logger;

@@ -6,7 +6,6 @@ using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 
 namespace ReShareBlazorApp.Api.Controllers
 {
