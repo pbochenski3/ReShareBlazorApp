@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
@@ -146,21 +146,53 @@ namespace ReShareBlazorApp.Api.Services
             try
             {
                 var productCount = await _productRepository.CountUserProductsAsync(userId);
+                var earnedBadges = await _badgeService.GetUserBadgesAsync(userId);
 
                 if (productCount == 1)
                 {
-                    await _badgeService.AwardBadgeAsync(userId, "Pierwsze ogłoszenie");
+                    await AwardBadgeAndNotifyAsync(userId, "Pierwsze ogłoszenie", earnedBadges);
                 }
 
                 if (productCount >= 5)
                 {
-                    await _badgeService.AwardBadgeAsync(userId, "Aktywny sprzedawca");
+                    await AwardBadgeAndNotifyAsync(userId, "Aktywny sprzedawca", earnedBadges);
                 }
             }
             catch (Exception exception)
             {
                 _logger.LogError(exception,
                     "Nie udało się przyznać odznak za ogłoszenia użytkownikowi {UserId}", userId);
+            }
+        }
+
+        private async Task AwardBadgeAndNotifyAsync(
+            int userId,
+            string badgeName,
+            List<ReShareBlazorApp.Shared.DTOs.BadgeDTO> earnedBadges)
+        {
+            var badge = earnedBadges.FirstOrDefault(item =>
+                string.Equals(item.Name, badgeName, StringComparison.OrdinalIgnoreCase));
+
+            if (badge == null || badge.IsEarned)
+                return;
+
+            if (!await _badgeService.AwardBadgeAsync(userId, badgeName))
+                return;
+
+            try
+            {
+                await _notificationService.CreateAsync(
+                    userId,
+                    NotificationType.BadgeEarned,
+                    $"Zdobyto nową odznakę: {badge.Name}",
+                    badge.Description);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception,
+                    "Nie udało się utworzyć powiadomienia o odznace {BadgeName} dla użytkownika {UserId}",
+                    badgeName,
+                    userId);
             }
         }
 

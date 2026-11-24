@@ -8,7 +8,6 @@
 
 @inject NavigationManager Navigation
 @inject UserApiService userApi
-@inject NotificationApiService notificationApi
 @inject ReviewApiService reviewApi
 @inject ProductApiService productApi
 @inject BadgeApiService BadgeApiService
@@ -82,66 +81,6 @@ else if (exist)
                     </a>
                 }
             </div>
-
-            @if (isOwner)
-            {
-                <section class="profile-notifications" aria-labelledby="notifications-title">
-                    <h2 id="notifications-title" class="home-section-title">
-                        Powiadomienia
-                        @if (UnreadNotificationsCount > 0)
-                        {
-                            <span class="profile-notification-count">@UnreadNotificationsCount nowych</span>
-                        }
-                    </h2>
-                    <button class="home-btn home-btn-outline" type="button"
-                            @onclick="LoadNotificationsAsync">
-                        Odśwież powiadomienia
-                    </button>
-
-                    @if (notifications.Count == 0)
-                    {
-                        <p class="profile-notifications-empty">Nie masz jeszcze powiadomień.</p>
-                    }
-                    else
-                    {
-                        <div class="profile-notification-list">
-                            @foreach (var notification in notifications)
-                            {
-                                <article class="profile-notification @(notification.IsRead ? "is-read" : "is-unread")">
-                                    <div>
-                                        <h3>@notification.Title</h3>
-                                        <p>@notification.Message</p>
-                                        <time datetime="@notification.CreatedAt.ToString("O")">
-                                            @notification.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
-                                        </time>
-                                    </div>
-                                    <div class="profile-notification-actions">
-                                        @if (notification.Type == ReShareBlazorApp.Shared.Enums.NotificationType.NewMessage)
-                                        {
-                                            <a class="home-btn home-btn-outline" href="/wiadomosci">Przejdź do wiadomości</a>
-                                        }
-                                        @if (notification.ProductId is int productId)
-                                        {
-                                            <a class="home-btn home-btn-outline" href="@GetProductUrl(productId)">Zobacz ofertę</a>
-                                        }
-                                        @if (!notification.IsRead)
-                                        {
-                                            <button class="home-btn home-btn-outline" type="button"
-                                                    @onclick="() => MarkNotificationAsReadAsync(notification)">
-                                                Oznacz jako przeczytane
-                                            </button>
-                                        }
-                                        <button class="home-btn home-btn-outline" type="button"
-                                                @onclick="() => DeleteNotificationAsync(notification)">
-                                            Usuń
-                                        </button>
-                                    </div>
-                                </article>
-                            }
-                        </div>
-                    }
-                </section>
-            }
 
             <!-- Statystyki -->
             <div class="profile-stats">
@@ -327,7 +266,6 @@ else
 
     private List<ProductDTO> products = new();
     private List<ProductDTO> lookingForProducts = new();
-    private List<NotificationDTO> notifications = new();
     private List<BadgeDTO> badges = new();
     private bool isLoadingBadges = true;
 
@@ -351,9 +289,6 @@ else
         userReviews.Any()
             ? userReviews.Average(r => (double)r.Rating)
             : 0.0;
-
-    private int UnreadNotificationsCount =>
-        notifications.Count(n => !n.IsRead);
 
     protected override void OnInitialized()
     {
@@ -382,7 +317,6 @@ else
         products.Clear();
         lookingForProducts.Clear();
         userReviews.Clear();
-        notifications.Clear();
         badges.Clear();
         userRating = new();
 
@@ -422,7 +356,6 @@ else
 
             if (isOwner)
             {
-                await LoadNotificationsAsync();
                 await Favorites.EnsureLoadedAsync();
             }
             else if (activeTab == "favorites")
@@ -445,50 +378,6 @@ else
             isLoadingReviews = false;
             isLoadingBadges = false;
         }
-    }
-
-    private async Task LoadNotificationsAsync()
-    {
-        try
-        {
-            notifications = await notificationApi.GetNotificationsAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Błąd podczas ładowania powiadomień: {ex.Message}");
-            notifications = new();
-        }
-    }
-
-    private async Task MarkNotificationAsReadAsync(NotificationDTO notification)
-    {
-        try
-        {
-            await notificationApi.MarkAsReadAsync(notification.Id);
-            notification.IsRead = true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Błąd podczas oznaczania powiadomienia jako przeczytane: {ex.Message}");
-        }
-    }
-
-    private async Task DeleteNotificationAsync(NotificationDTO notification)
-    {
-        try
-        {
-            if (await notificationApi.DeleteAsync(notification.Id))
-                await LoadNotificationsAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Błąd podczas usuwania powiadomienia: {ex.Message}");
-        }
-    }
-
-    private string GetProductUrl(int productId)
-    {
-        return $"/details/{productId}";
     }
 
     private async Task LoadUserReviews()

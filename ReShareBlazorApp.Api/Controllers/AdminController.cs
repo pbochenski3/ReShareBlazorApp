@@ -7,6 +7,7 @@ using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
+using ReShareBlazorApp.Shared.Enums;
 using System.Security.Claims;
 
 namespace ReShareBlazorApp.Api.Controllers
@@ -21,19 +22,25 @@ namespace ReShareBlazorApp.Api.Controllers
         private readonly RoleManager<IdentityRole<int>> _roleManager;
         private readonly IUserService _userService;
         private readonly IActivityLogger _activityLogger;
+        private readonly INotificationService _notificationService;
+        private readonly ILogger<AdminController> _logger;
 
         public AdminController(
             ReshareDbContext context,
             UserManager<User> userManager,
             RoleManager<IdentityRole<int>> roleManager,
             IUserService userService,
-            IActivityLogger activityLogger)
+            IActivityLogger activityLogger,
+            INotificationService notificationService,
+            ILogger<AdminController> logger)
         {
             _context = context;
             _userManager = userManager;
             _roleManager = roleManager;
             _userService = userService;
             _activityLogger = activityLogger;
+            _notificationService = notificationService;
+            _logger = logger;
         }
 
         // Pobieranie wszystkich użytkowników
@@ -547,6 +554,21 @@ namespace ReShareBlazorApp.Api.Controllers
                 : request.Message.Trim();
 
             await _context.SaveChangesAsync();
+
+            try
+            {
+                await _notificationService.CreateAsync(
+                    user.Id,
+                    NotificationType.AdminWarning,
+                    "Ostrzeżenie od administracji",
+                    user.WarningMessage);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception,
+                    "Nie udało się utworzyć powiadomienia o ostrzeżeniu dla użytkownika {UserId}",
+                    user.Id);
+            }
 
             return Ok(new { warningMessage = user.WarningMessage });
         }

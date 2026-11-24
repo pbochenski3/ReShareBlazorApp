@@ -3,6 +3,9 @@ namespace ReShareBlazorApp.Shared.Enums
     public enum NotificationType
     {
         OfferMatch,
-        NewMessage
+        NewMessage,
+        NewReview,
+        AdminWarning,
+        BadgeEarned
     }
 }

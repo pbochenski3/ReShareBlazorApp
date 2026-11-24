@@ -127,8 +127,8 @@ namespace ReShareBlazorApp.Api.Services
             int userId,
             CancellationToken cancellationToken = default)
         {
-            await CreateMissingOfferMatchNotificationsAsync(userId, cancellationToken);
-
+            // Odczyt powiadomień musi być lekki i nie powinien generować nowych wpisów.
+            // Dopasowania są tworzone przy dodawaniu ogłoszenia w ProductService.
             return await _context.Notifications
                 .AsNoTracking()
                 .Where(notification => notification.UserId == userId
@@ -138,77 +138,6 @@ namespace ReShareBlazorApp.Api.Services
                 .OrderByDescending(notification => notification.CreatedAt)
                 .Take(100)
                 .ToListAsync(cancellationToken);
-        }
-
-        private async Task CreateMissingOfferMatchNotificationsAsync(
-            int userId,
-            CancellationToken cancellationToken)
-        {
-            var wantedNames = await _context.Products
-                .AsNoTracking()
-                .Where(product => product.UserId == userId
-                    && product.Type == ProductType.LookingFor)
-                .Select(product => product.Name)
-                .ToListAsync(cancellationToken);
-
-            if (wantedNames.Count == 0)
-                return;
-
-            var offers = await _context.Products
-                .AsNoTracking()
-                .Where(product => product.UserId != userId
-                    && (product.Type == ProductType.Sell || product.Type == ProductType.GiveAway))
-                .Select(product => new { product.Id, product.UserId, product.Name })
-                .ToListAsync(cancellationToken);
-
-            var existingOfferIds = await _context.Notifications
-                .AsNoTracking()
-                .Where(notification => notification.UserId == userId
-                    && notification.Type == NotificationType.OfferMatch
-                    && notification.ProductId.HasValue)
-                .Select(notification => notification.ProductId!.Value)
-                .ToListAsync(cancellationToken);
-
-            var existingOfferOwners = offers
-                .Where(offer => existingOfferIds.Contains(offer.Id))
-                .Select(offer => offer.UserId)
-                .ToHashSet();
-
-            var matches = new List<Notification>();
-            foreach (var offer in offers)
-            {
-                if (existingOfferIds.Contains(offer.Id)
-                    || existingOfferOwners.Contains(offer.UserId))
-                {
-                    continue;
-                }
-
-                var offerWords = GetWords(offer.Name);
-                var matchingWantedName = wantedNames.FirstOrDefault(wantedName =>
-                    GetWords(wantedName).Overlaps(offerWords));
-
-                if (matchingWantedName is null)
-                    continue;
-
-                existingOfferOwners.Add(offer.UserId);
-                matches.Add(new Notification
-                {
-                    UserId = userId,
-                    ProductId = offer.Id,
-                    Type = NotificationType.OfferMatch,
-                    Title = "Znaleziono szukany przedmiot",
-                    Message = Limit(
-                        $"Oferta „{offer.Name}” pasuje do Twojego poszukiwania „{matchingWantedName}”.",
-                        1000),
-                    CreatedAt = DateTime.UtcNow
-                });
-            }
-
-            if (matches.Count == 0)
-                return;
-
-            _context.Notifications.AddRange(matches);
-            await _context.SaveChangesAsync(cancellationToken);
         }
 
         public async Task<bool> MarkAsReadAsync(
@@ -231,6 +160,24 @@ namespace ReShareBlazorApp.Api.Services
             }
 
             return true;
+        }
+
+        public async Task<int> MarkAllAsReadAsync(
+            int userId,
+            CancellationToken cancellationToken = default)
+        {
+            var unread = await _context.Notifications
+                .Where(notification => notification.UserId == userId && !notification.IsRead)
+                .ToListAsync(cancellationToken);
+
+            if (unread.Count == 0)
+                return 0;
+
+            foreach (var notification in unread)
+                notification.IsRead = true;
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return unread.Count;
         }
 
         public async Task<bool> DeleteAsync(

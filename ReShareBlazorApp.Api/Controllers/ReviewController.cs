@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
+using ReShareBlazorApp.Shared.Enums;
 using System.Security.Claims;
 
 namespace ReShareBlazorApp.Api.Controllers
@@ -15,11 +16,19 @@ namespace ReShareBlazorApp.Api.Controllers
         private readonly ReshareDbContext _context;
 
         private readonly IActivityLogger _activityLogger;
+        private readonly INotificationService _notificationService;
+        private readonly ILogger<ReviewController> _logger;
 
-        public ReviewController(ReshareDbContext context, IActivityLogger activityLogger)
+        public ReviewController(
+            ReshareDbContext context,
+            IActivityLogger activityLogger,
+            INotificationService notificationService,
+            ILogger<ReviewController> logger)
         {
             _context = context;
             _activityLogger = activityLogger;
+            _notificationService = notificationService;
+            _logger = logger;
         }
 
         [HttpGet("product/{productId:int}")]
@@ -123,6 +132,22 @@ namespace ReShareBlazorApp.Api.Controllers
 
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
+
+            try
+            {
+                await _notificationService.CreateAsync(
+                    product.UserId,
+                    NotificationType.NewReview,
+                    "Nowa opinia do Twojego ogłoszenia",
+                    $"{authorName} dodał(a) opinię ({review.Rating}/5): {review.Comment}",
+                    review.ProductId);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception,
+                    "Nie udało się utworzyć powiadomienia o opinii dla ogłoszenia {ProductId}",
+                    review.ProductId);
+            }
 
             var description = $"Dodano opinię ({review.Rating}/5) do ogłoszenia (id: {review.ProductId})";
             if (User.Identity?.IsAuthenticated == true)

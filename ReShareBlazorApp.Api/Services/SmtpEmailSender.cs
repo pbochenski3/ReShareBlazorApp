@@ -38,7 +38,8 @@ namespace ReShareBlazorApp.Api.Services
             {
                 if (_environment.IsDevelopment())
                 {
-                    // Bez SMTP treść maila (z linkiem) ląduje w konsoli - tylko w Development.
+                    // W Development treść jest logowana pomocniczo, ale rejestracja i tak
+                    // nie może zostać potwierdzona bez poprawnie skonfigurowanego SMTP.
                     _logger.LogWarning(
                         "SMTP nie jest skonfigurowany. Mail do {To}, temat: {Subject}\n{Body}",
                         to, subject, htmlBody);
@@ -47,7 +48,8 @@ namespace ReShareBlazorApp.Api.Services
                 {
                     _logger.LogError("SMTP nie jest skonfigurowany - nie wysłano maila do {To}.", to);
                 }
-                return;
+
+                throw new InvalidOperationException("SMTP nie jest skonfigurowany.");
             }
 
             using var client = new SmtpClient(server, port)

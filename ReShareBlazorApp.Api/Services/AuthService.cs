@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Services;
@@ -8,6 +9,7 @@ using ReShareBlazorApp.Shared.DTOs;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace ReShareBlazorApp.Api.Services
@@ -20,6 +22,7 @@ namespace ReShareBlazorApp.Api.Services
         private readonly IAppEmailSender _emailSender;
         private readonly IBadgeService _badgeService;
         private readonly ILogger<AuthService> _logger;
+        private readonly IMemoryCache _cache;
 
         public AuthService(
             UserManager<User> userManager,
@@ -27,7 +30,8 @@ namespace ReShareBlazorApp.Api.Services
             IActivityLogger activityLogger,
             IAppEmailSender emailSender,
             IBadgeService badgeService,
-            ILogger<AuthService> logger)
+            ILogger<AuthService> logger,
+            IMemoryCache cache)
         {
             _userManager = userManager;
             _configuration = configuration;
@@ -35,23 +39,67 @@ namespace ReShareBlazorApp.Api.Services
             _emailSender = emailSender;
             _badgeService = badgeService;
             _logger = logger;
+            _cache = cache;
         }
 
         public async Task<RegisterResponse?> RegisterAsync(RegisterRequest request)
         {
+            if (await _userManager.FindByEmailAsync(request.Email) != null ||
+                await _userManager.FindByNameAsync(request.UserName) != null)
+            {
+                return null;
+            }
+
+            var code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+            var cacheKey = GetRegistrationCacheKey(request.Email);
+
+            _cache.Set(cacheKey, new PendingRegistration(request, code), TimeSpan.FromMinutes(10));
+
+            try
+            {
+                await _emailSender.SendAsync(
+                    request.Email,
+                    "Kod rejestracji - ODDAJ DALEJ",
+                    EmailStyle.RegistrationCode(request.UserName, code));
+            }
+            catch (Exception exception)
+            {
+                _cache.Remove(cacheKey);
+                _logger.LogError(exception, "Nie udało się wysłać kodu rejestracyjnego do {Email}.", request.Email);
+                return null;
+            }
+
+            return new RegisterResponse
+            {
+                Message = "Kod weryfikacyjny został wysłany na podany adres e-mail."
+            };
+        }
+
+        public async Task<RegisterResponse?> VerifyRegistrationAsync(VerifyRegistrationRequest request)
+        {
+            var cacheKey = GetRegistrationCacheKey(request.Email);
+            if (!_cache.TryGetValue<PendingRegistration>(cacheKey, out var pending) ||
+                pending == null ||
+                !string.Equals(pending.Code, request.Code.Trim(), StringComparison.Ordinal))
+            {
+                return null;
+            }
+
             var user = new User
             {
-                UserName = request.UserName,
-                Email = request.Email,
+                UserName = pending.Request.UserName,
+                Email = pending.Request.Email,
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
-            var result = await _userManager.CreateAsync(user, request.Password);
+            var result = await _userManager.CreateAsync(user, pending.Request.Password);
 
             if (!result.Succeeded)
             {
                 return null;
             }
+
+            _cache.Remove(cacheKey);
 
             await _activityLogger.LogAsync(
                 user.Id,
@@ -69,6 +117,11 @@ namespace ReShareBlazorApp.Api.Services
                 Message = "Konto zostało pomyślnie utworzone."
             };
         }
+
+        private static string GetRegistrationCacheKey(string email) =>
+            $"registration:{email.Trim().ToUpperInvariant()}";
+
+        private sealed record PendingRegistration(RegisterRequest Request, string Code);
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
         {

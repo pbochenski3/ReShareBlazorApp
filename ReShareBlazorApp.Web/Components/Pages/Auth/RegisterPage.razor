@@ -3,13 +3,15 @@
 @rendermode InteractiveServer
 @using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Models
+@if (!codeSent)
+{
 <EditForm Model="@registerModel" OnValidSubmit="Register" FormName="register">
     <DataAnnotationsValidator />
     <div class="register-container">
         <div class="register-card">
             <p>@Message</p>
             <h2>Utwórz konto</h2>
-            <p>Wypełnij formularz, aby się zarejestrowac.</p>
+            <p>Wypełnij formularz. Na e-mail otrzymasz kod konieczny do utworzenia konta.</p>
             <div class="register-field">
                 <label>Nazwa użytkownika</label>
                 <InputText @bind-Value="registerModel.Username"
@@ -54,10 +56,36 @@
         </div>
     </div>
 </EditForm>
+}
+else
+{
+    <EditForm Model="@verificationModel" OnValidSubmit="Verify" FormName="verify-registration">
+        <DataAnnotationsValidator />
+        <div class="register-container">
+            <div class="register-card">
+                <p>@Message</p>
+                <h2>Potwierdź adres e-mail</h2>
+                <p>Wpisz 6-cyfrowy kod wysłany na adres @registerModel.Email.</p>
+                <div class="register-field">
+                    <label>Kod weryfikacyjny</label>
+                    <InputText @bind-Value="verificationModel.Code"
+                               class="register-input"
+                               inputmode="numeric"
+                               maxlength="6"
+                               placeholder="123456" />
+                    <ValidationMessage For="@(() => verificationModel.Code)" />
+                </div>
+                <button type="submit" class="register-button">Utwórz konto</button>
+            </div>
+        </div>
+    </EditForm>
+}
 
 @code {
     private RegisterModel registerModel = new RegisterModel();
-    public string Message { get; set; }
+    private VerifyRegistrationModel verificationModel = new();
+    private bool codeSent;
+    public string Message { get; set; } = "";
     private async Task Register()
     {
         var result = await authApi.RegisterAsync(registerModel);
@@ -66,6 +94,29 @@
             return;
         }
         Message = result.Message;
+        codeSent = result.Success;
         StateHasChanged();
+    }
+
+    private async Task Verify()
+    {
+        var result = await authApi.VerifyRegistrationAsync(
+            registerModel.Email,
+            verificationModel.Code);
+
+        Message = result?.Message ?? "Nieprawidłowy lub wygasły kod weryfikacyjny.";
+        if (result?.Success == true)
+        {
+            codeSent = false;
+            registerModel = new RegisterModel();
+            verificationModel = new VerifyRegistrationModel();
+        }
+    }
+
+    private sealed class VerifyRegistrationModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Wpisz kod.")]
+        [System.ComponentModel.DataAnnotations.StringLength(6, MinimumLength = 6, ErrorMessage = "Kod musi mieć 6 cyfr.")]
+        public string Code { get; set; } = "";
     }
 }

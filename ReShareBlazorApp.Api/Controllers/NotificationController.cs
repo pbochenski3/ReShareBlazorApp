@@ -50,6 +50,16 @@ namespace ReShareBlazorApp.Api.Controllers
             return marked ? NoContent() : NotFound();
         }
 
+        [HttpPut("read-all")]
+        public async Task<IActionResult> MarkAllAsRead(CancellationToken cancellationToken)
+        {
+            if (!TryGetUserId(out var userId))
+                return Unauthorized();
+
+            var count = await _notificationService.MarkAllAsReadAsync(userId, cancellationToken);
+            return Ok(new { updated = count });
+        }
+
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(
             int id,

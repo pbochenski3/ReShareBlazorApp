@@ -9,6 +9,10 @@ namespace ReShareBlazorApp.Web.ApiServices
         private readonly HttpClient _httpClient;
         private readonly AuthenticationStateProvider _authStateProvider;
 
+        public event Action? NotificationsChanged;
+
+        public void NotifyNotificationsChanged() => NotificationsChanged?.Invoke();
+
         public NotificationApiService(
             HttpClient httpClient,
             AuthenticationStateProvider authStateProvider)
@@ -40,6 +44,20 @@ namespace ReShareBlazorApp.Web.ApiServices
                 return false;
 
             using var response = await _httpClient.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+                NotifyNotificationsChanged();
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> MarkAllAsReadAsync()
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Put, "api/notification/read-all");
+            if (request is null)
+                return false;
+
+            using var response = await _httpClient.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+                NotifyNotificationsChanged();
             return response.IsSuccessStatusCode;
         }
 
@@ -52,6 +70,8 @@ namespace ReShareBlazorApp.Web.ApiServices
                 return false;
 
             using var response = await _httpClient.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+                NotifyNotificationsChanged();
             return response.IsSuccessStatusCode;
         }
 

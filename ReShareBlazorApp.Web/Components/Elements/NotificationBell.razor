@@ -1,0 +1,80 @@
+@using ReShareBlazorApp.Web.ApiServices
+@inject NotificationApiService NotificationApi
+@implements IDisposable
+
+<NavLink class="navbar-notifications-link" href="/powiadomienia" ActiveClass="active" aria-label="@AriaLabel">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+        <path d="M10 21h4" />
+    </svg>
+    <span>Powiadomienia</span>
+    @if (UnreadCount > 0)
+    {
+        <span class="navbar-notifications-count">@((UnreadCount > 99) ? "99+" : UnreadCount.ToString())</span>
+    }
+</NavLink>
+
+@code {
+    private int UnreadCount;
+    private CancellationTokenSource? _cancellation;
+
+    private string AriaLabel => UnreadCount > 0
+        ? $"Powiadomienia, nieprzeczytane: {UnreadCount}"
+        : "Powiadomienia";
+
+    // Nie wykonujemy zapytań HTTP w OnInitializedAsync.
+    // Komponent może być wtedy renderowany statycznie (prerendering) po logowaniu.
+    // Dopiero OnAfterRenderAsync uruchamia się po rozpoczęciu interaktywnego obwodu Blazora.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        NotificationApi.NotificationsChanged += OnNotificationsChanged;
+        await RefreshAsync();
+
+        _cancellation = new CancellationTokenSource();
+        _ = PollAsync(_cancellation.Token);
+    }
+
+    private async Task PollAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(45));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+                await RefreshAsync();
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void OnNotificationsChanged()
+    {
+        _ = InvokeAsync(RefreshAsync);
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            var notifications = await NotificationApi.GetNotificationsAsync();
+            UnreadCount = notifications.Count(item => !item.IsRead);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException)
+        {
+            // Żądanie mogło zostać przerwane podczas zamykania/nawigacji.
+        }
+        catch (HttpRequestException)
+        {
+            // Chwilowy brak połączenia z API nie powinien psuć nawigacji.
+        }
+    }
+
+    public void Dispose()
+    {
+        NotificationApi.NotificationsChanged -= OnNotificationsChanged;
+        _cancellation?.Cancel();
+        _cancellation?.Dispose();
+    }
+}
