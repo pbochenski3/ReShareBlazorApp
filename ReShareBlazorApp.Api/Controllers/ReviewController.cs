@@ -16,8 +16,10 @@ namespace ReShareBlazorApp.Api.Controllers
         private readonly ReshareDbContext _context;
         private readonly IActivityLogger _activityLogger;
         private readonly INotificationService _notificationService;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<ReviewController> _logger;
 
+        public ReviewController(ReshareDbContext context, IActivityLogger activityLogger, INotificationService notificationService)
         public ReviewController(
             ReshareDbContext context,
             IActivityLogger activityLogger,
@@ -26,6 +28,7 @@ namespace ReShareBlazorApp.Api.Controllers
         {
             _context = context;
             _activityLogger = activityLogger;
+            _notificationService = notificationService;
             _notificationService = notificationService;
             _logger = logger;
         }
@@ -109,7 +112,7 @@ namespace ReShareBlazorApp.Api.Controllers
 
             var product = await _context.Products
                 .Where(p => p.Id == request.ProductId)
-                .Select(p => new { p.UserId })
+                .Select(p => new { p.UserId, p.Name })
                 .FirstOrDefaultAsync();
 
             if (product == null)
@@ -133,6 +136,14 @@ namespace ReShareBlazorApp.Api.Controllers
 
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
+
+            await _notificationService.CreateAsync(
+                product.UserId,
+                ReShareBlazorApp.Shared.Enums.NotificationType.NewReview,
+                "Nowa opinia",
+                $"{authorName} wystawił(a) opinię ({review.Rating}/5) dla ogłoszenia „{product.Name}”.",
+                review.ProductId,
+                authorName);
 
             var writtenReviewsCount = await _context.Reviews
                 .CountAsync(r =>

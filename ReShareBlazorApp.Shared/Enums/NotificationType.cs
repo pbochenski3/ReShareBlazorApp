@@ -7,5 +7,9 @@ namespace ReShareBlazorApp.Shared.Enums
         NewReview,
         AdminWarning,
         BadgeEarned
+        OfferMatch = 0,
+        NewMessage = 1,
+        NewReview = 2,
+        AccountActivity = 3
     }
 }

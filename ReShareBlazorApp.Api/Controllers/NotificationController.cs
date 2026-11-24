@@ -30,6 +30,7 @@ namespace ReShareBlazorApp.Api.Controllers
             {
                 Id = notification.Id,
                 ProductId = notification.ProductId,
+                ActorName = notification.ActorName,
                 Type = notification.Type,
                 Title = notification.Title,
                 Message = notification.Message,
