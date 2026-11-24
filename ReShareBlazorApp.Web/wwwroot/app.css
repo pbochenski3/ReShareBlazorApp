@@ -1894,7 +1894,9 @@ input[type="search"] {
 @media (prefers-reduced-motion: no-preference) {
 
     /* płynne przejścia kolorów, uniesień i cieni */
-    .home-btn, .home-chip, .home-view-btn, .home-category, .main-navbar-link, .profile-tab,
+    .home-btn, .home-chip, .home-view-btn, .home-category, .main-
+    
+    -link, .profile-tab,
     .page-page, .page-fieldset label, .chat-item, .navbar-search-button {
         transition: background-color .2s ease, color .2s ease, border-color .2s ease;
     }

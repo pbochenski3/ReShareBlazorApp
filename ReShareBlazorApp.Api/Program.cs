@@ -10,6 +10,7 @@ using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Api.Middleware;
 using ReShareBlazorApp.Api.Repositories;
 using ReShareBlazorApp.Api.Services;
+using Stripe;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -112,6 +113,16 @@ using (var scope = app.Services.CreateScope())
 
     await BadgeSeeder.SeedBadgesAsync(context);
 }
+var stripeSecretKey = builder.Configuration["Stripe:SecretKey"];
+
+if (string.IsNullOrWhiteSpace(stripeSecretKey))
+{
+    throw new InvalidOperationException(
+        "Stripe:SecretKey is not configured.");
+}
+
+builder.Services.AddSingleton(
+    new StripeClient(stripeSecretKey));
 
 app.UseHttpsRedirection();
 

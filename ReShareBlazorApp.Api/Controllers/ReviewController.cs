@@ -16,10 +16,8 @@ namespace ReShareBlazorApp.Api.Controllers
         private readonly ReshareDbContext _context;
         private readonly IActivityLogger _activityLogger;
         private readonly INotificationService _notificationService;
-        private readonly INotificationService _notificationService;
         private readonly ILogger<ReviewController> _logger;
 
-        public ReviewController(ReshareDbContext context, IActivityLogger activityLogger, INotificationService notificationService)
         public ReviewController(
             ReshareDbContext context,
             IActivityLogger activityLogger,
@@ -28,7 +26,6 @@ namespace ReShareBlazorApp.Api.Controllers
         {
             _context = context;
             _activityLogger = activityLogger;
-            _notificationService = notificationService;
             _notificationService = notificationService;
             _logger = logger;
         }
@@ -137,13 +134,22 @@ namespace ReShareBlazorApp.Api.Controllers
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
 
-            await _notificationService.CreateAsync(
-                product.UserId,
-                ReShareBlazorApp.Shared.Enums.NotificationType.NewReview,
-                "Nowa opinia",
-                $"{authorName} wystawił(a) opinię ({review.Rating}/5) dla ogłoszenia „{product.Name}”.",
-                review.ProductId,
-                authorName);
+            try
+            {
+                await _notificationService.CreateAsync(
+                    product.UserId,
+                    NotificationType.NewReview,
+                    "Nowa opinia",
+                    $"{authorName} wystawił(a) opinię ({review.Rating}/5) dla ogłoszenia „{product.Name}”.",
+                    review.ProductId,
+                    authorName);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception,
+                    "Nie udało się utworzyć powiadomienia o opinii dla ogłoszenia {ProductId}",
+                    review.ProductId);
+            }
 
             var writtenReviewsCount = await _context.Reviews
                 .CountAsync(r =>
@@ -175,22 +181,6 @@ namespace ReShareBlazorApp.Api.Controllers
 
             var description = $"Dodano opinię ({review.Rating}/5) do ogłoszenia (id: {review.ProductId})";
             await _activityLogger.LogAsync(User, ActivityActions.ReviewAdded, description, "Product", review.ProductId);
-
-            try
-            {
-                await _notificationService.CreateAsync(
-                    product.UserId,
-                    NotificationType.NewReview,
-                    "Nowa opinia do Twojego ogłoszenia",
-                    $"{authorName} dodał(a) opinię ({review.Rating}/5): {review.Comment}",
-                    review.ProductId);
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception,
-                    "Nie udało się utworzyć powiadomienia o opinii dla ogłoszenia {ProductId}",
-                    review.ProductId);
-            }
 
             return Ok(new
             {

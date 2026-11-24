@@ -25,9 +25,6 @@
                     <li class="main-navbar-item">
                         <NavLink class="main-navbar-link" ActiveClass="active" href="/wiadomosci">Wiadomości</NavLink>
                     </li>
-                    <li class="main-navbar-item main-navbar-notifications">
-                        <NotificationBell />
-                    </li>
 
                     @if (!string.IsNullOrWhiteSpace(context.User.Identity?.Name))
                     {
