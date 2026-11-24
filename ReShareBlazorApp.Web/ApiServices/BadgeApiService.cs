@@ -85,34 +85,55 @@ namespace ReShareBlazorApp.Web.ApiServices
 
         // Dodawanie nowej odznaki - administrator
 
-        public async Task<bool> AddBadgeAsync(BadgeDTO badge)
+        // Ręczne przyznawanie odznaki użytkownikowi - administrator
+        public async Task<bool> AwardBadgeToUserAsync(int userId, int badgeId)
         {
             var token = await GetTokenAsync();
 
             using var request = new HttpRequestMessage(
                 HttpMethod.Post,
-                "api/badge"
+                $"api/badge/user/{userId}/award/{badgeId}"
             );
 
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
-
-            request.Content = JsonContent.Create(badge);
 
             var response = await _httpClient.SendAsync(request);
 
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync();
-
-                throw new Exception(
-                    $"API zwróciło błąd {(int)response.StatusCode} " +
-                    $"{response.StatusCode}: {error}"
-                );
+                throw new Exception($"Nie udało się przyznać odznaki: {error}");
             }
 
             return true;
         }
+
+        // Odbieranie odznaki użytkownikowi - administrator
+        public async Task<bool> RemoveBadgeFromUserAsync(int userId, int badgeId)
+        {
+            var token = await GetTokenAsync();
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Delete,
+                $"api/badge/user/{userId}/remove/{badgeId}"
+            );
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _httpClient.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Nie udało się odebrać odznaki: {error}");
+            }
+
+            return true;
+        }
+
+      
 
     }
 }

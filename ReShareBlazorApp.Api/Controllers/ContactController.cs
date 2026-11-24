@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
+using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
 
 namespace ReShareBlazorApp.Api.Controllers;
@@ -12,11 +14,13 @@ public class ContactController : ControllerBase
 {
     private readonly ReshareDbContext _context;
     private readonly ILogger<ContactController> _logger;
+    private readonly IActivityLogger _activityLogger;
 
-    public ContactController(ReshareDbContext context, ILogger<ContactController> logger)
+    public ContactController(ReshareDbContext context, ILogger<ContactController> logger, IActivityLogger activityLogger)
     {
         _context = context;
         _logger = logger;
+        _activityLogger = activityLogger;
     }
 
     [HttpPost]
@@ -92,9 +96,16 @@ public class ContactController : ControllerBase
         if (msg is null)
             return NotFound();
 
+        var subject = msg.Subject;
+
         _context.ContactMessages.Remove(msg);
         await _context.SaveChangesAsync();
 
+        await _activityLogger.LogAsync(User, ActivityActions.AdminMessageDeleted,
+            $"Usunięto wiadomość kontaktową (id: {id}, temat: {subject})",
+            "ContactMessage", id);
+
         return NoContent();
     }
+ 
 }

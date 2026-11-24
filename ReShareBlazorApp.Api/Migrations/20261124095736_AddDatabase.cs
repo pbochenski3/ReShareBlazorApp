@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ReShareBlazorApp.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class Init : Migration
+    public partial class AddDatabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -309,6 +309,7 @@ namespace ReShareBlazorApp.Api.Migrations
                     City = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     UserId = table.Column<int>(type: "int", nullable: false),
                     isDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    isSold = table.Column<bool>(type: "bit", nullable: false),
                     Condition = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>

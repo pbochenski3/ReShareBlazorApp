@@ -82,6 +82,30 @@ namespace ReShareBlazorApp.Api.Controllers
             return Ok(result);
         }
 
+        // Statystyki panelu administratora
+        [HttpGet("stats")]
+        public async Task<ActionResult<AdminStatsDTO>> GetStats()
+        {
+            var weekAgo = DateTime.UtcNow.AddDays(-7);
+            var now = DateTimeOffset.UtcNow;
+
+            return Ok(new AdminStatsDTO
+            {
+                TotalUsers = await _context.Users.CountAsync(u => !u.IsDeleted),
+
+                ActiveUsers = await _context.Users.CountAsync(u =>
+                    !u.IsDeleted &&
+                    u.IsActive &&
+                    (!u.LockoutEnd.HasValue || u.LockoutEnd.Value <= now)),
+
+                TotalProducts = await _context.Products.CountAsync(p => !p.isDeleted),
+
+                ProductsLast7Days = await _context.Products.CountAsync(p =>
+                    !p.isDeleted &&
+                    p.AddedAt >= weekAgo)
+            });
+        }
+
         // Tworzenie użytkownika
         [HttpPost("users")]
         public async Task<IActionResult> CreateUser([FromBody] AdminCreateUserRequest request)
@@ -162,6 +186,10 @@ namespace ReShareBlazorApp.Api.Controllers
                     });
                 }
             }
+
+            await _activityLogger.LogAsync(User, ActivityActions.AdminUserCreated,
+                $"Utworzono użytkownika {user.UserName} (id: {user.Id}){(request.IsAdmin ? " z rolą Admin" : "")}",
+                "User", user.Id);
 
             return Ok(new AdminUserDTO
             {
@@ -287,6 +315,10 @@ namespace ReShareBlazorApp.Api.Controllers
 
             await _userManager.UpdateSecurityStampAsync(user);
 
+            await _activityLogger.LogAsync(User, ActivityActions.AdminRoleChanged,
+                $"{(isAdmin ? "Nadano rolę Admin" : "Odebrano rolę Admin")} użytkownikowi {user.UserName} (id: {id})",
+                "User", id);
+
             return Ok();
         }
 
@@ -346,6 +378,10 @@ namespace ReShareBlazorApp.Api.Controllers
                 return BadRequest(new { message = msg });
             }
 
+            await _activityLogger.LogAsync(User, ActivityActions.AdminUserUpdated,
+                $"Zaktualizowano dane użytkownika {user.UserName} (id: {id})",
+                "User", id);
+
             return Ok(new AdminUserDTO
             {
                 Id = user.Id,
@@ -362,30 +398,6 @@ namespace ReShareBlazorApp.Api.Controllers
                 LockoutEnd = user.LockoutEnd,
                 WarningMessage = user.WarningMessage,
                 CreatedAt = user.CreatedAt
-            });
-        }
-
-        // Statystyki panelu administratora
-        [HttpGet("stats")]
-        public async Task<ActionResult<AdminStatsDTO>> GetStats()
-        {
-            var weekAgo = DateTime.UtcNow.AddDays(-7);
-            var now = DateTimeOffset.UtcNow;
-
-            return Ok(new AdminStatsDTO
-            {
-                TotalUsers = await _context.Users.CountAsync(u => !u.IsDeleted),
-
-                ActiveUsers = await _context.Users.CountAsync(u =>
-                    !u.IsDeleted &&
-                    u.IsActive &&
-                    (!u.LockoutEnd.HasValue || u.LockoutEnd.Value <= now)),
-
-                TotalProducts = await _context.Products.CountAsync(p => !p.isDeleted),
-
-                ProductsLast7Days = await _context.Products.CountAsync(p =>
-                    !p.isDeleted &&
-                    p.AddedAt >= weekAgo)
             });
         }
 
@@ -414,6 +426,10 @@ namespace ReShareBlazorApp.Api.Controllers
 
             var updatedUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
 
+            await _activityLogger.LogAsync(User, ActivityActions.AvatarChanged,
+                $"Administrator zmienił zdjęcie profilowe użytkownika {user.UserName} (id: {id})",
+                "User", id);
+
             var avatarUrl = string.IsNullOrEmpty(updatedUser?.AvatarPath)
                 ? null
                 : $"/avatars/{updatedUser.AvatarPath}";
@@ -434,9 +450,14 @@ namespace ReShareBlazorApp.Api.Controllers
 
             var error = await _userService.RemoveAvatarAsync(id);
 
-            return error == null
-                ? NoContent()
-                : BadRequest(new { message = error });
+            if (error != null)
+                return BadRequest(new { message = error });
+
+            await _activityLogger.LogAsync(User, ActivityActions.AvatarRemoved,
+                $"Administrator usunął zdjęcie profilowe użytkownika {user.UserName} (id: {id})",
+                "User", id);
+
+            return NoContent();
         }
 
         // Aktywacja lub dezaktywacja użytkownika
@@ -475,6 +496,7 @@ namespace ReShareBlazorApp.Api.Controllers
             return Ok();
         }
 
+        // Paginowane logi aktywności dla panelu administratora.
         // Tymczasowa blokada użytkownika
         [HttpPost("users/{id:int}/temporary-block")]
         public async Task<IActionResult> SetTemporaryBlock(int id, [FromBody] TemporaryBlockRequest request)
@@ -733,46 +755,50 @@ namespace ReShareBlazorApp.Api.Controllers
         [HttpGet("logs")]
         public async Task<ActionResult<ActivityLogPageDTO>> GetLogs(
             [FromQuery] string? user = null,
-            [FromQuery(Name = "action")] string? actionCode = null,
+            [FromQuery] string? action = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 25)
         {
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
 
-            var query = _context.ActivityLogs.AsNoTracking().AsQueryable();
+            var query = _context.ActivityLogs.AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(user))
             {
-                var term = user.Trim();
-                query = query.Where(l => l.UserName.Contains(term));
+                var userFilter = user.Trim();
+                query = query.Where(log => log.UserName.Contains(userFilter));
             }
-            if (!string.IsNullOrWhiteSpace(actionCode))
-                query = query.Where(l => l.Action == actionCode);
 
-            var total = await query.CountAsync();
+            if (!string.IsNullOrWhiteSpace(action))
+            {
+                var actionFilter = action.Trim();
+                query = query.Where(log => log.Action == actionFilter);
+            }
+
+            var totalCount = await query.CountAsync();
             var items = await query
-                .OrderByDescending(l => l.CreatedAt)
-                .ThenByDescending(l => l.Id)
+                .OrderByDescending(log => log.CreatedAt)
+                .ThenByDescending(log => log.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(l => new ActivityLogDTO
+                .Select(log => new ActivityLogDTO
                 {
-                    Id = l.Id,
-                    UserId = l.UserId,
-                    UserName = l.UserName,
-                    Action = l.Action,
-                    Description = l.Description,
-                    TargetType = l.TargetType,
-                    TargetId = l.TargetId,
-                    CreatedAt = l.CreatedAt
+                    Id = log.Id,
+                    UserId = log.UserId,
+                    UserName = log.UserName,
+                    Action = log.Action,
+                    Description = log.Description,
+                    TargetType = log.TargetType,
+                    TargetId = log.TargetId,
+                    CreatedAt = log.CreatedAt
                 })
                 .ToListAsync();
 
             return Ok(new ActivityLogPageDTO
             {
                 Items = items,
-                TotalCount = total,
+                TotalCount = totalCount,
                 Page = page,
                 PageSize = pageSize
             });

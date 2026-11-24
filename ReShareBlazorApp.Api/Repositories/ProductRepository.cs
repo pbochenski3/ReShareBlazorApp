@@ -23,11 +23,21 @@ namespace ReShareBlazorApp.Api.Repositories
             {
                 await _context.AddAsync(product);
                 await _context.SaveChangesAsync();
+
+                var productsCount = await _context.Products
+                    .CountAsync(p => p.UserId == product.UserId);
+
+                if (productsCount >= 1)
+                    await AwardBadgeIfNeededAsync(product.UserId, "Pierwsze ogłoszenie");
+
+                if (productsCount >= 5)
+                    await AwardBadgeIfNeededAsync(product.UserId, "Aktywny sprzedawca");
+
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"[ProductRepository] Error occured in AddProductAsync : {ex}");
+                _logger.LogError(ex, "[ProductRepository] Error occurred in AddProductAsync");
                 return false;
             }
         }
@@ -62,10 +72,6 @@ namespace ReShareBlazorApp.Api.Repositories
             }
         }
           
-
-
-
-
         public async Task<bool> DeleteProductAsync(int productId, int userId)
         {
             try
@@ -81,23 +87,58 @@ namespace ReShareBlazorApp.Api.Repositories
             }
         }
 
-        // Oznaczenie jako sprzedane: isDeleted = true (ogłoszenie znika ze strony, a wiersz zostaje
-        // w bazie i jest liczony przez licznik na stronie głównej).
+
         public async Task<bool> MarkAsSoldAsync(int productId, int userId)
         {
             try
             {
                 var rows = await _context.Products
-                    .Where(p => p.Id == productId && p.UserId == userId)
-                    .ExecuteUpdateAsync(p => p.SetProperty(x => x.isDeleted, true));
-                return rows > 0;
+                    .Where(p =>
+                        p.Id == productId &&
+                        p.UserId == userId &&
+                        !p.isSold)
+                    .ExecuteUpdateAsync(p => p
+                        .SetProperty(x => x.isDeleted, true)
+                        .SetProperty(x => x.isSold, true));
+
+                if (rows == 0)
+                    return false;
+
+                // Liczymy sprzedane produkty użytkownika.
+                var soldProductsCount = await _context.Products
+                    .IgnoreQueryFilters()
+                    .CountAsync(p =>
+                        p.UserId == userId &&
+                        p.isSold);
+
+                // Pierwsza sprzedaż.
+                if (soldProductsCount >= 1)
+                {
+                    await AwardBadgeIfNeededAsync(
+                        userId,
+                        "Pierwsza sprzedaż");
+                }
+
+                // Dziesięć sprzedanych produktów.
+                if (soldProductsCount >= 10)
+                {
+                    await AwardBadgeIfNeededAsync(
+                        userId,
+                        "Diamentowy sprzedawca");
+                }
+
+                return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[ProductRepository] Error occurred in MarkAsSoldAsync");
+                _logger.LogError(
+                    ex,
+                    "[ProductRepository] Error occurred in MarkAsSoldAsync");
+
                 return false;
             }
         }
+
 
         // Licznik: ogłoszenia oznaczone jako sprzedane (isDeleted = true), pogrupowane po kategorii
         public async Task<Dictionary<ProductCategory, int>> GetCompletedCountsByCategoryAsync()
@@ -251,44 +292,81 @@ namespace ReShareBlazorApp.Api.Repositories
                 .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Id == imageId);
         }
+
         public async Task<bool?> ToggleFavoriteAsync(int userId, int productId)
         {
             try
             {
                 var favorite = await _context.FavoriteProducts
-                    .FirstOrDefaultAsync(f => f.UserId == userId && f.ProductId == productId);
+                    .FirstOrDefaultAsync(f =>
+                        f.UserId == userId &&
+                        f.ProductId == productId);
 
+                // Jeśli produkt jest już ulubiony, usuwamy go.
                 if (favorite != null)
                 {
                     _context.FavoriteProducts.Remove(favorite);
                     await _context.SaveChangesAsync();
+
                     return false;
                 }
 
-                // Products ma filtr isDeleted, więc sprzedane/usunięte ogłoszenia tu nie przejdą
-                var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+                // Sprawdzamy, czy produkt istnieje i nie jest usunięty.
+                var productExists = await _context.Products
+                    .AnyAsync(p => p.Id == productId);
+
                 if (!productExists)
                     return null;
 
+                // Dodajemy produkt do ulubionych.
                 _context.FavoriteProducts.Add(new FavoriteProduct
                 {
                     UserId = userId,
                     ProductId = productId
                 });
+
                 await _context.SaveChangesAsync();
+
+                // Liczymy ulubione produkty użytkownika.
+                var favoritesCount = await _context.FavoriteProducts
+                    .CountAsync(f => f.UserId == userId);
+
+                // Pierwszy dodany produkt.
+                if (favoritesCount >= 1)
+                {
+                    await AwardBadgeIfNeededAsync(
+                        userId,
+                        "Miłość od pierwszego wejrzenia");
+                }
+
+                // Dziesięć dodanych produktów.
+                if (favoritesCount >= 10)
+                {
+                    await AwardBadgeIfNeededAsync(
+                        userId,
+                        "Zakochany w produktach");
+                }
+
                 return true;
             }
             catch (DbUpdateException ex)
             {
-                // np. podwójne kliknięcie - para (użytkownik, ogłoszenie) już istnieje
-                _logger.LogWarning(ex, "[ProductRepository] DbUpdateException in ToggleFavoriteAsync");
+                _logger.LogWarning(
+                    ex,
+                    "[ProductRepository] DbUpdateException in ToggleFavoriteAsync");
+
                 return await _context.FavoriteProducts
                     .AsNoTracking()
-                    .AnyAsync(f => f.UserId == userId && f.ProductId == productId);
+                    .AnyAsync(f =>
+                        f.UserId == userId &&
+                        f.ProductId == productId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[ProductRepository] Error occurred in ToggleFavoriteAsync");
+                _logger.LogError(
+                    ex,
+                    "[ProductRepository] Error occurred in ToggleFavoriteAsync");
+
                 throw;
             }
         }
@@ -329,6 +407,36 @@ namespace ReShareBlazorApp.Api.Repositories
               })
               .ToListAsync();
             return locations ?? new List<LocationDTO>();
+        }
+
+        private async Task AwardBadgeIfNeededAsync(int userId, string badgeName)
+        {
+            // Szukamy odznaki w bazie
+            var badge = await _context.Badges
+                .FirstOrDefaultAsync(b => b.Name == badgeName);
+
+            if (badge == null)
+                return;
+
+            // Sprawdzamy, czy użytkownik już ją zdobył
+            var alreadyEarned = await _context.UserBadges
+                .AnyAsync(ub =>
+                    ub.UserId == userId &&
+                    ub.BadgeId == badge.Id);
+
+            if (alreadyEarned)
+                return;
+
+            // Przyznajemy odznakę
+            _context.UserBadges.Add(new UserBadge
+            {
+                UserId = userId,
+                BadgeId = badge.Id,
+                IsEarned = true,
+                EarnedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
         }
     }
 }

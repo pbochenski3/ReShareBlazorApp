@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Date.Enums;
 using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
+using System.Security.Claims;
 
 namespace ReShareBlazorApp.Api.Controllers
 {
@@ -13,11 +16,28 @@ namespace ReShareBlazorApp.Api.Controllers
     {
         private readonly IAuthService _authService;
         private readonly UserManager<User> _userManager;
+        private readonly IActivityLogger _activityLogger;
 
-        public AuthController(IAuthService authService, UserManager<User> userManager)
+        public AuthController(IAuthService authService, UserManager<User> userManager, IActivityLogger activityLogger)
         {
             _authService = authService;
             _userManager = userManager;
+            _activityLogger = activityLogger;
+        }
+
+        [HttpPost("verify-registration")]
+        public async Task<IActionResult> VerifyRegistration(VerifyRegistrationRequest request)
+        {
+            var result = await _authService.VerifyRegistrationAsync(request);
+            if (result == null)
+            {
+                return BadRequest(new
+                {
+                    Message = "Nieprawidłowy lub wygasły kod weryfikacyjny."
+                });
+            }
+
+            return Ok(result);
         }
 
         [HttpPost("verify-registration")]
@@ -56,6 +76,8 @@ namespace ReShareBlazorApp.Api.Controllers
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null)
             {
+                await _activityLogger.LogAsync((int?)null, request.Email, ActivityActions.UserLoginFailed,
+                    "Nieudane logowanie (nieznany adres e-mail)", "User", null);
                 return Unauthorized(new
                 {
                     Message = "Nieprawidłowy e-mail lub hasło."
@@ -65,6 +87,8 @@ namespace ReShareBlazorApp.Api.Controllers
             var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
             if (!isPasswordValid)
             {
+                await _activityLogger.LogAsync(user.Id, user.UserName, ActivityActions.UserLoginFailed,
+                    "Nieudane logowanie (nieprawidłowe hasło)", "User", user.Id);
                 return Unauthorized(new
                 {
                     Message = "Nieprawidłowy e-mail lub hasło."
@@ -73,6 +97,8 @@ namespace ReShareBlazorApp.Api.Controllers
 
             if (!user.IsActive)
             {
+                await _activityLogger.LogAsync(user.Id, user.UserName, ActivityActions.UserLoginFailed,
+                    "Nieudane logowanie (konto zablokowane na stałe)", "User", user.Id);
                 return StatusCode(StatusCodes.Status403Forbidden, new
                 {
                     Message = "Twoje konto zostało trwale zablokowane przez administratora."
@@ -81,6 +107,8 @@ namespace ReShareBlazorApp.Api.Controllers
 
             if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow)
             {
+                await _activityLogger.LogAsync(user.Id, user.UserName, ActivityActions.UserLoginFailed,
+                    "Nieudane logowanie (konto zablokowane czasowo)", "User", user.Id);
                 var localTime = user.LockoutEnd.Value.ToLocalTime();
                 return StatusCode(StatusCodes.Status403Forbidden, new
                 {
@@ -91,13 +119,30 @@ namespace ReShareBlazorApp.Api.Controllers
             var result = await _authService.LoginAsync(request);
             if (result == null)
             {
+                await _activityLogger.LogAsync(user.Id, user.UserName, ActivityActions.UserLoginFailed,
+                    "Nieudane logowanie", "User", user.Id);
                 return Unauthorized(new
                 {
                     Message = "Nieprawidłowy e-mail lub hasło."
                 });
             }
+            await _activityLogger.LogAsync(user.Id, user.UserName, ActivityActions.UserLoggedIn,
+                "Zalogowano do serwisu", "User", user.Id);
             return Ok(result);
         }
+        [HttpPost("logout")]
+        [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            int? userId = null;
+            if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedId))
+                userId = parsedId;
+
+            await _activityLogger.LogAsync(User, ActivityActions.UserLoggedOut,
+                "Wylogowano z serwisu", "User", userId);
+            return Ok();
+        }
+
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
         {

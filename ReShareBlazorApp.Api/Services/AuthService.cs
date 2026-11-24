@@ -94,6 +94,7 @@ namespace ReShareBlazorApp.Api.Services
             };
             var result = await _userManager.CreateAsync(user, pending.Request.Password);
 
+            var result = await _userManager.CreateAsync(user, pending.Request.Password);
             if (!result.Succeeded)
             {
                 return null;
@@ -109,7 +110,7 @@ namespace ReShareBlazorApp.Api.Services
                 "User",
                 user.Id);
 
-
+            await _badgeService.AwardBadgeAsync(user.Id, "Pierwsze koty za płoty");
             await _badgeService.AwardBadgeAsync(user.Id, "Nowy użytkownik");
 
             return new RegisterResponse
