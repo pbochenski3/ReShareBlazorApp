@@ -13,6 +13,5 @@ namespace ReShareBlazorApp.Api.Interfaces.Services
         Task<bool> AwardBadgeToUserAsync(int userId, int badgeId);
 
         Task<bool> RemoveBadgeFromUserAsync(int userId, int badgeId);
-        Task<bool> AddBadgeAsync(BadgeDTO badge);
     }
 }

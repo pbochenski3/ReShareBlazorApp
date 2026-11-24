@@ -1,6 +1,5 @@
 ﻿using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Api.Interfaces.Services;
-using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Shared.DTOs;
 
 namespace ReShareBlazorApp.Api.Services
@@ -8,13 +7,14 @@ namespace ReShareBlazorApp.Api.Services
     public class BadgeService : IBadgeService
     {
         private readonly IBadgeRepository _badgeRepository;
+        private readonly ILogger<BadgeService> _logger;
 
         public BadgeService(
             IBadgeRepository badgeRepository,
             ILogger<BadgeService> logger)
-        public BadgeService(IBadgeRepository badgeRepository)
         {
             _badgeRepository = badgeRepository;
+            _logger = logger;
         }
 
         public async Task<List<BadgeDTO>> GetUserBadgesAsync(int userId)
@@ -68,18 +68,6 @@ namespace ReShareBlazorApp.Api.Services
         public async Task<bool> RemoveBadgeFromUserAsync(int userId, int badgeId)
         {
             return await _badgeRepository.RemoveBadgeFromUserAsync(userId, badgeId);
-        }
-        // Dodawanie nowej odznaki
-        public async Task<bool> AddBadgeAsync(BadgeDTO badge)
-        {
-            var newBadge = new Badge
-            {
-                Name = badge.Name,
-                Description = badge.Description,
-                Icon = badge.Icon
-            };
-
-            return await _badgeRepository.AddBadgeAsync(newBadge);
         }
     }
 }

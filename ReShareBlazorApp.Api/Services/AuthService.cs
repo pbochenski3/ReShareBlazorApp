@@ -16,12 +16,19 @@ namespace ReShareBlazorApp.Api.Services
         private readonly IConfiguration _configuration;
         private readonly ReshareDbContext _context;
         private readonly ILogger<AuthService> _logger;
-        public AuthService(UserManager<User> userManager, IConfiguration configuration, ReshareDbContext context, ILogger<AuthService> logger)
+        private readonly IBadgeService _badgeService;
+        public AuthService(
+            UserManager<User> userManager,
+            IConfiguration configuration,
+            ReshareDbContext context,
+            ILogger<AuthService> logger,
+            IBadgeService badgeService)
         {
             _userManager = userManager;
             _configuration = configuration;
             _context = context;
             _logger = logger;
+            _badgeService = badgeService;
         }
         public async Task<RegisterResponse?> RegisterAsync(RegisterRequest request)
         {

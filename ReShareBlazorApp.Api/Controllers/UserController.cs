@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared.DTOs;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 
 namespace ReShareBlazorApp.Api.Controllers
 {
@@ -12,9 +14,11 @@ namespace ReShareBlazorApp.Api.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
-        public UserController(IUserService userService)
+        private readonly UserManager<User> _userManager;
+        public UserController(IUserService userService, UserManager<User> userManager)
         {
             _userService = userService;
+            _userManager = userManager;
         }
 
         [HttpGet]
