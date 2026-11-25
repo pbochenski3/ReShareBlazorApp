@@ -49,19 +49,19 @@
                                placeholder="Wpisz nazwę produktu" />
                     <ValidationMessage For="@(() => productModel.Name)" />
                 </div>
-
+                @if(productModel.Type != ProductType.GiveAway)
+                {
+                    
                 <div class="product-field">
                     <label>Cena</label>
                      <InputNumber @bind-Value="productModel.Price"
                                   min="@(productModel.Type == ProductType.Sell ? 2 : 0)"
                                  class="product-input"
                                  placeholder="Wpisz cenę" />
-                     @if (productModel.Type == ProductType.Sell)
-                     {
                          <small class="text-muted">Minimalna cena sprzedaży: 2,00 zł</small>
-                     }
                     <ValidationMessage For="@(() => productModel.Price)" />
                 </div>
+                }
 
                 <div class="product-field">
                     <label>Opis</label>
