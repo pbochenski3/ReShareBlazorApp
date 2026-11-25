@@ -17,7 +17,8 @@ namespace ReShareBlazorApp.Api.Services
             long amountInGrosze,
             string description,
             string successUrl,
-            string cancelUrl)
+            string cancelUrl,
+            string idempotencyKey)
         {
             var options = new SessionCreateOptions
             {
@@ -57,7 +58,7 @@ namespace ReShareBlazorApp.Api.Services
 
             var requestOptions = new RequestOptions
             {
-                IdempotencyKey = $"payment-{paymentId}"
+                IdempotencyKey = idempotencyKey
             };
 
             var session = await service.CreateAsync(

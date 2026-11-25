@@ -24,7 +24,7 @@ else
                          Title="@product.Name"
                          Category="@GetCategoryName(product.Category)"
                          Type="@product.Type"
-                         Price="@($"{product.PriceMin:0.##} - {product.PriceMax:0.##} zł")"
+                         Price="@($"{product.Price:0.##} zł")"
                          Location="@product.City"
                          Term="@product.ExpiresAt.ToString("dd.MM.yyyy")"
                          Published="@product.AddedAt.ToString("dd.MM.yyyy HH:mm")"

@@ -1,0 +1,303 @@
+@page "/zamowienia"
+@attribute [Authorize]
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Shared.Enums
+@using ReShareBlazorApp.Web.ApiServices
+@inject PaymentApiService PaymentApi
+
+<PageTitle>Zamówienia – ODDAJ DALEJ</PageTitle>
+
+<section class="home-section">
+    <div class="home-container">
+        <h1 class="mb-4">Moje zamówienia</h1>
+
+        @if (isLoading)
+        {
+            <p class="text-muted">Ładowanie zamówień...</p>
+        }
+        else
+        {
+            <section class="mb-5">
+                <h2 class="h4 mb-3">Kupione przeze mnie</h2>
+                @if (orders.Count == 0)
+                {
+                    <p class="text-muted">Nie masz jeszcze żadnych zakupów.</p>
+                }
+                else
+                {
+                    <div class="row g-3">
+                        @foreach (var order in orders)
+                        {
+                            <div class="col-12">
+                                <article class="card shadow-sm border-0 p-3">
+                                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                                        <div>
+                                            <h3 class="h5 mb-1">@order.ProductName</h3>
+                                            <div class="text-muted small">Sprzedający: @order.SellerName</div>
+                                            <div class="text-muted small">Utworzono: @order.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                                        </div>
+                                        <div class="text-end">
+                                            <strong>@FormatAmount(order)</strong>
+                                            <div><span class="badge @StatusClass(order.Status)">@StatusLabel(order.Status)</span></div>
+                                        </div>
+                                    </div>
+
+                                    @if (order.Status == PaymentStatus.Shipped)
+                                    {
+                                        <div class="mt-3">
+                                            <button type="button" class="btn btn-sm btn-success"
+                                                    disabled="@isUpdating"
+                                                    @onclick="() => ShowDeliveryConfirmation(order)">
+                                                Dotarło
+                                            </button>
+                                        </div>
+                                    }
+                                </article>
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+
+            <section>
+                <h2 class="h4 mb-3">Sprzedaż moich ogłoszeń</h2>
+                @if (!sales.Any(s => !s.IsClosed))
+                {
+                    <p class="text-muted">Nie masz jeszcze żadnej sprzedaży.</p>
+                }
+                else
+                {
+                    <div class="row g-3">
+                        @foreach (var sale in sales.Where(s => !s.IsClosed))
+                        {
+                            <div class="col-12">
+                                <article class="card shadow-sm border-0 p-3">
+                                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                                        <div>
+                                            <h3 class="h5 mb-1">@sale.ProductName</h3>
+                                            <div class="text-muted small">Kupujący: @sale.BuyerName</div>
+                                            <div class="text-muted small">Utworzono: @sale.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                                        </div>
+                                        <div class="text-end">
+                                            <strong>@FormatAmount(sale)</strong>
+                                            <div><span class="badge @StatusClass(sale.Status)">@StatusLabel(sale.Status)</span></div>
+                                        </div>
+                                    </div>
+
+                                    @if (sale.Status == PaymentStatus.AwaitingShipment)
+                                    {
+                                        <div class="mt-3">
+                                            <button type="button" class="btn btn-sm btn-primary"
+                                                    disabled="@isUpdating"
+                                                    @onclick="() => UpdateSellerStatusAsync(sale)">
+                                                Oznacz jako wysłane
+                                            </button>
+                                        </div>
+                                    }
+                                    else if (sale.Status == PaymentStatus.Delivered)
+                                    {
+                                        <div class="mt-3">
+                                            <button type="button" class="btn btn-sm btn-success"
+                                                    disabled="@isUpdating"
+                                                    @onclick="() => CloseProductAsync(sale)">
+                                                Zamknij ogłoszenie
+                                            </button>
+                                        </div>
+                                    }
+                                </article>
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+
+            @if (sales.Any(s => s.IsClosed))
+            {
+                <section class="mt-5">
+                    <h2 class="h4 mb-3">Historia sprzedaży (ostatnie 10 zamkniętych)</h2>
+                    <div class="row g-3">
+                        @foreach (var sale in sales.Where(s => s.IsClosed))
+                        {
+                            <div class="col-12">
+                                <article class="card shadow-sm border-0 p-3 bg-light">
+                                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                                        <div>
+                                            <h3 class="h5 mb-1">@sale.ProductName</h3>
+                                            <div class="text-muted small">Kupujący: @sale.BuyerName</div>
+                                            <div class="text-muted small">Zamknięto: @sale.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                                        </div>
+                                        <div class="text-end">
+                                            <strong>@FormatAmount(sale)</strong>
+                                            <div><span class="badge text-bg-secondary">Zamknięte</span></div>
+                                        </div>
+                                    </div>
+                                </article>
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(message))
+            {
+                <div class="alert alert-danger mt-4">@message</div>
+            }
+        }
+    </div>
+</section>
+
+@if (deliveryConfirmationOrder is not null)
+{
+    <div class="delete-dialog-backdrop">
+        <div class="delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delivery-confirmation-title">
+            <div class="delete-dialog-icon" style="background: #e3f1f1; color: #097171;">✓</div>
+            <h2 id="delivery-confirmation-title">Potwierdzić dostawę?</h2>
+            <p>
+                Potwierdzenie oznaczy zamówienie jako dostarczone. Tej operacji nie będzie można cofnąć.
+            </p>
+            <div class="delete-dialog-actions">
+                <button type="button" class="delete-dialog-cancel"
+                        @onclick="CancelDeliveryConfirmation" disabled="@isUpdating">
+                    Anuluj
+                </button>
+                <button type="button" class="delete-dialog-confirm"
+                        style="background: #097171; border-color: #097171;"
+                        @onclick="ConfirmDeliveryAsync" disabled="@isUpdating">
+                    @(isUpdating ? "Zapisywanie..." : "Tak, dotarło")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<OrderDTO> orders = new();
+    private List<OrderDTO> sales = new();
+    private OrderDTO? deliveryConfirmationOrder;
+    private bool isLoading = true;
+    private bool isUpdating;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        message = null;
+        try
+        {
+            orders = await PaymentApi.GetMyOrdersAsync();
+            sales = await PaymentApi.GetMySalesAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ShowDeliveryConfirmation(OrderDTO order)
+    {
+        if (!isUpdating && order.Status == PaymentStatus.Shipped)
+            deliveryConfirmationOrder = order;
+    }
+
+    private void CancelDeliveryConfirmation()
+    {
+        if (!isUpdating)
+            deliveryConfirmationOrder = null;
+    }
+
+    private async Task ConfirmDeliveryAsync()
+    {
+        if (deliveryConfirmationOrder is null)
+            return;
+
+        var order = deliveryConfirmationOrder;
+        isUpdating = true;
+        message = null;
+        try
+        {
+            if (await PaymentApi.UpdateBuyerStatusAsync(order.Id, PaymentStatus.Delivered))
+            {
+                order.Status = PaymentStatus.Delivered;
+                deliveryConfirmationOrder = null;
+            }
+            else
+            {
+                message = "Nie udało się potwierdzić dostawy.";
+            }
+        }
+        finally
+        {
+            isUpdating = false;
+        }
+    }
+
+    private async Task UpdateSellerStatusAsync(OrderDTO sale)
+    {
+        if (isUpdating)
+            return;
+
+        isUpdating = true;
+        message = null;
+        try
+        {
+            if (await PaymentApi.UpdateStatusAsync(sale.Id, PaymentStatus.Shipped))
+                sale.Status = PaymentStatus.Shipped;
+            else
+                message = "Nie udało się zmienić statusu zamówienia.";
+        }
+        finally
+        {
+            isUpdating = false;
+        }
+    }
+
+    private async Task CloseProductAsync(OrderDTO sale)
+    {
+        if (isUpdating)
+            return;
+
+        isUpdating = true;
+        message = null;
+        try
+        {
+            if (await PaymentApi.CloseProductAsync(sale.Id))
+                sales.Remove(sale);
+            else
+                message = "Nie udało się zamknąć ogłoszenia.";
+        }
+        finally
+        {
+            isUpdating = false;
+        }
+    }
+
+    private static string StatusLabel(PaymentStatus status) => status switch
+    {
+        PaymentStatus.Pending => "Oczekuje na płatność",
+        PaymentStatus.Paid => "Opłacone",
+        PaymentStatus.AwaitingShipment => "Oczekuje na wysyłkę",
+        PaymentStatus.Shipped => "Wysłane",
+        PaymentStatus.Delivered => "Dostarczone",
+        PaymentStatus.Failed => "Płatność nieudana",
+        PaymentStatus.Cancelled => "Anulowane",
+        PaymentStatus.Refunded => "Zwrot środków",
+        _ => status.ToString()
+    };
+
+    private static string StatusClass(PaymentStatus status) => status switch
+    {
+        PaymentStatus.Paid or PaymentStatus.Delivered => "text-bg-success",
+        PaymentStatus.AwaitingShipment or PaymentStatus.Shipped => "text-bg-primary",
+        PaymentStatus.Pending => "text-bg-warning",
+        PaymentStatus.Failed or PaymentStatus.Cancelled => "text-bg-danger",
+        _ => "text-bg-secondary"
+    };
+
+    private static string FormatAmount(OrderDTO order) =>
+        $"{order.AmountInGrosze / 100m:0.00} {order.Currency.ToUpperInvariant()}";
+}

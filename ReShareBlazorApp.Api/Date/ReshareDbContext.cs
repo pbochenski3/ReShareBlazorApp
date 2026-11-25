@@ -130,6 +130,18 @@ namespace ReShareBlazorApp.Api.Date
 
 				entity.Property(f => f.AddedAt)
 					.HasColumnType("datetime2");
+
+				builder.Entity<Review>()
+					.HasIndex(r => new { r.ProductId, r.UserId })
+					.IsUnique()
+					.HasFilter("[UserId] IS NOT NULL");
+
+				builder.Entity<Review>()
+					.HasOne<User>()
+					.WithMany()
+					.HasForeignKey(r => r.UserId)
+					.OnDelete(DeleteBehavior.NoAction);
+
                 builder.Entity<Payment>(entity =>
                 {
                     entity.HasKey(p => p.Id);
@@ -144,6 +156,9 @@ namespace ReShareBlazorApp.Api.Date
 
                     entity.Property(p => p.StripeSessionId)
                         .HasMaxLength(255);
+
+					entity.Property(p => p.StripeIdempotencyKey)
+						.HasMaxLength(255);
 
                     entity.Property(p => p.StripePaymentIntentId)
                         .HasMaxLength(255);

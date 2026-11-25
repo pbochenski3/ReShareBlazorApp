@@ -16,11 +16,8 @@ namespace ReShareBlazorApp.Web.Models
 
         public ProductType Type { get; set; }
 
-        [Range(0.01, 100000, ErrorMessage = "Cena minimalna musi być większa od 0.")]
-        public decimal PriceMin { get; set; }
-
-        [Range(0.01, 100000, ErrorMessage = "Cena maksymalna musi być większa od 0.")]
-        public decimal PriceMax { get; set; }
+        [Range(0.01, 100000, ErrorMessage = "Cena musi być większa od 0.")]
+        public decimal Price { get; set; }
 
         [Required(ErrorMessage = "Podaj datę ważności produktu.")]
         public DateTime ExpiresAt { get; set; } = DateTime.UtcNow.AddDays(7);

@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Date.Enums;
@@ -16,10 +17,12 @@ namespace ReShareBlazorApp.Api.Controllers
     {
         private readonly IProductService _productService;
         private readonly IActivityLogger _activityLogger;
-        public ProductController(IProductService productService, IActivityLogger activityLogger)
+        private readonly ReshareDbContext _context;
+        public ProductController(IProductService productService, IActivityLogger activityLogger, ReshareDbContext context)
         {
             _productService = productService;
             _activityLogger = activityLogger;
+            _context = context;
         }
 
         [Authorize]
@@ -130,6 +133,18 @@ namespace ReShareBlazorApp.Api.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userId, out var currentUserId))
                 return Unauthorized();
+
+            var product = await _context.Products
+                .AsNoTracking()
+                .Where(p => p.Id == id)
+                .Select(p => new { p.UserId })
+                .FirstOrDefaultAsync();
+
+            if (product == null)
+                return NotFound();
+
+            if (product.UserId == currentUserId)
+                return BadRequest("Nie możesz dodać własnego ogłoszenia do ulubionych.");
 
             var isFavorite = await _productService.ToggleFavoriteAsync(currentUserId, id);
             if (isFavorite == null)

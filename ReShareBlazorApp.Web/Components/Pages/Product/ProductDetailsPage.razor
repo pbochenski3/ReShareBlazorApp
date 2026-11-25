@@ -90,7 +90,7 @@
                         <div class="details-info-grid">
                             <div class="details-info-item">
                                 <span class="details-info-label">Cena</span>
-                                <strong>@Product.PriceMin.ToString("0.##") - @Product.PriceMax.ToString("0.##") zł</strong>
+                                <strong>@Product.Price.ToString("0.##") zł</strong>
                             </div>
                             <div class="details-info-item">
                                 <span class="details-info-label">Data dodania</span>
@@ -134,6 +134,12 @@
                                     To Twoje ogłoszenie – nie możesz go oceniać
                                 </span>
                             }
+                            else if (HasCurrentUserReview)
+                            {
+                                <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill">
+                                    Wystawiłeś już opinię do tego ogłoszenia
+                                </span>
+                            }
                             else
                             {
                                 <button type="button"
@@ -152,7 +158,7 @@
                             </div>
                         }
 
-                        @if (showAddForm && isAuthenticated && !IsOwner)
+                        @if (showAddForm && isAuthenticated && !IsOwner && !HasCurrentUserReview)
                         {
                             <div class="card border-0 shadow-sm p-4 mb-4 rounded-4 bg-white"
                                  style="border-left: 4px solid #0f766e !important;">
@@ -194,8 +200,7 @@
                                     <textarea class="form-control rounded-3"
                                               rows="3"
                                               @bind="newComment"
-                                              placeholder="Napisz kilka słów o przedmiocie lub transakcji...">
-                                    </textarea>
+                                              placeholder="Napisz kilka słów o przedmiocie lub transakcji..."></textarea>
                                 </div>
 
                                 <button type="button"
@@ -244,6 +249,34 @@
                                                style="font-size: 0.95rem; line-height: 1.5;">
                                                 @review.Comment
                                             </p>
+
+                                            @if (review.UserId == currentUserIdInt)
+                                            {
+                                                @if (editingReviewId == review.Id)
+                                                {
+                                                    <div class="mt-3">
+                                                        <select class="form-select mb-2" @bind="editRating">
+                                                            <option value="5">★★★★★ (5/5)</option>
+                                                            <option value="4">★★★★☆ (4/5)</option>
+                                                            <option value="3">★★★☆☆ (3/5)</option>
+                                                            <option value="2">★★☆☆☆ (2/5)</option>
+                                                            <option value="1">★☆☆☆☆ (1/5)</option>
+                                                        </select>
+                                                        <textarea class="form-control mb-2" rows="3" @bind="editComment"></textarea>
+                                                        <div class="d-flex gap-2">
+                                                            <button type="button" class="btn btn-sm btn-success" @onclick="SaveReviewEdit" disabled="@isReviewActionBusy">Zapisz</button>
+                                                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CancelReviewEdit" disabled="@isReviewActionBusy">Anuluj</button>
+                                                        </div>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="d-flex gap-2 mt-3">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => StartReviewEdit(review)">Edytuj</button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => DeleteReview(review.Id)" disabled="@isReviewActionBusy">Usuń</button>
+                                                    </div>
+                                                }
+                                            }
                                         </div>
                                     </div>
                                 }
@@ -259,7 +292,7 @@
                         <span class="details-price-label">Cena</span>
 
                         <div class="details-price">
-                            @Product.PriceMin.ToString("0.##") - @Product.PriceMax.ToString("0.##") <span>zł</span>
+                            @Product.Price.ToString("0.##") <span>zł</span>
                         </div>
 
                         <div class="details-divider"></div>
@@ -283,8 +316,7 @@
                                 @if (userRating.TotalReviews > 0)
                                 {
                                     <p class="profile-rating">
-                                        ★ @userRating.AverageRating.ToString("0.0",
-                                                                                                                            System.Globalization.CultureInfo.GetCultureInfo("pl-PL"))
+                                        ★ @userRating.AverageRating.ToString("0.0", System.Globalization.CultureInfo.GetCultureInfo("pl-PL"))
                                         <span>(@userRating.TotalReviews @GetReviewLabel(userRating.TotalReviews))</span>
                                     </p>
                                 }
@@ -319,6 +351,34 @@
 
                         @if (!IsOwner)
                         {
+                            @if (Product.Type == ProductType.Sell && Product.Price > 0)
+                            {
+                                @if (productUnavailable)
+                                {
+                                    <button type="button"
+                                            class="btn w-100 mb-3"
+                                            style="font-weight: 700; padding: 10px;"
+                                            disabled>
+                                        Produkt jest obecnie niedostępny
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button"
+                                            class="btn w-100 mb-3"
+                                            style="font-weight: 700; padding: 10px; background-color: #2563eb; color: #fff;"
+                                            @onclick="BuyProductAsync"
+                                            disabled="@isBuying">
+                                        @(isBuying ? "Przekierowanie do płatności..." : $"Kup teraz za {Product.Price:0.##} zł")
+                                    </button>
+                                }
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(purchaseMessage))
+                            {
+                                <div class="small text-danger mb-2">@purchaseMessage</div>
+                            }
+
                             <button type="button"
                                     class="btn w-100 mb-3"
                                     style="font-weight: 600; padding: 10px; background-color: #0f766e; color: #fff;"
@@ -533,6 +593,10 @@
     private bool showAddForm;
     private int newRating = 5;
     private string newComment = "";
+    private int? editingReviewId;
+    private int editRating = 5;
+    private string editComment = "";
+    private bool isReviewActionBusy;
 
     private UserRatingDTO userRating = new();
 
@@ -542,6 +606,9 @@
     private bool IsMarkingSold { get; set; }
 
     private bool isTogglingFavorite;
+    private bool isBuying;
+    private bool productUnavailable;
+    private string? purchaseMessage;
     private bool IsFavorite => Product != null && Favorites.IsFavorite(Product.ProductId);
 
     private bool IsOwner
@@ -556,6 +623,60 @@
         }
     }
 
+    private async Task BuyProductAsync()
+    {
+        if (Product == null || IsOwner || isBuying)
+            return;
+
+        if (productUnavailable)
+            return;
+
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        isBuying = true;
+        purchaseMessage = null;
+
+        try
+        {
+            using var request = await CreateAuthorizedRequest(
+                HttpMethod.Post,
+                $"api/payments/checkout/{Product.ProductId}");
+
+            using var response = await Http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                purchaseMessage = await response.Content.ReadAsStringAsync();
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<CheckoutResponse>();
+            if (string.IsNullOrWhiteSpace(result?.CheckoutUrl))
+            {
+                purchaseMessage = "Nie otrzymano adresu płatności.";
+                return;
+            }
+
+            Navigation.NavigateTo(result.CheckoutUrl, forceLoad: true);
+        }
+        catch (Exception exception)
+        {
+            purchaseMessage = $"Nie udało się rozpocząć płatności: {exception.Message}";
+        }
+        finally
+        {
+            isBuying = false;
+        }
+    }
+
+    private sealed class CheckoutResponse
+    {
+        public string CheckoutUrl { get; set; } = string.Empty;
+    }
+
     private double AverageRating =>
         reviews != null && reviews.Any()
             ? reviews.Average(r => (double)r.Rating)
@@ -563,6 +684,9 @@
 
     private int TotalReviews =>
         reviews?.Count ?? 0;
+
+    private bool HasCurrentUserReview =>
+        currentUserIdInt.HasValue && reviews?.Any(r => r.UserId == currentUserIdInt.Value) == true;
 
     protected override void OnInitialized()
     {
@@ -572,30 +696,6 @@
     private void OnFavoritesChanged()
     {
         _ = InvokeAsync(StateHasChanged);
-    }
-
-    private async Task ToggleFavoriteAsync()
-    {
-        if (Product == null || isTogglingFavorite)
-            return;
-
-        if (!await Favorites.IsLoggedInAsync())
-        {
-            Navigation.NavigateTo("/login");
-            return;
-        }
-
-        isTogglingFavorite = true;
-        try
-        {
-            var result = await Favorites.ToggleAsync(Product.ProductId);
-            if (result == null)
-                notify.AddNotification("Ulubione", "Nie udało się zmienić ulubionych. Spróbuj ponownie.");
-        }
-        finally
-        {
-            isTogglingFavorite = false;
-        }
     }
 
     public void Dispose()
@@ -622,6 +722,7 @@
         isFollowLoading = false;
         isTogglingFavorite = false;
         currentUserIdInt = null;
+        editingReviewId = null;
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
@@ -665,6 +766,8 @@
                     await Favorites.EnsureLoadedAsync();
                 }
 
+                await LoadProductAvailability();
+
                 userRating = await ReviewApiService.GetUserRatingAsync(Product.UserId)
                              ?? new UserRatingDTO();
             }
@@ -679,6 +782,51 @@
         }
     }
 
+    private async Task LoadProductAvailability()
+    {
+        productUnavailable = false;
+
+        try
+        {
+            var result = await Http.GetFromJsonAsync<ProductAvailabilityResponse>(
+                $"api/payments/product/{ProductId}/availability");
+            productUnavailable = result?.Unavailable == true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Błąd sprawdzania dostępności produktu: {ex.Message}");
+        }
+    }
+
+    private sealed class ProductAvailabilityResponse
+    {
+        public bool Unavailable { get; set; }
+    }
+
+    private async Task ToggleFavoriteAsync()
+    {
+        if (Product == null || isTogglingFavorite)
+            return;
+
+        if (!await Favorites.IsLoggedInAsync())
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        isTogglingFavorite = true;
+        try
+        {
+            var result = await Favorites.ToggleAsync(Product.ProductId);
+            if (result == null)
+                notify.AddNotification("Ulubione", "Nie udało się zmienić ulubionych. Spróbuj ponownie.");
+        }
+        finally
+        {
+            isTogglingFavorite = false;
+        }
+    }
+
     private async Task LoadReviews()
     {
         try
@@ -689,6 +837,72 @@
         {
             Console.WriteLine($"Błąd podczas pobierania opinii: {ex.Message}");
             reviews = new();
+        }
+    }
+
+    private void StartReviewEdit(ReviewDTO review)
+    {
+        editingReviewId = review.Id;
+        editRating = review.Rating;
+        editComment = review.Comment;
+        errorMessage = null;
+    }
+
+    private void CancelReviewEdit()
+    {
+        editingReviewId = null;
+        editComment = "";
+    }
+
+    private async Task SaveReviewEdit()
+    {
+        if (!editingReviewId.HasValue || string.IsNullOrWhiteSpace(editComment) || editRating is < 1 or > 5)
+        {
+            errorMessage = "Podaj poprawną ocenę i treść opinii.";
+            return;
+        }
+
+        isReviewActionBusy = true;
+        try
+        {
+            var success = await ReviewApiService.UpdateReviewAsync(
+                editingReviewId.Value,
+                new CreateReviewRequest
+                {
+                    ProductId = ProductId,
+                    Rating = editRating,
+                    Comment = editComment.Trim()
+                });
+
+            if (success)
+            {
+                editingReviewId = null;
+                await LoadReviews();
+            }
+            else
+            {
+                errorMessage = "Nie udało się zaktualizować opinii.";
+            }
+        }
+        finally
+        {
+            isReviewActionBusy = false;
+        }
+    }
+
+    private async Task DeleteReview(int reviewId)
+    {
+        isReviewActionBusy = true;
+        try
+        {
+            if (await ReviewApiService.DeleteReviewAsync(reviewId))
+                await LoadReviews();
+            else
+                errorMessage = "Nie udało się usunąć opinii.";
+        }
+        finally
+        {
+            isReviewActionBusy = false;
         }
     }
 

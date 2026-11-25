@@ -9,8 +9,6 @@ namespace ReShareBlazorApp.Shared.DTOs
         public string Description { get; set; } = "";
         public string City { get; set; } = "";
         public decimal Price { get; set; }
-        public decimal PriceMin { get; set; }
-        public decimal PriceMax { get; set; }
         public DateTime ExpiresAt { get; set; }
         public ProductType Type { get; set; }
         public ProductCategory Category { get; set; }

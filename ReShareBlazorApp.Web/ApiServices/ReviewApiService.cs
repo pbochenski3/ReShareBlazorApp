@@ -56,6 +56,35 @@ namespace ReShareBlazorApp.Web.ApiServices
             using var response = await _http.SendAsync(message);
             return response.IsSuccessStatusCode;
         }
+
+        public async Task<bool> UpdateReviewAsync(int reviewId, CreateReviewRequest request)
+        {
+            var state = await _auth.GetAuthenticationStateAsync();
+            var token = state.User.FindFirst("access_token")?.Value;
+            if (string.IsNullOrWhiteSpace(token))
+                return false;
+
+            using var message = new HttpRequestMessage(HttpMethod.Put, $"api/review/{reviewId}")
+            {
+                Content = JsonContent.Create(request)
+            };
+            message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var response = await _http.SendAsync(message);
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> DeleteReviewAsync(int reviewId)
+        {
+            var state = await _auth.GetAuthenticationStateAsync();
+            var token = state.User.FindFirst("access_token")?.Value;
+            if (string.IsNullOrWhiteSpace(token))
+                return false;
+
+            using var message = new HttpRequestMessage(HttpMethod.Delete, $"api/review/{reviewId}");
+            message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var response = await _http.SendAsync(message);
+            return response.IsSuccessStatusCode;
+        }
         public async Task<UserRatingDTO> GetUserRatingAsync(int userId)
         {
             try

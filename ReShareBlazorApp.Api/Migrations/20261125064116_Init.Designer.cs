@@ -12,8 +12,8 @@ using ReShareBlazorApp.Api.Date;
 namespace ReShareBlazorApp.Api.Migrations
 {
     [DbContext(typeof(ReshareDbContext))]
-    [Migration("20261124121342_Payment1")]
-    partial class Payment1
+    [Migration("20261125064116_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -395,6 +395,10 @@ namespace ReShareBlazorApp.Api.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<string>("StripeIdempotencyKey")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.Property<string>("StripePaymentIntentId")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
@@ -452,12 +456,6 @@ namespace ReShareBlazorApp.Api.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("Price")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("PriceMax")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("PriceMin")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("Type")
@@ -644,7 +642,16 @@ namespace ReShareBlazorApp.Api.Migrations
                     b.Property<int>("Rating")
                         .HasColumnType("int");
 
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ProductId", "UserId")
+                        .IsUnique()
+                        .HasFilter("[UserId] IS NOT NULL");
 
                     b.ToTable("Reviews");
                 });
@@ -944,6 +951,14 @@ namespace ReShareBlazorApp.Api.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ReShareBlazorApp.Api.Date.Review", b =>
+                {
+                    b.HasOne("ReShareBlazorApp.Api.Date.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction);
                 });
 
             modelBuilder.Entity("ReShareBlazorApp.Api.Date.UserBadge", b =>

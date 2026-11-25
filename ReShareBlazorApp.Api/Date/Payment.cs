@@ -18,6 +18,7 @@ namespace ReShareBlazorApp.Api.Date
         public string Currency { get; set; } = "pln";
 
         public string? StripeSessionId { get; set; }
+        public string? StripeIdempotencyKey { get; set; }
         public string? StripePaymentIntentId { get; set; }
 
         public PaymentStatus Status { get; set; } = PaymentStatus.Pending;

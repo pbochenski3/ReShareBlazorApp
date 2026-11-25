@@ -1,0 +1,44 @@
+@page "/payment/cancel"
+@attribute [Authorize]
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components.Authorization
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = new Uri(Navigation.Uri);
+        var productIdValue = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query)
+            .TryGetValue("product_id", out var productId);
+
+        if (!productIdValue || !int.TryParse(productId.ToString(), out var productIdInt))
+            return;
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var token = state.User.FindFirst("access_token")?.Value;
+        if (string.IsNullOrWhiteSpace(token))
+            return;
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post, $"api/payments/cancel/{productIdInt}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        await Http.SendAsync(request);
+    }
+}
+
+<PageTitle>Płatność anulowana – ODDAJ DALEJ</PageTitle>
+
+<section class="home-section">
+    <div class="home-container">
+        <div class="card border-0 shadow-sm p-5 text-center mx-auto" style="max-width: 620px;">
+            <div class="display-4 text-warning mb-3">!</div>
+            <h1 class="h2">Płatność nie została zakończona</h1>
+            <p class="text-muted mt-3">
+                Nie pobrano płatności. Nieudana lub anulowana próba nie zostanie dodana do zamówień.
+            </p>
+            <a class="btn btn-outline-primary mt-3" href="/zamowienia">Wróć do zamówień</a>
+        </div>
+    </div>
+</section>

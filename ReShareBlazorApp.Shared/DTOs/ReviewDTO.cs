@@ -4,6 +4,7 @@
     {
         public int Id { get; set; }
         public int ProductId { get; set; }
+        public int UserId { get; set; }
         public string ProductName { get; set; } = string.Empty;
         public string AuthorName { get; set; } = string.Empty;
         public int Rating { get; set; }

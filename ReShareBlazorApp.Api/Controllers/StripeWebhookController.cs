@@ -52,6 +52,25 @@ namespace ReShareBlazorApp.Api.Controllers
                 return BadRequest("Invalid Stripe signature.");
             }
 
+            if (stripeEvent.Type == "checkout.session.expired" ||
+                stripeEvent.Type == "checkout.session.async_payment_failed")
+            {
+                var session = stripeEvent.Data.Object as Session;
+                if (session == null)
+                    return BadRequest();
+
+                var failedPayment = await _context.Payments
+                    .FirstOrDefaultAsync(p => p.StripeSessionId == session.Id);
+
+                if (failedPayment != null && failedPayment.Status == PaymentStatus.Pending)
+                {
+                    failedPayment.Status = PaymentStatus.Failed;
+                    await _context.SaveChangesAsync();
+                }
+
+                return Ok();
+            }
+
             if (stripeEvent.Type == "checkout.session.completed" ||
                 stripeEvent.Type == "checkout.session.async_payment_succeeded")
             {
@@ -63,17 +82,46 @@ namespace ReShareBlazorApp.Api.Controllers
                 if (session.PaymentStatus != "paid")
                     return Ok();
 
-                var payment = await _context.Payments
-                    .FirstOrDefaultAsync(p =>
-                        p.StripeSessionId == session.Id);
+                var paymentId = session.ClientReferenceId;
+                if (string.IsNullOrWhiteSpace(paymentId) && session.Metadata != null)
+                    session.Metadata.TryGetValue("PaymentId", out paymentId);
+
+                Payment? payment = null;
+                if (int.TryParse(paymentId, out var parsedPaymentId))
+                {
+                    payment = await _context.Payments
+                        .FirstOrDefaultAsync(p => p.Id == parsedPaymentId);
+                }
+
+                payment ??= await _context.Payments
+                    .FirstOrDefaultAsync(p => p.StripeSessionId == session.Id);
 
                 if (payment == null)
                     return NotFound("Payment not found.");
 
-                if (payment.Status == PaymentStatus.Paid)
+                if (payment.Status == PaymentStatus.AwaitingShipment ||
+                    payment.Status == PaymentStatus.Shipped ||
+                    payment.Status == PaymentStatus.Delivered)
                     return Ok();
 
-                payment.Status = PaymentStatus.Paid;
+                var anotherOrderExists = payment.ProductId.HasValue &&
+                    await _context.Payments.AnyAsync(p =>
+                        p.Id != payment.Id &&
+                        p.ProductId == payment.ProductId &&
+                    (p.Status == PaymentStatus.Paid ||
+                     p.Status == PaymentStatus.AwaitingShipment ||
+                         p.Status == PaymentStatus.Shipped ||
+                     p.Status == PaymentStatus.Delivered ||
+                     p.Status == PaymentStatus.NotDelivered));
+
+                if (anotherOrderExists)
+                {
+                    payment.Status = PaymentStatus.Cancelled;
+                    await _context.SaveChangesAsync();
+                    return Ok();
+                }
+
+                payment.Status = PaymentStatus.AwaitingShipment;
                 payment.PaidAt = DateTime.UtcNow;
                 payment.StripePaymentIntentId = session.PaymentIntentId;
 

@@ -51,19 +51,16 @@
                 </div>
 
                 <div class="product-field">
-                    <label>Cena minimalna</label>
-                    <InputNumber @bind-Value="productModel.PriceMin"
+                    <label>Cena</label>
+                     <InputNumber @bind-Value="productModel.Price"
+                                  min="@(productModel.Type == ProductType.Sell ? 2 : 0)"
                                  class="product-input"
-                                 placeholder="Wpisz cenę minimalną" />
-                    <ValidationMessage For="@(() => productModel.PriceMin)" />
-                </div>
-
-                <div class="product-field">
-                    <label>Cena maksymalna</label>
-                    <InputNumber @bind-Value="productModel.PriceMax"
-                                 class="product-input"
-                                 placeholder="Wpisz cenę maksymalną" />
-                    <ValidationMessage For="@(() => productModel.PriceMax)" />
+                                 placeholder="Wpisz cenę" />
+                     @if (productModel.Type == ProductType.Sell)
+                     {
+                         <small class="text-muted">Minimalna cena sprzedaży: 2,00 zł</small>
+                     }
+                    <ValidationMessage For="@(() => productModel.Price)" />
                 </div>
 
                 <div class="product-field">
@@ -243,8 +240,7 @@ else
             {
                 Name = product.Name,
                 Description = product.Description,
-                PriceMin = product.PriceMin,
-                PriceMax = product.PriceMax,
+                Price = product.Price,
                 ExpiresAt = product.ExpiresAt,
                 Category = product.Category,
                 City = product.City,
@@ -290,12 +286,6 @@ else
     {
         if (isSubmitting)
             return;
-
-        if (productModel.PriceMax < productModel.PriceMin)
-        {
-            notify.AddNotification("Ogłoszenie", "Cena maksymalna nie może być niższa od minimalnej.");
-            return;
-        }
 
         isSubmitting = true;
         try

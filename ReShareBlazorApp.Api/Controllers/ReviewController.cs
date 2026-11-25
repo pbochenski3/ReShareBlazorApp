@@ -40,6 +40,7 @@ namespace ReShareBlazorApp.Api.Controllers
                 {
                     Id = r.Id,
                     ProductId = r.ProductId,
+                    UserId = r.UserId ?? 0,
                     AuthorName = r.AuthorName,
                     Rating = r.Rating,
                     Comment = r.Comment,
@@ -76,6 +77,7 @@ namespace ReShareBlazorApp.Api.Controllers
                                  {
                                      Id = r.Id,
                                      ProductId = r.ProductId,
+                                      UserId = r.UserId ?? 0,
                                      ProductName = p.Name,
                                      AuthorName = r.AuthorName,
                                      Rating = r.Rating,
@@ -118,6 +120,12 @@ namespace ReShareBlazorApp.Api.Controllers
             if (product.UserId == userId)
                 return BadRequest("Nie możesz dodać opinii do własnego ogłoszenia.");
 
+            var alreadyReviewed = await _context.Reviews
+                .AnyAsync(r => r.ProductId == request.ProductId && r.UserId == userId);
+
+            if (alreadyReviewed)
+                return Conflict("Możesz wystawić tylko jedną opinię dla tego ogłoszenia.");
+
             var authorName = User.FindFirstValue(ClaimTypes.Name)
                 ?? User.Identity?.Name
                 ?? "Użytkownik";
@@ -125,6 +133,7 @@ namespace ReShareBlazorApp.Api.Controllers
             var review = new Review
             {
                 ProductId = request.ProductId,
+                UserId = userId,
                 AuthorName = authorName,
                 Rating = request.Rating,
                 Comment = request.Comment.Trim(),
@@ -186,6 +195,50 @@ namespace ReShareBlazorApp.Api.Controllers
             {
                 message = "Opinia została dodana pomyślnie."
             });
+        }
+
+        [HttpPut("{id:int}")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<IActionResult> UpdateReview(int id, [FromBody] CreateReviewRequest request)
+        {
+            if (request.Rating < 1 || request.Rating > 5 || string.IsNullOrWhiteSpace(request.Comment))
+                return BadRequest("Nieprawidłowe dane opinii.");
+
+            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdValue, out var userId))
+                return Unauthorized();
+
+            var review = await _context.Reviews
+                .FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId && !r.IsHidden);
+
+            if (review == null)
+                return NotFound("Nie znaleziono opinii.");
+
+            review.Rating = request.Rating;
+            review.Comment = request.Comment.Trim();
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Opinia została zaktualizowana." });
+        }
+
+        [HttpDelete("{id:int}")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<IActionResult> DeleteReview(int id)
+        {
+            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdValue, out var userId))
+                return Unauthorized();
+
+            var review = await _context.Reviews
+                .FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId);
+
+            if (review == null)
+                return NotFound("Nie znaleziono opinii.");
+
+            _context.Reviews.Remove(review);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
 
         [HttpGet("user/{userId:int}/rating")]

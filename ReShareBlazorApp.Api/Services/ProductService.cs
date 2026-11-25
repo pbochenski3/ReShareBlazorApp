@@ -44,9 +44,8 @@ namespace ReShareBlazorApp.Api.Services
                 product.Description.Trim().Length > 5000 ||
                 string.IsNullOrWhiteSpace(product.City) ||
                 product.City.Trim().Length > 60 ||
-                 product.PriceMin < 0.01m ||
-                 product.PriceMax < product.PriceMin ||
-                 product.PriceMax > 100000 ||
+                (product.Type == ProductType.Sell && product.Price < 2m) ||
+                 product.Price > 100000 ||
                 !Enum.IsDefined(product.Type) ||
                 !Enum.IsDefined(product.Category) ||
                 product.ExpiresAt <= DateTime.UtcNow)
@@ -92,9 +91,7 @@ namespace ReShareBlazorApp.Api.Services
                 {
                     Name = product.Name,
                     Description = product.Description,
-                    Price = product.PriceMin,
-                    PriceMin = product.PriceMin,
-                    PriceMax = product.PriceMax,
+                     Price = product.Price,
                     AddedAt = product.AddedAt,
                     ExpiresAt = product.ExpiresAt,
                     Category = product.Category,
@@ -219,8 +216,6 @@ namespace ReShareBlazorApp.Api.Services
                 Description = p.Description,
                 ProductId = p.Id,
                  Price = p.Price,
-                 PriceMin = p.PriceMin,
-                 PriceMax = p.PriceMax,
                 AddedAt = p.AddedAt,
                 ExpiresAt = p.ExpiresAt,
                 Category = p.Category,
@@ -262,9 +257,7 @@ namespace ReShareBlazorApp.Api.Services
                 Name = p.Name,
                 Description = p.Description,
                 ProductId = p.Id,
-                 Price = p.Price,
-                 PriceMin = p.PriceMin,
-                 PriceMax = p.PriceMax,
+                  Price = p.Price,
                 AddedAt = p.AddedAt,
                 ExpiresAt = p.ExpiresAt,
                 Category = p.Category,
@@ -288,9 +281,8 @@ namespace ReShareBlazorApp.Api.Services
                 product.Description.Trim().Length > 5000 ||
                 string.IsNullOrWhiteSpace(product.City) ||
                 product.City.Trim().Length > 60 ||
-                 product.PriceMin < 0.01m ||
-                 product.PriceMax < product.PriceMin ||
-                 product.PriceMax > 100000 ||
+                  (product.Type == ProductType.Sell && product.Price < 2m) ||
+                  product.Price > 100000 ||
                 !Enum.IsDefined(product.Type) ||
                 !Enum.IsDefined(product.Category) ||
                 product.ExpiresAt <= DateTime.UtcNow)
@@ -382,9 +374,7 @@ namespace ReShareBlazorApp.Api.Services
                 UserId = product.UserId,
                 Name = product.Name,
                 Description = product.Description,
-                 Price = product.PriceMin,
-                 PriceMin = product.PriceMin,
-                 PriceMax = product.PriceMax,
+                Price = product.Price,
                 City = product.City,
                 Category = product.Category,
                 Condition = product.Condition,

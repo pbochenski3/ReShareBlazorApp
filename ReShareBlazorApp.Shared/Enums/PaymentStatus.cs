@@ -10,6 +10,10 @@ namespace ReShareBlazorApp.Shared.Enums
         Paid,
         Failed,
         Refunded,
-        Cancelled
+        Cancelled,
+        AwaitingShipment,
+        Shipped,
+        Delivered,
+        NotDelivered
     }
 }

@@ -28,6 +28,7 @@ builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<NotificationApiService>();
 builder.Services.AddScoped<UserApiService>();
 builder.Services.AddScoped<ReviewApiService>();
+builder.Services.AddScoped<PaymentApiService>();
 builder.Services.AddScoped<ReportApiService>();
 builder.Services.AddScoped<ContactApiService>();
 builder.Services.AddScoped<AdminApiService>();
