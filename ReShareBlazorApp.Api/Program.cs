@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using ReShareBlazorApp.Api.Data;
 using ReShareBlazorApp.Api.Date;
+using ReShareBlazorApp.Api.Hubs;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Api.Middleware;
@@ -70,7 +72,23 @@ builder.Services
                 )
             )
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/chat"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
+
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -82,6 +100,8 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
 builder.Services.AddScoped<IAppEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IBadgeService, BadgeService>();
+builder.Services.AddSingleton<IMessageEncryptionService, MessageEncryptionService>();
+builder.Services.AddScoped<IChatService, ChatService>();
 var stripeSecretKey = builder.Configuration["Stripe:SecretKey"];
 
 if (string.IsNullOrWhiteSpace(stripeSecretKey))
@@ -110,6 +130,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider
          .GetRequiredService<ReshareDbContext>();
+    await context.Database.MigrateAsync();
     await LocationImportService.ImportAsync(context, app.Environment.ContentRootPath);
 
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
@@ -144,5 +165,6 @@ app.UseMiddleware<UserBlockCheckMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();

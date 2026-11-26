@@ -1,23 +1,33 @@
 ﻿@page "/wiadomosci/nowa/{SenderId:int}/{RecipientId:int}/{ProductId:int}"
 @attribute [Authorize]
 @using System.Security.Claims
+@using ReShareBlazorApp.Web.ApiServices
 @inject AuthenticationStateProvider AuthStateProvider
+@inject ChatApiService ChatApi
 @inject NavigationManager Navigation
 
 <PageTitle>Nowa wiadomość – ODDAJ DALEJ</PageTitle>
 
-@* Strona celowo pusta – tu później powstanie okno pisania wiadomości. *@
-@* Poniższy blok służy tylko do sprawdzenia, czy ID dotarły; można go usunąć. *@
-<div class="home-container" style="padding: 2rem 0;">
-    <p>Piszący (ID): @SenderId</p>
-    <p>Wystawiający ogłoszenie (ID): @RecipientId</p>
-    <p>Ogłoszenie (ID): @ProductId</p>
-</div>
+<section class="home-section">
+    <div class="home-container" style="padding: 2rem 0;">
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="admin-alert">@errorMessage</div>
+            <a class="home-btn home-btn-outline" href="/wiadomosci">Przejdź do wiadomości</a>
+        }
+        else
+        {
+            <p>Otwieranie rozmowy...</p>
+        }
+    </div>
+</section>
 
 @code {
     [Parameter] public int SenderId { get; set; }
     [Parameter] public int RecipientId { get; set; }
     [Parameter] public int ProductId { get; set; }
+
+    private string? errorMessage;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -31,6 +41,19 @@
             || SenderId == RecipientId)
         {
             Navigation.NavigateTo("/");
+            return;
+        }
+
+        int? resolvedProductId = ProductId > 0 ? ProductId : null;
+        var (conversation, error) = await ChatApi.StartOrGetConversationAsync(RecipientId, resolvedProductId);
+
+        if (conversation is not null)
+        {
+            Navigation.NavigateTo($"/wiadomosci?conversationId={conversation.Id}", replace: true);
+        }
+        else
+        {
+            errorMessage = error ?? "Nie udało się otworzyć rozmowy.";
         }
     }
 }

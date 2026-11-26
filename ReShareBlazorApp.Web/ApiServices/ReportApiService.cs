@@ -106,5 +106,46 @@ namespace ReShareBlazorApp.Web.ApiServices
                 return false;
             }
         }
+
+        public async Task<AdminReportThreadsDTO?> GetReportThreadsAsync(int reportId)
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Get, $"api/report/{reportId}/threads");
+            if (request == null)
+                return null;
+            try
+            {
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                    return null;
+                return await response.Content.ReadFromJsonAsync<AdminReportThreadsDTO>();
+            }
+            catch (HttpRequestException)
+            {
+                return null;
+            }
+        }
+
+        public async Task<AdminReplyResultDTO> ReplyToReportAsync(int reportId, AdminReportReplyRequest replyRequest)
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Post, $"api/report/{reportId}/reply");
+            if (request == null)
+                return new AdminReplyResultDTO { Success = false, ErrorMessage = "Brak autoryzacji." };
+
+            request.Content = JsonContent.Create(replyRequest);
+            try
+            {
+                var response = await _httpClient.SendAsync(request);
+                var result = await response.Content.ReadFromJsonAsync<AdminReplyResultDTO>();
+                return result ?? new AdminReplyResultDTO
+                {
+                    Success = response.IsSuccessStatusCode,
+                    ErrorMessage = response.IsSuccessStatusCode ? null : "Nie udało się wysłać wiadomości."
+                };
+            }
+            catch (HttpRequestException)
+            {
+                return new AdminReplyResultDTO { Success = false, ErrorMessage = "Błąd połączenia z API." };
+            }
+        }
     }
 }

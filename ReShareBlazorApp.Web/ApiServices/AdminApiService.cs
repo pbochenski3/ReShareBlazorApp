@@ -232,6 +232,29 @@ namespace ReShareBlazorApp.Web.ApiServices
             return await response.Content.ReadFromJsonAsync<ActivityLogPageDTO>();
         }
 
+        public async Task<EncryptedMessageLogPageDTO?> GetMessageLogsAsync(
+            string? search, string? eventType, int page, int pageSize = 25)
+        {
+            var url = $"api/admin/message-logs?page={page}&pageSize={pageSize}";
+            if (!string.IsNullOrWhiteSpace(search))
+                url += $"&search={Uri.EscapeDataString(search.Trim())}";
+            if (!string.IsNullOrWhiteSpace(eventType))
+                url += $"&eventType={Uri.EscapeDataString(eventType)}";
+
+            using var request = await CreateRequestAsync(HttpMethod.Get, url);
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<EncryptedMessageLogPageDTO>();
+        }
+
+        public async Task<DecryptedMessageLogDTO?> DecryptMessageLogAsync(int logId)
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Post, $"api/admin/message-logs/{logId}/decrypt");
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<DecryptedMessageLogDTO>();
+        }
+
         public async Task<bool> DeleteProductAsync(int productId)
         {
             using var request = await CreateRequestAsync(HttpMethod.Delete, $"api/admin/products/{productId}");

@@ -24,6 +24,9 @@ namespace ReShareBlazorApp.Api.Date
         public DbSet<UserBadge> UserBadges { get; set; }
         public DbSet<FavoriteProduct> FavoriteProducts { get; set; }
 		public DbSet<Payment> Payments { get; set; }
+        public DbSet<ChatConversation> ChatConversations { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<EncryptedMessageLog> EncryptedMessageLogs { get; set; }
 
 
 
@@ -186,6 +189,93 @@ namespace ReShareBlazorApp.Api.Date
                         .HasForeignKey(p => p.ProductId)
                         .OnDelete(DeleteBehavior.NoAction);
                 });
+            });
+
+            builder.Entity<ContactMessage>(entity =>
+            {
+                entity.HasOne(c => c.User)
+                    .WithMany()
+                    .HasForeignKey(c => c.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            builder.Entity<ChatConversation>(entity =>
+            {
+                entity.HasKey(c => c.Id);
+                entity.Property(c => c.Subject).HasMaxLength(200);
+                entity.Property(c => c.CreatedAt).HasColumnType("datetime2");
+                entity.Property(c => c.LastMessageAt).HasColumnType("datetime2");
+
+                entity.HasIndex(c => new { c.User1Id, c.User2Id });
+                entity.HasIndex(c => c.LastMessageAt);
+
+                entity.HasOne(c => c.User1)
+                    .WithMany()
+                    .HasForeignKey(c => c.User1Id)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(c => c.User2)
+                    .WithMany()
+                    .HasForeignKey(c => c.User2Id)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(c => c.Product)
+                    .WithMany()
+                    .HasForeignKey(c => c.ProductId)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(c => c.ContactMessage)
+                    .WithMany()
+                    .HasForeignKey(c => c.ContactMessageId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(c => c.Report)
+                    .WithMany()
+                    .HasForeignKey(c => c.ReportId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            builder.Entity<ChatMessage>(entity =>
+            {
+                entity.HasKey(m => m.Id);
+                entity.Property(m => m.EncryptedContent).IsRequired();
+                entity.Property(m => m.ContentHash).HasMaxLength(64).IsRequired();
+                entity.Property(m => m.SentAt).HasColumnType("datetime2");
+                entity.Property(m => m.ReadAt).HasColumnType("datetime2");
+
+                entity.HasIndex(m => new { m.ConversationId, m.SentAt });
+                entity.HasIndex(m => new { m.RecipientId, m.IsRead });
+
+                entity.HasOne(m => m.Conversation)
+                    .WithMany(c => c.Messages)
+                    .HasForeignKey(m => m.ConversationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(m => m.Sender)
+                    .WithMany()
+                    .HasForeignKey(m => m.SenderId)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                entity.HasOne(m => m.Recipient)
+                    .WithMany()
+                    .HasForeignKey(m => m.RecipientId)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+
+            builder.Entity<EncryptedMessageLog>(entity =>
+            {
+                entity.HasKey(l => l.Id);
+                entity.Property(l => l.SenderName).HasMaxLength(256).IsRequired();
+                entity.Property(l => l.RecipientName).HasMaxLength(256).IsRequired();
+                entity.Property(l => l.EventType).HasMaxLength(50).IsRequired();
+                entity.Property(l => l.EncryptedPayload).IsRequired();
+                entity.Property(l => l.PayloadSha256).HasMaxLength(64).IsRequired();
+                entity.Property(l => l.CreatedAt).HasColumnType("datetime2");
+
+                entity.HasIndex(l => l.CreatedAt);
+                entity.HasIndex(l => l.ConversationId);
+                entity.HasIndex(l => l.SenderId);
+                entity.HasIndex(l => l.RecipientId);
             });
         }
 	}

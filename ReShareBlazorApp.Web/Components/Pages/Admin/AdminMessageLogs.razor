@@ -1,0 +1,252 @@
+@page "/admin/message-logs"
+@layout AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@attribute [Authorize(Roles = "Admin")]
+@implements IDisposable
+@inject AdminApiService adminApi
+
+<PageTitle>Logi wiadomości (szyfrowane) – panel admina</PageTitle>
+
+<h1 class="admin-title">Logi wiadomości (szyfrowane AES-256-GCM)</h1>
+
+<div class="admin-filters">
+    <input class="admin-search"
+           placeholder="Szukaj po nadawcy, odbiorcy lub SHA-256..."
+           @bind="SearchText"
+           @bind:event="oninput" />
+
+    <select class="admin-select" value="@eventFilter" @onchange="OnEventChanged">
+        <option value="">Wszystkie zdarzenia</option>
+        <option value="DirectMessage">Wiadomość 1 do 1</option>
+        <option value="ProductMessage">Wiadomość do ogłoszenia</option>
+        <option value="AdminContactReply">Odpowiedź admina (kontakt)</option>
+        <option value="AdminReportReply">Odpowiedź admina (zgłoszenie)</option>
+    </select>
+
+    <button class="admin-btn" @onclick="ReloadAsync">Odśwież</button>
+</div>
+
+@if (loading && result is null)
+{
+    <p class="admin-muted">Ładowanie...</p>
+}
+else if (failed)
+{
+    <div class="admin-alert">Nie udało się pobrać logów wiadomości.</div>
+}
+else if (result is null || result.Items.Count == 0)
+{
+    <p class="admin-muted">Brak zaszyfrowanych logów wiadomości.</p>
+}
+else
+{
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Zdarzenie</th>
+                    <th>Nadawca</th>
+                    <th>Odbiorca</th>
+                    <th>Zaszyfrowany ładunek</th>
+                    <th>SHA-256</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var log in result.Items)
+                {
+                    <tr>
+                        <td>@log.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
+                        <td><span class="admin-badge admin-badge-info">@EventLabel(log.EventType)</span></td>
+                        <td>@log.SenderName (#@log.SenderId)</td>
+                        <td>@log.RecipientName (#@log.RecipientId)</td>
+                        <td class="admin-cipher-cell" title="@log.EncryptedPayload">@Shorten(log.EncryptedPayload, 32)</td>
+                        <td class="admin-cipher-cell" title="@log.PayloadSha256">@Shorten(log.PayloadSha256, 16)</td>
+                        <td class="admin-actions">
+                            <button type="button"
+                                    class="admin-btn admin-btn-sm"
+                                    disabled="@isDecrypting"
+                                    @onclick="() => DecryptLogAsync(log.Id)">
+                                Odszyfruj
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="admin-pager">
+        <span class="admin-muted">
+            Wyniki @(((result.Page - 1) * result.PageSize) + 1)–@(((result.Page - 1) * result.PageSize) + result.Items.Count)
+            z @result.TotalCount
+        </span>
+        <div>
+            <button class="admin-btn" disabled="@(currentPage <= 1)" @onclick="PrevPage">← Poprzednia</button>
+            <span class="admin-muted">Strona @currentPage z @TotalPages</span>
+            <button class="admin-btn" disabled="@(currentPage >= TotalPages)" @onclick="NextPage">Następna →</button>
+        </div>
+    </div>
+}
+
+@if (decryptedModal is not null)
+{
+    <div class="admin-modal-backdrop" @onclick="CloseModal">
+        <div class="admin-modal-card" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+            <div class="admin-modal-header">
+                <h3 class="admin-modal-title">Odszyfrowany wpis logu #@decryptedModal.Id</h3>
+                <button type="button" class="admin-modal-close" @onclick="CloseModal">✕</button>
+            </div>
+            <div class="admin-modal-body">
+                @if (!string.IsNullOrEmpty(decryptedModal.DecryptionError))
+                {
+                    <div class="admin-alert">@decryptedModal.DecryptionError</div>
+                }
+                else
+                {
+                    <div>
+                        <p style="margin:0 0 6px;"><strong>Nadawca:</strong> @decryptedModal.SenderName</p>
+                        <p style="margin:0 0 6px;"><strong>Odbiorca:</strong> @decryptedModal.RecipientName</p>
+                        <p style="margin:0 0 6px;"><strong>Typ:</strong> @EventLabel(decryptedModal.EventType)</p>
+                        <p style="margin:0 0 6px;"><strong>Data:</strong> @decryptedModal.TimestampUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</p>
+                        <p style="margin:0;">
+                            <strong>Integralność SHA-256:</strong>
+                            @if (decryptedModal.HashValid)
+                            {
+                                <span class="admin-badge admin-badge-ok">✓ Zweryfikowano</span>
+                            }
+                            else
+                            {
+                                <span class="admin-badge admin-badge-bad">✗ Niezgodny skrót</span>
+                            }
+                        </p>
+                    </div>
+
+                    <div style="background:#f8f9fa; border:1px solid #e5e7eb; border-radius:8px; padding:14px; white-space:pre-wrap; overflow-wrap:anywhere;">
+                        @decryptedModal.PlaintextContent
+                    </div>
+                }
+            </div>
+            <div class="admin-modal-footer">
+                <button type="button" class="admin-btn" @onclick="CloseModal">Zamknij</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private const int PageSize = 25;
+
+    private EncryptedMessageLogPageDTO? result;
+    private DecryptedMessageLogDTO? decryptedModal;
+    private bool loading;
+    private bool failed;
+    private bool isDecrypting;
+    private int currentPage = 1;
+    private string eventFilter = "";
+    private string searchText = "";
+    private CancellationTokenSource? debounce;
+    private int requestId;
+
+    private string SearchText
+    {
+        get => searchText;
+        set
+        {
+            searchText = value;
+            _ = DebouncedReloadAsync();
+        }
+    }
+
+    private int TotalPages =>
+        result is null ? 1 : Math.Max(1, (int)Math.Ceiling(result.TotalCount / (double)PageSize));
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task DebouncedReloadAsync()
+    {
+        debounce?.Cancel();
+        debounce?.Dispose();
+        debounce = new CancellationTokenSource();
+        var token = debounce.Token;
+        try { await Task.Delay(350, token); }
+        catch (TaskCanceledException) { return; }
+
+        currentPage = 1;
+        await InvokeAsync(async () =>
+        {
+            await LoadAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task OnEventChanged(ChangeEventArgs e)
+    {
+        eventFilter = e.Value?.ToString() ?? "";
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task ReloadAsync() => await LoadAsync();
+
+    private async Task PrevPage()
+    {
+        if (currentPage > 1) { currentPage--; await LoadAsync(); }
+    }
+
+    private async Task NextPage()
+    {
+        if (currentPage < TotalPages) { currentPage++; await LoadAsync(); }
+    }
+
+    private async Task LoadAsync()
+    {
+        var myRequest = ++requestId;
+        loading = true;
+        failed = false;
+
+        var data = await adminApi.GetMessageLogsAsync(searchText, eventFilter, currentPage, PageSize);
+        if (myRequest != requestId) return;
+
+        failed = data is null;
+        result = data;
+        loading = false;
+    }
+
+    private async Task DecryptLogAsync(int id)
+    {
+        if (isDecrypting) return;
+        isDecrypting = true;
+        try
+        {
+            decryptedModal = await adminApi.DecryptMessageLogAsync(id);
+        }
+        finally
+        {
+            isDecrypting = false;
+        }
+    }
+
+    private void CloseModal() => decryptedModal = null;
+
+    private static string EventLabel(string eventType) => eventType switch
+    {
+        "DirectMessage" => "1 do 1",
+        "ProductMessage" => "Ogłoszenie",
+        "AdminContactReply" => "Admin (kontakt)",
+        "AdminReportReply" => "Admin (zgłoszenie)",
+        _ => eventType
+    };
+
+    private static string Shorten(string value, int max) =>
+        value.Length <= max ? value : value[..max] + "…";
+
+    public void Dispose()
+    {
+        debounce?.Cancel();
+        debounce?.Dispose();
+    }
+}

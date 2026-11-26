@@ -227,6 +227,108 @@ namespace ReShareBlazorApp.Api.Migrations
                     b.ToTable("Badges");
                 });
 
+            modelBuilder.Entity("ReShareBlazorApp.Api.Date.ChatConversation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ContactMessageId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ConversationType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastMessageAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("User1Id")
+                        .HasColumnType("int");
+
+                    b.Property<int>("User2Id")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContactMessageId");
+
+                    b.HasIndex("LastMessageAt");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("ReportId");
+
+                    b.HasIndex("User2Id");
+
+                    b.HasIndex("User1Id", "User2Id");
+
+                    b.ToTable("ChatConversations");
+                });
+
+            modelBuilder.Entity("ReShareBlazorApp.Api.Date.ChatMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EncryptedContent")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsAdminMessage")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RecipientId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SenderId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("ConversationId", "SentAt");
+
+                    b.HasIndex("RecipientId", "IsRead");
+
+                    b.ToTable("ChatMessages");
+                });
+
             modelBuilder.Entity("ReShareBlazorApp.Api.Date.ContactMessage", b =>
                 {
                     b.Property<int>("Id")
@@ -245,6 +347,9 @@ namespace ReShareBlazorApp.Api.Migrations
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsReplied")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -253,13 +358,81 @@ namespace ReShareBlazorApp.Api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("RepliedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Subject")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("UserId");
+
                     b.ToTable("ContactMessages");
+                });
+
+            modelBuilder.Entity("ReShareBlazorApp.Api.Date.EncryptedMessageLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EncryptedPayload")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("MessageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PayloadSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("RecipientId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RecipientName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("SenderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("RecipientId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("EncryptedMessageLogs");
                 });
 
             modelBuilder.Entity("ReShareBlazorApp.Api.Date.FavoriteProduct", b =>
@@ -836,6 +1009,83 @@ namespace ReShareBlazorApp.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ReShareBlazorApp.Api.Date.ChatConversation", b =>
+                {
+                    b.HasOne("ReShareBlazorApp.Api.Date.ContactMessage", "ContactMessage")
+                        .WithMany()
+                        .HasForeignKey("ContactMessageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ReShareBlazorApp.Api.Date.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("ReShareBlazorApp.Api.Date.Report", "Report")
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ReShareBlazorApp.Api.Date.User", "User1")
+                        .WithMany()
+                        .HasForeignKey("User1Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("ReShareBlazorApp.Api.Date.User", "User2")
+                        .WithMany()
+                        .HasForeignKey("User2Id")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("ContactMessage");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Report");
+
+                    b.Navigation("User1");
+
+                    b.Navigation("User2");
+                });
+
+            modelBuilder.Entity("ReShareBlazorApp.Api.Date.ChatMessage", b =>
+                {
+                    b.HasOne("ReShareBlazorApp.Api.Date.ChatConversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ReShareBlazorApp.Api.Date.User", "Recipient")
+                        .WithMany()
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("ReShareBlazorApp.Api.Date.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("Recipient");
+
+                    b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("ReShareBlazorApp.Api.Date.ContactMessage", b =>
+                {
+                    b.HasOne("ReShareBlazorApp.Api.Date.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("ReShareBlazorApp.Api.Date.FavoriteProduct", b =>
                 {
                     b.HasOne("ReShareBlazorApp.Api.Date.Product", "Product")
@@ -967,6 +1217,11 @@ namespace ReShareBlazorApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Badge");
+                });
+
+            modelBuilder.Entity("ReShareBlazorApp.Api.Date.ChatConversation", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("ReShareBlazorApp.Api.Date.Product", b =>

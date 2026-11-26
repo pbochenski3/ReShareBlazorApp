@@ -13,11 +13,18 @@ namespace ReShareBlazorApp.Api.Controllers
     {
         private readonly IReportService _reportService;
         private readonly IActivityLogger _activityLogger;
-        public ReportController(IReportService reportService, IActivityLogger activityLogger)
+        private readonly IChatService _chatService;
+
+        public ReportController(
+            IReportService reportService,
+            IActivityLogger activityLogger,
+            IChatService chatService)
         {
             _reportService = reportService;
             _activityLogger = activityLogger;
+            _chatService = chatService;
         }
+
         [Authorize]
         [HttpPost("addReport")]
         public async Task<IActionResult> AddReport(ReportDTO report)
@@ -37,6 +44,7 @@ namespace ReShareBlazorApp.Api.Controllers
                 "Product", report.ProductId);
             return Ok();
         }
+
         [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<ActionResult<List<ReportDTO>>> GetReports()
@@ -44,6 +52,37 @@ namespace ReShareBlazorApp.Api.Controllers
             var reports = await _reportService.GetReportsAsync();
             return Ok(reports);
         }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("{id:int}/threads")]
+        public async Task<ActionResult<AdminReportThreadsDTO>> GetReportThreads(int id)
+        {
+            var threads = await _chatService.GetReportThreadsAsync(id);
+            if (threads is null)
+                return NotFound();
+
+            return Ok(threads);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("{id:int}/reply")]
+        public async Task<ActionResult<AdminReplyResultDTO>> ReplyToReport(
+            int id,
+            [FromBody] AdminReportReplyRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var adminUserId))
+                return Unauthorized();
+
+            var result = await _chatService.SendAdminReportReplyAsync(User, adminUserId, id, request);
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteReport(int id)
@@ -55,6 +94,7 @@ namespace ReShareBlazorApp.Api.Controllers
                 $"Usunięto zgłoszenie (id: {id})", "Report", id);
             return Ok();
         }
+
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id:int}/product")]
         public async Task<IActionResult> DeleteReportedProduct(int id)

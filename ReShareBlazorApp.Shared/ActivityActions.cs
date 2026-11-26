@@ -40,13 +40,17 @@
         public const string AdminBannerSet = "AdminBannerSet";
         public const string AdminBannerDisabled = "AdminBannerDisabled";
         public const string AdminMessageDeleted = "AdminMessageDeleted";
+        public const string AdminContactReplied = "AdminContactReplied";
+        public const string AdminReportReplied = "AdminReportReplied";
+        public const string AdminMessageLogDecrypted = "AdminMessageLogDecrypted";
 
         public static readonly string[] All =
         {
             UserRegistered, ProductAdded, ProductUpdated, ProductDeleted, ReportAdded,
             ReviewAdded, UserFollowed, UserUnfollowed, ProfileUpdated, AvatarChanged,
             AvatarRemoved, AdminUserBlocked, AdminUserUnblocked, AdminProductDeleted,
-            ReportDeleted, ReportedProductDeleted
+            ReportDeleted, ReportedProductDeleted, AdminContactReplied, AdminReportReplied,
+            AdminMessageLogDecrypted
         };
 
         public static string Label(string code) => code switch
@@ -85,6 +89,9 @@
             AdminBannerSet => "Ustawienie paska promocyjnego",
             AdminBannerDisabled => "Wyłączenie paska promocyjnego",
             AdminMessageDeleted => "Usunięcie wiadomości kontaktowej",
+            AdminContactReplied => "Odpowiedź na wiadomość kontaktową",
+            AdminReportReplied => "Odpowiedź na zgłoszenie",
+            AdminMessageLogDecrypted => "Odszyfrowanie logu wiadomości",
             _ => code
         };
     }

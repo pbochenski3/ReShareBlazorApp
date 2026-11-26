@@ -49,8 +49,8 @@ else
                     <tr class="admin-row-click @(isOpen ? "admin-row-open" : "")"
                         tabindex="0"
                         aria-expanded="@(isOpen ? "true" : "false")"
-                        @onclick="() => ToggleReport(report.ReportId)"
-                        @onkeydown="e => OnRowKeyDown(e, report.ReportId)">
+                        @onclick="() => ToggleReportAsync(report.ReportId)"
+                        @onkeydown="e => OnRowKeyDownAsync(e, report.ReportId)">
                         <td><span class="admin-badge admin-badge-bad">@GetCategoryName(report.Category)</span></td>
                         <td>@report.ProductName</td>
                         <td>@report.ReportedBy</td>
@@ -106,6 +106,75 @@ else
                                             @onclick="() => AskDeleteProduct(report)">
                                         Usuń ogłoszenie
                                     </button>
+                                </div>
+
+                                <div class="admin-reply-section">
+                                    <h3>Kontakt z uczestnikami zgłoszenia (czat SignalR)</h3>
+
+                                    @if (isLoadingThreads)
+                                    {
+                                        <p class="admin-muted">Ładowanie historii wiadomości...</p>
+                                    }
+                                    else if (activeThreads is not null)
+                                    {
+                                        @if (activeThreads.Messages.Count > 0)
+                                        {
+                                            <div class="admin-thread-list">
+                                                @foreach (var msg in activeThreads.Messages)
+                                                {
+                                                    <div class="admin-thread-item @(msg.IsAdminMessage ? "is-admin" : "is-user")">
+                                                        <div class="admin-thread-meta">
+                                                            <strong>@msg.SenderName → @msg.RecipientName</strong>
+                                                            <span>@msg.SentAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                                                        </div>
+                                                        <p>@msg.Content</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <p class="admin-muted" style="margin:0;">Brak wysłanych wiadomości w sprawie tego zgłoszenia.</p>
+                                        }
+
+                                        @if (!string.IsNullOrEmpty(replyStatus))
+                                        {
+                                            <div class="admin-alert @(replyStatusOk ? "admin-alert-ok" : "")" style="margin-top:10px;">
+                                                @replyStatus
+                                            </div>
+                                        }
+
+                                        <div class="admin-form-group" style="margin-top:12px;">
+                                            <label class="admin-form-label">Odbiorca wiadomości</label>
+                                            <select class="admin-form-select" @bind="replyTarget">
+                                                <option value="@AdminReportReplyTarget.Reporter">
+                                                    Zgłaszający: @activeThreads.ReporterUserName
+                                                </option>
+                                                <option value="@AdminReportReplyTarget.ProductOwner">
+                                                    Autor ogłoszenia: @activeThreads.ProductOwnerUserName
+                                                </option>
+                                            </select>
+                                        </div>
+
+                                        <div class="admin-form-group" style="margin-top:10px;">
+                                            <label class="admin-form-label" for="@($"report-reply-{report.ReportId}")">Treść wiadomości</label>
+                                            <textarea id="@($"report-reply-{report.ReportId}")"
+                                                      class="admin-form-textarea"
+                                                      rows="3"
+                                                      maxlength="2000"
+                                                      placeholder="Napisz wiadomość do wybranego użytkownika (dostarczana na żywo przez SignalR)..."
+                                                      @bind="replyText"></textarea>
+                                        </div>
+
+                                        <div style="margin-top:10px;">
+                                            <button type="button"
+                                                    class="admin-btn admin-btn-primary"
+                                                    disabled="@(isReplying || string.IsNullOrWhiteSpace(replyText))"
+                                                    @onclick="() => SendReportReplyAsync(report.ReportId)">
+                                                @(isReplying ? "Wysyłanie..." : "Wyślij wiadomość")
+                                            </button>
+                                        </div>
+                                    }
                                 </div>
 
                             </td>
@@ -172,6 +241,14 @@ else
     private string? message;
     private bool messageOk;
 
+    private AdminReportThreadsDTO? activeThreads;
+    private bool isLoadingThreads;
+    private AdminReportReplyTarget replyTarget = AdminReportReplyTarget.Reporter;
+    private string replyText = "";
+    private bool isReplying;
+    private string? replyStatus;
+    private bool replyStatusOk;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadReports();
@@ -185,15 +262,71 @@ else
         isLoading = false;
     }
 
-    private void ToggleReport(int reportId)
+    private async Task ToggleReportAsync(int reportId)
     {
-        expandedReportId = expandedReportId == reportId ? null : reportId;
+        if (expandedReportId == reportId)
+        {
+            expandedReportId = null;
+            activeThreads = null;
+            replyStatus = null;
+            return;
+        }
+
+        expandedReportId = reportId;
+        replyText = "";
+        replyStatus = null;
+        replyTarget = AdminReportReplyTarget.Reporter;
+        isLoadingThreads = true;
+        try
+        {
+            activeThreads = await reportApi.GetReportThreadsAsync(reportId);
+        }
+        finally
+        {
+            isLoadingThreads = false;
+        }
     }
 
-    private void OnRowKeyDown(KeyboardEventArgs e, int reportId)
+    private async Task OnRowKeyDownAsync(KeyboardEventArgs e, int reportId)
     {
         if (e.Key == "Enter")
-            ToggleReport(reportId);
+            await ToggleReportAsync(reportId);
+    }
+
+    private async Task SendReportReplyAsync(int reportId)
+    {
+        if (isReplying || string.IsNullOrWhiteSpace(replyText))
+            return;
+
+        isReplying = true;
+        replyStatus = null;
+        try
+        {
+            var res = await reportApi.ReplyToReportAsync(reportId, new AdminReportReplyRequest
+            {
+                Target = replyTarget,
+                Message = replyText.Trim()
+            });
+
+            if (res.Success)
+            {
+                if (res.Message is not null && activeThreads is not null)
+                    activeThreads.Messages.Add(res.Message);
+
+                replyText = "";
+                replyStatusOk = true;
+                replyStatus = "Wiadomość została wysłana na żywo przez SignalR i zapisana w szyfrowanych logach.";
+            }
+            else
+            {
+                replyStatusOk = false;
+                replyStatus = res.ErrorMessage ?? "Nie udało się wysłać wiadomości.";
+            }
+        }
+        finally
+        {
+            isReplying = false;
+        }
     }
 
     private void AskDismiss(ReportDTO report)
@@ -238,6 +371,7 @@ else
         {
             SetMessage("Zgłoszenie zostało usunięte.", true);
             expandedReportId = null;
+            activeThreads = null;
             await LoadReports();
         }
         else
@@ -256,6 +390,7 @@ else
         {
             SetMessage("Ogłoszenie zostało usunięte.", true);
             expandedReportId = null;
+            activeThreads = null;
             await LoadReports();
         }
         else

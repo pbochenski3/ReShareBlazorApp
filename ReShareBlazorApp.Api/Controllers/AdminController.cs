@@ -23,6 +23,7 @@ namespace ReShareBlazorApp.Api.Controllers
         private readonly IUserService _userService;
         private readonly IActivityLogger _activityLogger;
         private readonly INotificationService _notificationService;
+        private readonly IChatService _chatService;
         private readonly ILogger<AdminController> _logger;
 
         public AdminController(
@@ -32,6 +33,7 @@ namespace ReShareBlazorApp.Api.Controllers
             IUserService userService,
             IActivityLogger activityLogger,
             INotificationService notificationService,
+            IChatService chatService,
             ILogger<AdminController> logger)
         {
             _context = context;
@@ -40,6 +42,7 @@ namespace ReShareBlazorApp.Api.Controllers
             _userService = userService;
             _activityLogger = activityLogger;
             _notificationService = notificationService;
+            _chatService = chatService;
             _logger = logger;
         }
 
@@ -802,6 +805,29 @@ namespace ReShareBlazorApp.Api.Controllers
                 Page = page,
                 PageSize = pageSize
             });
+        }
+
+        // GET api/admin/message-logs?search=&eventType=&page=1&pageSize=25
+        [HttpGet("message-logs")]
+        public async Task<ActionResult<EncryptedMessageLogPageDTO>> GetMessageLogs(
+            [FromQuery] string? search = null,
+            [FromQuery] string? eventType = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 25)
+        {
+            var result = await _chatService.GetMessageLogsAsync(search, eventType, page, pageSize);
+            return Ok(result);
+        }
+
+        // POST api/admin/message-logs/{id}/decrypt
+        [HttpPost("message-logs/{id:int}/decrypt")]
+        public async Task<ActionResult<DecryptedMessageLogDTO>> DecryptMessageLog(int id)
+        {
+            var result = await _chatService.DecryptMessageLogAsync(User, id);
+            if (result is null)
+                return NotFound();
+
+            return Ok(result);
         }
     }
 }

@@ -1,5 +1,10 @@
 @using Microsoft.AspNetCore.Components.Authorization
+@using ReShareBlazorApp.Web.ApiServices
 @using ReShareBlazorApp.Web.Components.Elements
+@inject ChatApiService ChatApi
+@inject ChatHubClientService ChatHub
+@inject AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
 
 <nav class="main-navbar" aria-label="Główna nawigacja">
     <div class="main-navbar-container">
@@ -23,7 +28,13 @@
                         <NavLink class="main-navbar-link" ActiveClass="active" href="/ulubione">Ulubione</NavLink>
                     </li>
                     <li class="main-navbar-item">
-                        <NavLink class="main-navbar-link" ActiveClass="active" href="/wiadomosci">Wiadomości</NavLink>
+                        <NavLink class="main-navbar-link" ActiveClass="active" href="/wiadomosci">
+                            Wiadomości
+                            @if (unreadMessagesCount > 0)
+                            {
+                                <span class="nav-chat-badge">@(unreadMessagesCount > 99 ? "99+" : unreadMessagesCount)</span>
+                            }
+                        </NavLink>
                     </li>
                     <li class="main-navbar-item">
                         <NavLink class="main-navbar-link" ActiveClass="active" href="/zamowienia">Zamówienia</NavLink>
@@ -80,6 +91,46 @@
 </nav>
 
 @code {
+    private int unreadMessagesCount;
+    private bool disposed;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated != true)
+            return;
+
+        ChatHub.OnUnreadCountChanged += OnUnreadChanged;
+        await ChatHub.EnsureConnectedAsync();
+        await RefreshUnreadAsync();
+    }
+
+    private void OnUnreadChanged()
+    {
+        _ = InvokeAsync(RefreshUnreadAsync);
+    }
+
+    private async Task RefreshUnreadAsync()
+    {
+        if (disposed) return;
+        try
+        {
+            unreadMessagesCount = await ChatApi.GetUnreadCountAsync();
+            if (!disposed)
+                StateHasChanged();
+        }
+        catch { }
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        ChatHub.OnUnreadCountChanged -= OnUnreadChanged;
+    }
+
     // Profil użytkownika żyje pod adresem /user/{nazwa}
     private static string ProfileHref(string userName)
         => "/user/" + Uri.EscapeDataString(userName);

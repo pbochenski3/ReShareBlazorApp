@@ -672,3 +672,53 @@
 .admin-detail-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 a.admin-btn { display: inline-block; text-decoration: none; color: var(--ink); }
 .admin-alert-ok { background: #dcf5e6; color: #11793a; border-color: #b7e8c9; }
+
+/* Odpowiedzi admina i szyfrowane logi wiadomości */
+.admin-reply-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+.admin-reply-section h3 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+.admin-thread-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+.admin-thread-item {
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: #fff;
+}
+.admin-thread-item.is-admin {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+.admin-thread-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: .78rem;
+    color: var(--muted);
+    margin-bottom: 4px;
+}
+.admin-thread-item p {
+    margin: 0;
+    font-size: .92rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.admin-cipher-cell {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: .8rem;
+    color: var(--muted);
+}

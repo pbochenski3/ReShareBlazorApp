@@ -11,6 +11,7 @@
 @inject ReviewApiService reviewApi
 @inject ProductApiService productApi
 @inject BadgeApiService BadgeApiService
+@inject ChatApiService ChatApi
 @inject AuthenticationStateProvider AuthStateProvider
 @inject FavoritesState Favorites
 @implements IDisposable
@@ -79,6 +80,15 @@ else if (exist)
                        href="/ustawienia">
                         Edytuj profil
                     </a>
+                }
+                else
+                {
+                    <button type="button"
+                            class="home-btn home-btn-primary"
+                            disabled="@isStartingChat"
+                            @onclick="StartDirectChatAsync">
+                        @(isStartingChat ? "Otwieranie..." : "Napisz wiadomość")
+                    </button>
                 }
             </div>
 
@@ -279,6 +289,7 @@ else
             : Username[..Math.Min(2, Username.Length)].ToUpper();
 
     private bool isOwner;
+    private bool isStartingChat;
 
     private List<ReviewDTO> userReviews = new();
     private bool isLoadingReviews = true;
@@ -412,5 +423,30 @@ else
             return "opinie";
 
         return "opinii";
+    }
+
+    private async Task StartDirectChatAsync()
+    {
+        if (profile is null || isStartingChat)
+            return;
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated != true)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        isStartingChat = true;
+        try
+        {
+            var (conversation, _) = await ChatApi.StartOrGetConversationAsync(profile.UserId);
+            if (conversation is not null)
+                Navigation.NavigateTo($"/wiadomosci?conversationId={conversation.Id}");
+        }
+        finally
+        {
+            isStartingChat = false;
+        }
     }
 }

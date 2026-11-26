@@ -10,7 +10,7 @@
 
 @if (!string.IsNullOrEmpty(message))
 {
-    <div class="admin-alert">@message</div>
+    <div class="admin-alert @(messageOk ? "admin-alert-ok" : "")">@message</div>
 }
 
 @if (messages is null)
@@ -36,6 +36,8 @@ else
             <option value="all">Status: Wszystkie</option>
             <option value="unread">Status: Nowe</option>
             <option value="read">Status: Przeczytane</option>
+            <option value="replied">Status: Z odpowiedzią</option>
+            <option value="unreplied">Status: Bez odpowiedzi</option>
         </select>
 
         <select class="admin-search"
@@ -87,9 +89,13 @@ else
                             <td>@item.Email</td>
                             <td><strong>@item.Subject</strong></td>
                             <td>
-                                @if (item.IsRead)
+                                @if (item.IsReplied)
                                 {
-                                    <span class="admin-badge admin-badge-ok">przeczytana</span>
+                                    <span class="admin-badge admin-badge-ok">odpowiedziano</span>
+                                }
+                                else if (item.IsRead)
+                                {
+                                    <span class="admin-badge admin-badge-user">przeczytana</span>
                                 }
                                 else
                                 {
@@ -98,7 +104,7 @@ else
                             </td>
                             <td class="admin-actions">
                                 <button type="button" class="admin-btn" @onclick="() => OpenMessage(item)">
-                                    Pokaż wiadomość
+                                    Pokaż / Odpowiedz
                                 </button>
                                 @if (!item.IsRead)
                                 {
@@ -122,7 +128,7 @@ else
 {
     <div style="position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:20px; z-index:999;"
          @onclick="CloseMessage">
-        <div style="background:#fff; border-radius:12px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; padding:24px; box-shadow:0 12px 32px rgba(0,0,0,.2);"
+        <div style="background:#fff; border-radius:12px; max-width:680px; width:100%; max-height:88vh; overflow-y:auto; padding:24px; box-shadow:0 12px 32px rgba(0,0,0,.2);"
              @onclick:stopPropagation="true">
             <h2 style="margin:0 0 12px; font-size:1.35rem;">@selectedMessage.Subject</h2>
 
@@ -137,13 +143,72 @@ else
                 @selectedMessage.Message
             </div>
 
-            <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
-                <button type="button" class="admin-btn admin-btn-danger" @onclick="() => Delete(selectedMessage)">
-                    Usuń
-                </button>
-                <button type="button" class="admin-btn" @onclick="CloseMessage">
-                    Zamknij
-                </button>
+            <div class="admin-reply-section">
+                <h3>Historia odpowiedzi w czacie (SignalR)</h3>
+
+                @if (isLoadingThread)
+                {
+                    <p class="admin-muted">Ładowanie historii odpowiedzi...</p>
+                }
+                else if (contactThread.Count == 0)
+                {
+                    <p class="admin-muted" style="margin:0;">Brak wysłanych odpowiedzi w tym wątku.</p>
+                }
+                else
+                {
+                    <div class="admin-thread-list">
+                        @foreach (var msg in contactThread)
+                        {
+                            <div class="admin-thread-item @(msg.IsAdminMessage ? "is-admin" : "is-user")">
+                                <div class="admin-thread-meta">
+                                    <strong>@msg.SenderName @(msg.IsAdminMessage ? "(Administrator)" : "")</strong>
+                                    <span>@msg.SentAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                                </div>
+                                <p>@msg.Content</p>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(replyStatus))
+                {
+                    <div class="admin-alert @(replyStatusOk ? "admin-alert-ok" : "")" style="margin-top:10px;">
+                        @replyStatus
+                    </div>
+                }
+
+                <div class="admin-form-group" style="margin-top:12px;">
+                    <label class="admin-form-label" for="contact-reply-box">Odpowiedz użytkownikowi</label>
+                    <textarea id="contact-reply-box"
+                              class="admin-form-textarea"
+                              rows="3"
+                              maxlength="2000"
+                              placeholder="Wpisz odpowiedź (zostanie wysłana w czasie rzeczywistym przez czat SignalR oraz zapisana w szyfrowanych logach)..."
+                              @bind="replyText"></textarea>
+                </div>
+
+                <label class="admin-form-checkbox" style="margin-top:8px;">
+                    <input type="checkbox" @bind="sendEmailAlso" />
+                    <span>Wyślij kopię odpowiedzi również na e-mail (@selectedMessage.Email)</span>
+                </label>
+
+                <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <button type="button"
+                            class="admin-btn admin-btn-primary"
+                            disabled="@(isReplying || string.IsNullOrWhiteSpace(replyText))"
+                            @onclick="SendReplyAsync">
+                        @(isReplying ? "Wysyłanie..." : "Wyślij odpowiedź")
+                    </button>
+
+                    <div style="display:flex; gap:10px;">
+                        <button type="button" class="admin-btn admin-btn-danger" @onclick="() => Delete(selectedMessage)">
+                            Usuń
+                        </button>
+                        <button type="button" class="admin-btn" @onclick="CloseMessage">
+                            Zamknij
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -152,7 +217,16 @@ else
 @code {
     private List<ContactMessageDTO>? messages;
     private ContactMessageDTO? selectedMessage;
+    private List<ChatMessageDTO> contactThread = new();
+    private string replyText = "";
+    private bool sendEmailAlso;
+    private bool isLoadingThread;
+    private bool isReplying;
+    private string? replyStatus;
+    private bool replyStatusOk;
+
     private string? message;
+    private bool messageOk;
 
     private string searchQuery = "";
     private string statusFilter = "all";
@@ -176,6 +250,8 @@ else
         {
             if (statusFilter == "unread" && m.IsRead) return false;
             if (statusFilter == "read" && !m.IsRead) return false;
+            if (statusFilter == "replied" && !m.IsReplied) return false;
+            if (statusFilter == "unreplied" && m.IsReplied) return false;
 
             if (!string.IsNullOrWhiteSpace(subjectFilter)
                 && !string.Equals(m.Subject, subjectFilter, StringComparison.OrdinalIgnoreCase))
@@ -209,20 +285,84 @@ else
     private async Task OpenMessage(ContactMessageDTO item)
     {
         selectedMessage = item;
+        replyText = "";
+        replyStatus = null;
+        sendEmailAlso = false;
+
         if (!item.IsRead)
         {
             await MarkRead(item);
+        }
+
+        isLoadingThread = true;
+        try
+        {
+            contactThread = await contactApi.GetContactThreadAsync(item.Id);
+        }
+        finally
+        {
+            isLoadingThread = false;
         }
     }
 
     private void CloseMessage()
     {
         selectedMessage = null;
+        contactThread.Clear();
+        replyStatus = null;
+    }
+
+    private async Task SendReplyAsync()
+    {
+        if (selectedMessage is null || isReplying || string.IsNullOrWhiteSpace(replyText))
+            return;
+
+        isReplying = true;
+        replyStatus = null;
+
+        try
+        {
+            var res = await contactApi.ReplyToContactMessageAsync(selectedMessage.Id, new AdminContactReplyRequest
+            {
+                Message = replyText.Trim(),
+                SendEmailAlso = sendEmailAlso
+            });
+
+            if (res.Success)
+            {
+                selectedMessage.IsRead = true;
+                selectedMessage.IsReplied = true;
+                selectedMessage.RepliedAt = DateTime.UtcNow;
+
+                if (res.Message is not null)
+                    contactThread.Add(res.Message);
+
+                replyText = "";
+                replyStatusOk = true;
+                replyStatus = res.SentInApp && res.SentEmail
+                    ? "Odpowiedź wysłana przez czat SignalR oraz e-mail."
+                    : res.SentInApp
+                        ? (string.IsNullOrEmpty(res.EmailWarning)
+                            ? "Odpowiedź została wysłana w czacie SignalR."
+                            : res.EmailWarning)
+                        : "Odpowiedź została wysłana na e-mail.";
+            }
+            else
+            {
+                replyStatusOk = false;
+                replyStatus = res.ErrorMessage ?? "Nie udało się wysłać odpowiedzi.";
+            }
+        }
+        finally
+        {
+            isReplying = false;
+        }
     }
 
     private async Task MarkRead(ContactMessageDTO item)
     {
         message = null;
+        messageOk = false;
         if (await contactApi.MarkContactMessageAsReadAsync(item.Id))
             item.IsRead = true;
         else
@@ -232,11 +372,14 @@ else
     private async Task Delete(ContactMessageDTO item)
     {
         message = null;
+        messageOk = false;
         if (await contactApi.DeleteContactMessageAsync(item.Id))
         {
             messages!.Remove(item);
             if (selectedMessage?.Id == item.Id)
                 selectedMessage = null;
+            message = "Wiadomość została usunięta.";
+            messageOk = true;
         }
         else
             message = "Nie udało się usunąć wiadomości.";
