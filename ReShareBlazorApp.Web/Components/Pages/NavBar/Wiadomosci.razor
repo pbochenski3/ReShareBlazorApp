@@ -1,4 +1,11 @@
-@page "/wiadomosci"
+﻿@page "/wiadomosci"
+@attribute [Authorize]
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@implements IDisposable
+@inject MessageApiService messageApi
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
 
 <PageTitle>Wiadomości – ODDAJ DALEJ</PageTitle>
 
@@ -9,85 +16,251 @@
             <!-- Lista rozmów -->
             <aside class="chat-list">
                 <div class="chat-list-search">
-                    <input type="search" placeholder="Szukaj w rozmowach" aria-label="Szukaj w rozmowach" />
+                    <input type="search"
+                           placeholder="Szukaj w rozmowach"
+                           aria-label="Szukaj w rozmowach"
+                           @bind="searchQuery"
+                           @bind:event="oninput" />
                 </div>
 
-                <ul>
-                    <li class="chat-item active">
-                        <span class="avatar">AK</span>
-                        <div class="chat-item-text">
-                            <strong>Anna Kowalska</strong>
-                            <span>Czy bilety są nadal dostępne?</span>
-                        </div>
-                        <span class="chat-item-meta">
-                            <time>12:40</time>
-                            <span class="badge">2</span>
-                        </span>
-                    </li>
-                    <li class="chat-item">
-                        <span class="avatar">MN</span>
-                        <div class="chat-item-text">
-                            <strong>Marek Nowak</strong>
-                            <span>Super, w takim razie do piątku.</span>
-                        </div>
-                        <span class="chat-item-meta"><time>wczoraj</time></span>
-                    </li>
-                    <li class="chat-item">
-                        <span class="avatar">EW</span>
-                        <div class="chat-item-text">
-                            <strong>Ewa Wiśniewska</strong>
-                            <span>Mogę odebrać wózek w sobotę.</span>
-                        </div>
-                        <span class="chat-item-meta"><time>pon.</time></span>
-                    </li>
-                </ul>
+                @if (isLoadingConversations)
+                {
+                    <p class="admin-muted" style="padding:1rem;">Ładowanie...</p>
+                }
+                else if (!FilteredConversations.Any())
+                {
+                    <p class="admin-muted" style="padding:1rem;">Brak rozmów.</p>
+                }
+                else
+                {
+                    <ul>
+                        @foreach (var c in FilteredConversations)
+                        {
+                            <li class="chat-item @(c.ConversationId == selectedConversationId ? "active" : "")"
+                                @onclick="() => SelectConversationAsync(c.ConversationId)">
+                                <span class="avatar">@(c.IsSupport ? "🛟" : Initials(c.OtherUserName))</span>
+                                <div class="chat-item-text">
+                                    <strong>@c.OtherUserName</strong>
+                                    <span>@(string.IsNullOrWhiteSpace(c.LastMessage) ? c.ProductName : c.LastMessage)</span>
+                                </div>
+                                <span class="chat-item-meta">
+                                    <time>@FormatTime(c.LastMessageAt)</time>
+                                    @if (c.UnreadCount > 0)
+                                    {
+                                        <span class="badge">@c.UnreadCount</span>
+                                    }
+                                </span>
+                            </li>
+                        }
+                    </ul>
+                }
             </aside>
 
             <!-- Okno rozmowy -->
             <div class="chat-window">
-                <header class="chat-window-head">
-                    <span class="avatar">AK</span>
-                    <div>
-                        <strong>Anna Kowalska</strong>
-                        <p>Dotyczy: 2 bilety na koncert – Kraków</p>
+                @if (selectedConversation is null)
+                {
+                    <div class="chat-messages">
+                        <p class="admin-muted">Wybierz rozmowę z listy po lewej.</p>
                     </div>
-                    <div class="chat-window-actions">
-                        <button class="home-btn home-btn-outline" type="button">Zablokuj</button>
-                        <button class="home-btn home-btn-outline" type="button">Zgłoś rozmowę</button>
-                    </div>
-                </header>
-
-                <div class="chat-messages">
-                    <div class="msg msg-in">
-                        <p>Dzień dobry, czy bilety są nadal dostępne?</p>
-                        <time>12:38</time>
-                    </div>
-                    <div class="msg msg-out">
-                        <p>Dzień dobry, tak. Oba są jeszcze do odebrania.</p>
-                        <time>12:39</time>
-                    </div>
-                    <div class="msg msg-offer">
-                        <strong>Propozycja ceny: 220 zł</strong>
-                        <div class="msg-offer-actions">
-                            <button class="home-btn home-btn-primary" type="button">Akceptuję</button>
-                            <button class="home-btn home-btn-outline" type="button">Odrzucam</button>
+                }
+                else
+                {
+                    <header class="chat-window-head">
+                        <span class="avatar">@(selectedConversation.IsSupport ? "🛟" : Initials(selectedConversation.OtherUserName))</span>
+                        <div>
+                            <strong>@selectedConversation.OtherUserName</strong>
+                            @if (!string.IsNullOrWhiteSpace(selectedConversation.ProductName))
+                            {
+                                <p>Dotyczy: @selectedConversation.ProductName</p>
+                            }
                         </div>
-                    </div>
-                    <div class="msg msg-in">
-                        <p>Czy możemy się spotkać jutro po pracy?</p>
-                        <time>12:40</time>
-                    </div>
-                </div>
+                    </header>
 
-                <form class="chat-form">
-                    <button class="chat-icon-btn" type="button" aria-label="Dodaj zdjęcie">📎</button>
-                    <input type="text" placeholder="Napisz wiadomość" aria-label="Wiadomość" />
-                    <button class="home-btn home-btn-outline" type="button">Zaproponuj cenę</button>
-                    <button class="home-btn home-btn-primary" type="submit">Wyślij</button>
-                </form>
+                    <div class="chat-messages" id="chat-messages-@selectedConversation.ConversationId">
+                        @if (isLoadingMessages)
+                        {
+                            <p class="admin-muted">Ładowanie wiadomości...</p>
+                        }
+                        else if (!messages.Any())
+                        {
+                            <p class="admin-muted">Brak wiadomości. Napisz pierwszą!</p>
+                        }
+                        else
+                        {
+                            @foreach (var m in messages)
+                            {
+                                <div class="msg @(m.IsMine ? "msg-out" : "msg-in")">
+                                    <p>@m.Content</p>
+                                    <time>@m.SentAt.ToLocalTime().ToString("HH:mm")</time>
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(error))
+                    {
+                        <div class="admin-alert" style="margin:0 1rem;">@error</div>
+                    }
+
+                    <form class="chat-form" @onsubmit="SendAsync">
+                        <input type="text"
+                               placeholder="Napisz wiadomość"
+                               aria-label="Wiadomość"
+                               maxlength="2000"
+                               disabled="@isSending"
+                               @bind="newMessage"
+                               @bind:event="oninput" />
+                        <button class="home-btn home-btn-primary" type="submit" disabled="@isSending">Wyślij</button>
+                    </form>
+                }
             </div>
         </div>
     </div>
 </section>
 
 <SiteFooter />
+
+@code {
+    [SupplyParameterFromQuery(Name = "c")]
+    public int? InitialConversationId { get; set; }
+
+    private List<ConversationDTO> conversations = new();
+    private ConversationDTO? selectedConversation;
+    private int? selectedConversationId;
+    private List<MessageDTO> messages = new();
+
+    private string searchQuery = "";
+    private string newMessage = "";
+    private string? error;
+
+    private bool isLoadingConversations = true;
+    private bool isLoadingMessages;
+    private bool isSending;
+
+    private Timer? refreshTimer;
+
+    private IEnumerable<ConversationDTO> FilteredConversations =>
+        string.IsNullOrWhiteSpace(searchQuery)
+            ? conversations
+            : conversations.Where(c =>
+                c.OtherUserName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                (c.ProductName ?? "").Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConversationsAsync();
+
+        var toSelect = InitialConversationId ?? conversations.FirstOrDefault()?.ConversationId;
+        if (toSelect.HasValue)
+            await SelectConversationAsync(toSelect.Value);
+
+        // Odpytujemy API co kilka sekund, żeby zbliżyć się do czatu "na żywo" bez rozbudowy o SignalR.
+        refreshTimer = new Timer(async _ => await RefreshAsync(), null, 4000, 4000);
+    }
+
+    private async Task LoadConversationsAsync()
+    {
+        conversations = await messageApi.GetConversationsAsync();
+        isLoadingConversations = false;
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            var freshConversations = await messageApi.GetConversationsAsync();
+
+            List<MessageDTO>? freshMessages = null;
+            if (selectedConversationId.HasValue)
+            {
+                var (conv, msgs) = await messageApi.GetMessagesAsync(selectedConversationId.Value);
+                if (conv != null)
+                    freshMessages = msgs;
+            }
+
+            await InvokeAsync(() =>
+            {
+                conversations = freshConversations;
+                if (freshMessages != null)
+                    messages = freshMessages;
+                StateHasChanged();
+            });
+        }
+        catch
+        {
+            // Brak połączenia z API nie powinien przerywać działania czatu – spróbujemy przy następnym odświeżeniu.
+        }
+    }
+
+    private async Task SelectConversationAsync(int conversationId)
+    {
+        selectedConversationId = conversationId;
+        isLoadingMessages = true;
+        error = null;
+        StateHasChanged();
+
+        var (conversation, msgs) = await messageApi.GetMessagesAsync(conversationId);
+
+        selectedConversation = conversation;
+        messages = msgs;
+        isLoadingMessages = false;
+
+        // Wiadomość została przeczytana – lokalnie zerujemy licznik, żeby nie czekać na pełne odświeżenie.
+        var item = conversations.FirstOrDefault(c => c.ConversationId == conversationId);
+        if (item != null)
+            item.UnreadCount = 0;
+    }
+
+    private async Task SendAsync()
+    {
+        if (!selectedConversationId.HasValue || string.IsNullOrWhiteSpace(newMessage))
+            return;
+
+        isSending = true;
+        error = null;
+
+        var sent = await messageApi.SendMessageAsync(selectedConversationId.Value, newMessage.Trim());
+
+        isSending = false;
+
+        if (sent is null)
+        {
+            error = "Nie udało się wysłać wiadomości.";
+            return;
+        }
+
+        messages.Add(sent);
+        newMessage = "";
+
+        var item = conversations.FirstOrDefault(c => c.ConversationId == selectedConversationId);
+        if (item != null)
+        {
+            item.LastMessage = sent.Content;
+            item.LastMessageAt = sent.SentAt;
+        }
+    }
+
+    private static string FormatTime(DateTime utc)
+    {
+        var local = utc.ToLocalTime();
+        return local.Date == DateTime.Now.Date
+            ? local.ToString("HH:mm")
+            : local.ToString("dd.MM");
+    }
+
+    private static string Initials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "?";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant()
+            : name.Length >= 2 ? name[..2].ToUpperInvariant() : name.ToUpperInvariant();
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

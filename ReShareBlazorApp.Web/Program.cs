@@ -35,6 +35,7 @@ builder.Services.AddScoped<AdminApiService>();
 builder.Services.AddScoped<PromoBannerApiService>();
 
 builder.Services.AddScoped<BadgeApiService>();
+builder.Services.AddScoped<MessageApiService>();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

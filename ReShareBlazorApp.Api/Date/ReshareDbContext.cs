@@ -24,6 +24,8 @@ namespace ReShareBlazorApp.Api.Date
         public DbSet<UserBadge> UserBadges { get; set; }
         public DbSet<FavoriteProduct> FavoriteProducts { get; set; }
 		public DbSet<Payment> Payments { get; set; }
+		public DbSet<Conversation> Conversations { get; set; }
+		public DbSet<Message> Messages { get; set; }
 
 
 
@@ -186,6 +188,57 @@ namespace ReShareBlazorApp.Api.Date
                         .HasForeignKey(p => p.ProductId)
                         .OnDelete(DeleteBehavior.NoAction);
                 });
+            });
+
+            builder.Entity<Conversation>(entity =>
+            {
+                entity.HasKey(c => c.Id);
+
+                entity.Property(c => c.CreatedAt).HasColumnType("datetime2");
+                entity.Property(c => c.LastMessageAt).HasColumnType("datetime2");
+
+                entity.HasIndex(c => new { c.User1Id, c.User2Id, c.ProductId });
+                entity.HasIndex(c => c.LastMessageAt);
+
+                entity.HasOne(c => c.Product)
+                    .WithMany()
+                    .HasForeignKey(c => c.ProductId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(c => c.User1)
+                    .WithMany()
+                    .HasForeignKey(c => c.User1Id)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(c => c.User2)
+                    .WithMany()
+                    .HasForeignKey(c => c.User2Id)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(c => c.Report)
+                    .WithMany()
+                    .HasForeignKey(c => c.ReportId)
+                    .OnDelete(DeleteBehavior.NoAction); 
+            });
+
+            builder.Entity<Message>(entity =>
+            {
+                entity.HasKey(m => m.Id);
+
+                entity.Property(m => m.Content).HasMaxLength(2000).IsRequired();
+                entity.Property(m => m.SentAt).HasColumnType("datetime2");
+
+                entity.HasIndex(m => new { m.ConversationId, m.SentAt });
+
+                entity.HasOne(m => m.Conversation)
+                    .WithMany(c => c.Messages)
+                    .HasForeignKey(m => m.ConversationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(m => m.Sender)
+                    .WithMany()
+                    .HasForeignKey(m => m.SenderId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
 	}

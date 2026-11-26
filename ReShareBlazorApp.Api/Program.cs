@@ -82,6 +82,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
 builder.Services.AddScoped<IAppEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IBadgeService, BadgeService>();
+builder.Services.AddScoped<IMessageService, MessageService>();
 var stripeSecretKey = builder.Configuration["Stripe:SecretKey"];
 
 if (string.IsNullOrWhiteSpace(stripeSecretKey))

@@ -6,6 +6,7 @@
 @using ReShareBlazorApp.Web.ApiServices
 @attribute [Authorize(Roles = "Admin")]
 @inject ReportApiService reportApi
+@inject ReShareBlazorApp.Web.ApiServices.MessageApiService messageApi
 
 <h1 class="admin-title">Zgłoszenia</h1>
 
@@ -96,6 +97,13 @@ else
                                     <button type="button"
                                             class="admin-btn"
                                             disabled="@isBusy"
+                                            @onclick="() => OpenMessageBox(report)">
+                                        ✉ Napisz do zgłaszającego
+                                    </button>
+
+                                    <button type="button"
+                                            class="admin-btn"
+                                            disabled="@isBusy"
                                             @onclick="() => AskDismiss(report)">
                                         Usuń zgłoszenie (ogłoszenie zostaje)
                                     </button>
@@ -114,6 +122,56 @@ else
                 }
             </tbody>
         </table>
+    </div>
+}
+
+@if (messagingReport != null)
+{
+    <div class="confirm-backdrop" @onclick="CloseMessageBox">
+        <div class="confirm-modal"
+             role="dialog"
+             aria-modal="true"
+             @onclick:stopPropagation="true">
+
+            <h3>Napisz do zgłaszającego</h3>
+            <p>
+                Wiadomość trafi do użytkownika <strong>@messagingReport.ReportedBy</strong> na czacie,
+                w sekcji „Wiadomości”, jako wiadomość od <strong>Support</strong>.
+                Dotyczy zgłoszenia ogłoszenia <strong>„@messagingReport.ProductName”</strong>.
+            </p>
+
+            @if (!string.IsNullOrEmpty(messageError))
+            {
+                <div class="admin-alert">@messageError</div>
+            }
+            @if (!string.IsNullOrEmpty(messageSuccess))
+            {
+                <div class="admin-alert admin-alert-ok">@messageSuccess</div>
+            }
+
+            <textarea class="product-input"
+                      rows="5"
+                      maxlength="2000"
+                      placeholder="Treść wiadomości do zgłaszającego..."
+                      disabled="@messageSending"
+                      @bind="messageContent"></textarea>
+
+            <div class="confirm-actions">
+                <button type="button"
+                        class="home-btn home-btn-outline"
+                        disabled="@messageSending"
+                        @onclick="CloseMessageBox">
+                    Zamknij
+                </button>
+
+                <button type="button"
+                        class="home-btn home-btn-primary"
+                        disabled="@messageSending"
+                        @onclick="SendMessageToReporterAsync">
+                    @(messageSending ? "Wysyłanie..." : "Wyślij wiadomość")
+                </button>
+            </div>
+        </div>
     </div>
 }
 
@@ -172,6 +230,12 @@ else
     private string? message;
     private bool messageOk;
 
+    private ReportDTO? messagingReport;
+    private string messageContent = "";
+    private bool messageSending;
+    private string? messageError;
+    private string? messageSuccess;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadReports();
@@ -213,6 +277,51 @@ else
         if (isBusy)
             return;
         pendingReport = null;
+    }
+
+    private void OpenMessageBox(ReportDTO report)
+    {
+        messagingReport = report;
+        messageContent = "";
+        messageError = null;
+        messageSuccess = null;
+    }
+
+    private void CloseMessageBox()
+    {
+        if (messageSending)
+            return;
+        messagingReport = null;
+    }
+
+    private async Task SendMessageToReporterAsync()
+    {
+        if (messagingReport is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(messageContent))
+        {
+            messageError = "Wpisz treść wiadomości.";
+            return;
+        }
+
+        messageSending = true;
+        messageError = null;
+        messageSuccess = null;
+
+        var conversation = await messageApi.StartSupportConversationAsync(
+            messagingReport.ReportId, messageContent.Trim());
+
+        messageSending = false;
+
+        if (conversation is null)
+        {
+            messageError = "Nie udało się wysłać wiadomości. Spróbuj ponownie.";
+            return;
+        }
+
+        messageSuccess = "Wiadomość została wysłana.";
+        messageContent = "";
     }
 
     private async Task ConfirmAction()

@@ -30,4 +30,8 @@
     <ProjectReference Include="..\ReShareBlazorApp.Shared\ReShareBlazorApp.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Migrations\" />
+  </ItemGroup>
+
 </Project>

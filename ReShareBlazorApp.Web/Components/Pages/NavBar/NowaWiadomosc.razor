@@ -1,23 +1,72 @@
 ﻿@page "/wiadomosci/nowa/{SenderId:int}/{RecipientId:int}/{ProductId:int}"
 @attribute [Authorize]
 @using System.Security.Claims
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
+@inject ProductApiService productApi
+@inject MessageApiService messageApi
+@rendermode InteractiveServer
 
 <PageTitle>Nowa wiadomość – ODDAJ DALEJ</PageTitle>
 
-@* Strona celowo pusta – tu później powstanie okno pisania wiadomości. *@
-@* Poniższy blok służy tylko do sprawdzenia, czy ID dotarły; można go usunąć. *@
-<div class="home-container" style="padding: 2rem 0;">
-    <p>Piszący (ID): @SenderId</p>
-    <p>Wystawiający ogłoszenie (ID): @RecipientId</p>
-    <p>Ogłoszenie (ID): @ProductId</p>
-</div>
+<section class="home-section">
+    <div class="home-container" style="max-width:640px;">
+        @if (isLoading)
+        {
+            <p class="admin-muted">Ładowanie...</p>
+        }
+        else if (product is null)
+        {
+            <div class="admin-alert">Nie znaleziono ogłoszenia.</div>
+        }
+        else
+        {
+            <div class="chat-window" style="margin:2rem 0;">
+                <header class="chat-window-head">
+                    <span class="avatar">@Initials(product.AddedBy)</span>
+                    <div>
+                        <strong>@product.AddedBy</strong>
+                        <p>Dotyczy: @product.Name</p>
+                    </div>
+                </header>
+
+                <div style="padding:1rem;">
+                    @if (!string.IsNullOrEmpty(error))
+                    {
+                        <div class="admin-alert">@error</div>
+                    }
+                    <label for="first-message">Twoja wiadomość</label>
+                    <textarea id="first-message"
+                              class="product-input"
+                              rows="5"
+                              maxlength="2000"
+                              placeholder="Napisz wiadomość w sprawie tego ogłoszenia..."
+                              @bind="content"></textarea>
+                </div>
+
+                <form class="chat-form" @onsubmit="SendAsync">
+                    <button class="home-btn home-btn-outline" type="button" @onclick="Cancel">Anuluj</button>
+                    <button class="home-btn home-btn-primary" type="submit" disabled="@isSending">
+                        @(isSending ? "Wysyłanie..." : "Wyślij")
+                    </button>
+                </form>
+            </div>
+        }
+    </div>
+</section>
 
 @code {
     [Parameter] public int SenderId { get; set; }
     [Parameter] public int RecipientId { get; set; }
     [Parameter] public int ProductId { get; set; }
+
+    private ProductDTO? product;
+    private bool isLoading = true;
+    private bool isSending;
+    private string content = "";
+    private string? error;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -31,6 +80,46 @@
             || SenderId == RecipientId)
         {
             Navigation.NavigateTo("/");
+            return;
         }
+
+        product = await productApi.GetProductByIdAsync(ProductId);
+        isLoading = false;
+    }
+
+    private async Task SendAsync()
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            error = "Wpisz treść wiadomości.";
+            return;
+        }
+
+        isSending = true;
+        error = null;
+
+        var conversation = await messageApi.StartConversationAsync(RecipientId, ProductId, content.Trim());
+
+        isSending = false;
+
+        if (conversation is null)
+        {
+            error = "Nie udało się wysłać wiadomości. Spróbuj ponownie.";
+            return;
+        }
+
+        Navigation.NavigateTo($"/wiadomosci?c={conversation.ConversationId}");
+    }
+
+    private void Cancel() => Navigation.NavigateTo($"/details/{ProductId}");
+
+    private static string Initials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "?";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant()
+            : name.Length >= 2 ? name[..2].ToUpperInvariant() : name.ToUpperInvariant();
     }
 }
