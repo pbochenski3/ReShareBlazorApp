@@ -106,5 +106,25 @@ namespace ReShareBlazorApp.Web.ApiServices
                 return false;
             }
         }
+        public async Task<bool> ReplyToReportAsync(int reportId, string responseText)
+        {
+            using var request = await CreateRequestAsync(
+                HttpMethod.Post,
+                $"api/report/{reportId}/reply");
+            if (request == null)
+                return false;
+
+            var payload = new ReplyReportRequest { Response = responseText };
+            request.Content = JsonContent.Create(payload);
+            try
+            {
+                var response = await _httpClient.SendAsync(request);
+                return response.IsSuccessStatusCode;
+            }
+            catch (HttpRequestException)
+            {
+                return false;
+            }
+        }
     }
 }

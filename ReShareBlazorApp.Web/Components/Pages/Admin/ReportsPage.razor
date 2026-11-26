@@ -28,12 +28,38 @@ else if (!reports.Any())
 }
 else
 {
-    <p class="admin-muted">Liczba zgłoszeń: @reports.Count. Kliknij zgłoszenie, aby je rozwinąć.</p>
+    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:16px;">
+        <input class="admin-search"
+               style="margin-bottom:0; max-width:320px;"
+               placeholder="Szukaj po ogłoszeniu, zgłaszającym lub treści..."
+               @bind="searchQuery"
+               @bind:event="oninput" />
+
+        <select class="admin-search"
+                style="margin-bottom:0; max-width:200px;"
+                @bind="statusFilter">
+            <option value="all">Wszystkie statusy</option>
+            <option value="pending">Oczekujące na odpowiedź</option>
+            <option value="resolved">Odpowiedziano</option>
+        </select>
+
+        @if (!string.IsNullOrWhiteSpace(searchQuery) || statusFilter != "all")
+        {
+            <button type="button" class="admin-btn" @onclick="ClearFilters">
+                Wyczyść filtry
+            </button>
+        }
+    </div>
+
+    <p class="admin-muted">
+        Wyświetlane: <strong>@FilteredReports.Count()</strong> z @reports.Count. Kliknij zgłoszenie, aby je rozwinąć.
+    </p>
 
     <div class="admin-table-wrap">
         <table class="admin-table">
             <thead>
                 <tr>
+                    <th>Status</th>
                     <th>Kategoria</th>
                     <th>Ogłoszenie</th>
                     <th>Zgłosił</th>
@@ -42,7 +68,7 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var report in reports)
+                @foreach (var report in FilteredReports)
                 {
                     var isOpen = expandedReportId == report.ReportId;
 
@@ -51,6 +77,16 @@ else
                         aria-expanded="@(isOpen ? "true" : "false")"
                         @onclick="() => ToggleReport(report.ReportId)"
                         @onkeydown="e => OnRowKeyDown(e, report.ReportId)">
+                        <td>
+                            @if (!string.IsNullOrEmpty(report.AdminResponse) || report.Status == ReportStatus.Resolved)
+                            {
+                                <span class="admin-badge admin-badge-ok">odpowiedziano</span>
+                            }
+                            else
+                            {
+                                <span class="admin-badge admin-badge-info">oczekujące</span>
+                            }
+                        </td>
                         <td><span class="admin-badge admin-badge-bad">@GetCategoryName(report.Category)</span></td>
                         <td>@report.ProductName</td>
                         <td>@report.ReportedBy</td>
@@ -61,7 +97,7 @@ else
                     @if (isOpen)
                     {
                         <tr class="admin-detail">
-                            <td colspan="5" class="admin-detail-cell">
+                            <td colspan="6" class="admin-detail-cell">
 
                                 <div class="report-info-grid">
                                     <div>
@@ -84,6 +120,36 @@ else
 
                                 <span class="report-label">Treść zgłoszenia</span>
                                 <p class="report-description">@report.Description</p>
+
+                                @if (!string.IsNullOrWhiteSpace(report.AdminResponse))
+                                {
+                                    <div style="margin-top:14px; margin-bottom:14px; padding:14px 18px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px;">
+                                        <div style="font-weight:600; color:#166534; margin-bottom:6px; font-size:.9rem;">
+                                            Odpowiedź administratora (@(report.AdminRespondedBy ?? "Administrator") &bull; @(report.AdminRespondedAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "-")):
+                                        </div>
+                                        <p style="margin:0; color:#15803d; white-space:pre-wrap; line-height:1.5;">@report.AdminResponse</p>
+                                    </div>
+                                }
+
+                                <!-- Formularz odesłania odpowiedzi do użytkownika -->
+                                <div style="margin-top:16px; margin-bottom:18px; padding:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+                                    <label style="display:block; font-weight:600; margin-bottom:6px; color:#1e293b;">
+                                        @(string.IsNullOrWhiteSpace(report.AdminResponse) ? "✉ Odpowiedz użytkownikowi na to zgłoszenie:" : "✉ Zaktualizuj / prześlij kolejną odpowiedź do użytkownika:")
+                                    </label>
+                                    <textarea class="admin-search"
+                                              style="width:100%; min-height:85px; margin-bottom:10px; resize:vertical; font-family:inherit; padding:10px 14px;"
+                                              placeholder="Wpisz treść wiadomości, która zostanie wysłana do użytkownika w powiadomieniach..."
+                                              value="@GetReplyText(report.ReportId)"
+                                              @oninput="(e) => SetReplyText(report.ReportId, e.Value?.ToString() ?? string.Empty)">
+                                    </textarea>
+                                    <button type="button"
+                                            class="admin-btn"
+                                            style="background:#0f766e; color:#fff; font-weight:600; border:none; padding:8px 18px;"
+                                            disabled="@(isBusy || string.IsNullOrWhiteSpace(GetReplyText(report.ReportId)))"
+                                            @onclick="() => SendReply(report)">
+                                        Odeślij odpowiedź użytkownikowi
+                                    </button>
+                                </div>
 
                                 <div class="admin-detail-actions">
                                     <a class="admin-btn"
@@ -172,6 +238,42 @@ else
     private string? message;
     private bool messageOk;
 
+    private string searchQuery = "";
+    private string statusFilter = "all";
+    private Dictionary<int, string> replyInputs = new();
+
+    private IEnumerable<ReportDTO> FilteredReports =>
+        reports.Where(r =>
+        {
+            if (statusFilter == "pending" && (!string.IsNullOrEmpty(r.AdminResponse) || r.Status == ReportStatus.Resolved))
+                return false;
+            if (statusFilter == "resolved" && string.IsNullOrEmpty(r.AdminResponse) && r.Status != ReportStatus.Resolved)
+                return false;
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var q = searchQuery.Trim();
+                var match = r.ProductName.Contains(q, StringComparison.OrdinalIgnoreCase)
+                            || r.ReportedBy.Contains(q, StringComparison.OrdinalIgnoreCase)
+                            || r.Description.Contains(q, StringComparison.OrdinalIgnoreCase);
+                if (!match) return false;
+            }
+
+            return true;
+        });
+
+    private void ClearFilters()
+    {
+        searchQuery = "";
+        statusFilter = "all";
+    }
+
+    private string GetReplyText(int reportId) =>
+        replyInputs.TryGetValue(reportId, out var val) ? val : "";
+
+    private void SetReplyText(int reportId, string val) =>
+        replyInputs[reportId] = val;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadReports();
@@ -194,6 +296,32 @@ else
     {
         if (e.Key == "Enter")
             ToggleReport(reportId);
+    }
+
+    private async Task SendReply(ReportDTO report)
+    {
+        var replyText = GetReplyText(report.ReportId).Trim();
+        if (string.IsNullOrWhiteSpace(replyText))
+            return;
+
+        isBusy = true;
+        message = null;
+
+        var success = await reportApi.ReplyToReportAsync(report.ReportId, replyText);
+        isBusy = false;
+
+        if (success)
+        {
+            report.AdminResponse = replyText;
+            report.AdminRespondedAt = DateTime.UtcNow;
+            report.Status = ReportStatus.Resolved;
+            replyInputs.Remove(report.ReportId);
+            SetMessage($"Odpowiedź do użytkownika {report.ReportedBy} została pomyślnie wysłana.", true);
+        }
+        else
+        {
+            SetMessage("Nie udało się wysłać odpowiedzi. Upewnij się, że API działa.", false);
+        }
     }
 
     private void AskDismiss(ReportDTO report)

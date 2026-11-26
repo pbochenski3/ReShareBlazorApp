@@ -8,5 +8,6 @@ namespace ReShareBlazorApp.Api.Interfaces.Services
         Task<List<ReportDTO>> GetReportsAsync();
         Task<bool> DeleteReportAsync(int reportId);
         Task<bool> DeleteReportedProductAsync(int reportId);
+        Task<bool> ReplyToReportAsync(int reportId, string responseText, string adminUserName);
     }
 }

@@ -1,4 +1,13 @@
 @page "/wiadomosci"
+@attribute [Authorize]
+@using System.Security.Claims
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject ChatApiService ChatApi
+@inject UserApiService UserApi
+@inject ProductApiService ProductApi
 
 <PageTitle>Wiadomości – ODDAJ DALEJ</PageTitle>
 
@@ -9,85 +18,440 @@
             <!-- Lista rozmów -->
             <aside class="chat-list">
                 <div class="chat-list-search">
-                    <input type="search" placeholder="Szukaj w rozmowach" aria-label="Szukaj w rozmowach" />
+                    <input type="search"
+                           placeholder="Szukaj w rozmowach..."
+                           aria-label="Szukaj w rozmowach"
+                           @bind="searchQuery"
+                           @bind:event="oninput" />
                 </div>
 
-                <ul>
-                    <li class="chat-item active">
-                        <span class="avatar">AK</span>
-                        <div class="chat-item-text">
-                            <strong>Anna Kowalska</strong>
-                            <span>Czy bilety są nadal dostępne?</span>
-                        </div>
-                        <span class="chat-item-meta">
-                            <time>12:40</time>
-                            <span class="badge">2</span>
-                        </span>
-                    </li>
-                    <li class="chat-item">
-                        <span class="avatar">MN</span>
-                        <div class="chat-item-text">
-                            <strong>Marek Nowak</strong>
-                            <span>Super, w takim razie do piątku.</span>
-                        </div>
-                        <span class="chat-item-meta"><time>wczoraj</time></span>
-                    </li>
-                    <li class="chat-item">
-                        <span class="avatar">EW</span>
-                        <div class="chat-item-text">
-                            <strong>Ewa Wiśniewska</strong>
-                            <span>Mogę odebrać wózek w sobotę.</span>
-                        </div>
-                        <span class="chat-item-meta"><time>pon.</time></span>
-                    </li>
-                </ul>
+                @if (isLoadingConversations)
+                {
+                    <div style="padding: 20px; text-align: center; color: var(--muted, #64748b);">
+                        Ładowanie rozmów...
+                    </div>
+                }
+                else if (!FilteredConversations.Any())
+                {
+                    <div style="padding: 24px; text-align: center; color: var(--muted, #64748b); font-size: .95rem;">
+                        @(string.IsNullOrWhiteSpace(searchQuery)
+                            ? "Brak rozmów. Rozpocznij kontakt z ogłoszenia!"
+                            : "Brak wyników wyszukiwania.")
+                    </div>
+                }
+                else
+                {
+                    <ul>
+                        @foreach (var conv in FilteredConversations)
+                        {
+                            var isSelected = activeConversation?.OtherUserId == conv.OtherUserId;
+
+                            <li class="chat-item @(isSelected ? "active" : "")"
+                                @onclick="() => SelectConversationAsync(conv)"
+                                style="cursor: pointer;">
+                                @if (!string.IsNullOrEmpty(conv.OtherUserAvatar))
+                                {
+                                    <img src="@UserApi.GetAvatarUrl(conv.OtherUserAvatar)"
+                                         alt="@conv.OtherUserName"
+                                         style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;" />
+                                }
+                                else
+                                {
+                                    <span class="avatar">@GetInitials(conv.OtherUserName)</span>
+                                }
+
+                                <div class="chat-item-text">
+                                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                                        <strong>@conv.OtherUserName</strong>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(conv.ProductName))
+                                    {
+                                        <small style="color: var(--brand, #0f766e); font-weight: 500; font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            📦 @conv.ProductName
+                                        </small>
+                                    }
+                                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        @conv.LastMessage
+                                    </span>
+                                </div>
+
+                                <span class="chat-item-meta">
+                                    <time>@FormatTime(conv.LastMessageDate)</time>
+                                    @if (conv.UnreadCount > 0)
+                                    {
+                                        <span class="badge" style="background:#0f766e; color:#fff; border-radius:10px; padding:2px 7px; font-size:.75rem;">
+                                            @conv.UnreadCount
+                                        </span>
+                                    }
+                                </span>
+                            </li>
+                        }
+                    </ul>
+                }
             </aside>
 
             <!-- Okno rozmowy -->
             <div class="chat-window">
-                <header class="chat-window-head">
-                    <span class="avatar">AK</span>
-                    <div>
-                        <strong>Anna Kowalska</strong>
-                        <p>Dotyczy: 2 bilety na koncert – Kraków</p>
-                    </div>
-                    <div class="chat-window-actions">
-                        <button class="home-btn home-btn-outline" type="button">Zablokuj</button>
-                        <button class="home-btn home-btn-outline" type="button">Zgłoś rozmowę</button>
-                    </div>
-                </header>
+                @if (activeConversation != null)
+                {
+                    <header class="chat-window-head">
+                        @if (!string.IsNullOrEmpty(activeConversation.OtherUserAvatar))
+                        {
+                            <img src="@UserApi.GetAvatarUrl(activeConversation.OtherUserAvatar)"
+                                 alt="@activeConversation.OtherUserName"
+                                 style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;" />
+                        }
+                        else
+                        {
+                            <span class="avatar">@GetInitials(activeConversation.OtherUserName)</span>
+                        }
 
-                <div class="chat-messages">
-                    <div class="msg msg-in">
-                        <p>Dzień dobry, czy bilety są nadal dostępne?</p>
-                        <time>12:38</time>
-                    </div>
-                    <div class="msg msg-out">
-                        <p>Dzień dobry, tak. Oba są jeszcze do odebrania.</p>
-                        <time>12:39</time>
-                    </div>
-                    <div class="msg msg-offer">
-                        <strong>Propozycja ceny: 220 zł</strong>
-                        <div class="msg-offer-actions">
-                            <button class="home-btn home-btn-primary" type="button">Akceptuję</button>
-                            <button class="home-btn home-btn-outline" type="button">Odrzucam</button>
+                        <div style="flex:1; min-width:0;">
+                            <strong>@activeConversation.OtherUserName</strong>
+                            @if (!string.IsNullOrEmpty(activeConversation.ProductName))
+                            {
+                                <p style="margin: 2px 0 0; font-size: .88rem; color: var(--muted, #64748b);">
+                                    Dotyczy:
+                                    @if (activeConversation.ProductId.HasValue)
+                                    {
+                                        <a href="@($"/details/{activeConversation.ProductId.Value}")"
+                                           target="_blank"
+                                           style="color: var(--brand, #0f766e); font-weight: 600; text-decoration: underline;">
+                                            @activeConversation.ProductName
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span>@activeConversation.ProductName</span>
+                                    }
+                                </p>
+                            }
                         </div>
-                    </div>
-                    <div class="msg msg-in">
-                        <p>Czy możemy się spotkać jutro po pracy?</p>
-                        <time>12:40</time>
-                    </div>
-                </div>
 
-                <form class="chat-form">
-                    <button class="chat-icon-btn" type="button" aria-label="Dodaj zdjęcie">📎</button>
-                    <input type="text" placeholder="Napisz wiadomość" aria-label="Wiadomość" />
-                    <button class="home-btn home-btn-outline" type="button">Zaproponuj cenę</button>
-                    <button class="home-btn home-btn-primary" type="submit">Wyślij</button>
-                </form>
+                        <div class="chat-window-actions">
+                            @if (activeConversation.ProductId.HasValue)
+                            {
+                                <a href="@($"/details/{activeConversation.ProductId.Value}")"
+                                   target="_blank"
+                                   class="home-btn home-btn-outline"
+                                   style="text-decoration:none; font-size:.85rem; padding:6px 12px;">
+                                    Zobacz ogłoszenie
+                                </a>
+                            }
+                            <a href="@($"/profil/{activeConversation.OtherUserId}")"
+                               target="_blank"
+                               class="home-btn home-btn-outline"
+                               style="text-decoration:none; font-size:.85rem; padding:6px 12px;">
+                                Profil użytkownika
+                            </a>
+                        </div>
+                    </header>
+
+                    <div class="chat-messages" id="chatMessagesContainer">
+                        @if (isLoadingMessages)
+                        {
+                            <div style="padding: 30px; text-align: center; color: var(--muted, #64748b);">
+                                Ładowanie wiadomości...
+                            </div>
+                        }
+                        else if (!activeMessages.Any())
+                        {
+                            <div style="padding: 40px; text-align: center; color: var(--muted, #64748b);">
+                                Brak wcześniejszych wiadomości w tej rozmowie. Napisz pierwszą wiadomość poniżej!
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var msg in activeMessages)
+                            {
+                                if (msg.IsFromCurrentUser)
+                                {
+                                    <div class="msg msg-out" @key="msg.Id">
+                                        @if (msg.OfferPrice.HasValue)
+                                        {
+                                            <div class="msg-offer" style="margin-bottom: 6px;">
+                                                <strong>Propozycja ceny: @msg.OfferPrice.Value.ToString("0.##") zł</strong>
+                                            </div>
+                                        }
+                                        <p style="margin: 0; word-break: break-word; white-space: pre-wrap;">@msg.Content</p>
+                                        <time>@msg.CreatedAt.ToLocalTime().ToString("HH:mm")</time>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="msg msg-in" @key="msg.Id">
+                                        @if (msg.OfferPrice.HasValue)
+                                        {
+                                            <div class="msg-offer" style="margin-bottom: 6px;">
+                                                <strong>Propozycja ceny: @msg.OfferPrice.Value.ToString("0.##") zł</strong>
+                                            </div>
+                                        }
+                                        <p style="margin: 0; word-break: break-word; white-space: pre-wrap;">@msg.Content</p>
+                                        <time>@msg.CreatedAt.ToLocalTime().ToString("HH:mm")</time>
+                                    </div>
+                                }
+                            }
+                        }
+                    </div>
+
+                    @if (showOfferInput)
+                    {
+                        <div style="display:flex; align-items:center; gap:10px; padding:8px 20px; background:#f0fdfa; border-top:1px solid var(--border);">
+                            <span style="font-size:.9rem; font-weight:600; color:#0f766e;">Propozycja ceny (zł):</span>
+                            <input type="number"
+                                   step="0.01"
+                                   min="0"
+                                   placeholder="np. 50"
+                                   style="max-width:140px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;"
+                                   @bind="customOfferPrice" />
+                            <button type="button"
+                                    class="home-btn home-btn-outline"
+                                    style="padding:4px 10px; font-size:.8rem;"
+                                    @onclick="() => { showOfferInput = false; customOfferPrice = null; }">
+                                Anuluj propozycję
+                            </button>
+                        </div>
+                    }
+
+                    <form class="chat-form" @onsubmit="SendMessageAsync" @onsubmit:preventDefault="true">
+                        <input type="text"
+                               placeholder="Napisz wiadomość..."
+                               aria-label="Wiadomość"
+                               @bind="draftMessage"
+                               @bind:event="oninput"
+                               @onkeydown="OnKeyDownAsync"
+                               disabled="@isSending" />
+
+                        <button class="home-btn @(showOfferInput ? "home-btn-primary" : "home-btn-outline")"
+                                type="button"
+                                @onclick="ToggleOfferInput">
+                            @(showOfferInput ? "Cena aktywna" : "Zaproponuj cenę")
+                        </button>
+
+                        <button class="home-btn home-btn-primary"
+                                type="submit"
+                                disabled="@(isSending || string.IsNullOrWhiteSpace(draftMessage))">
+                            @(isSending ? "Wysyłanie..." : "Wyślij")
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; text-align:center; color: var(--muted, #64748b);">
+                        <div style="font-size:3rem; margin-bottom:12px;">💬</div>
+                        <h2 style="font-size:1.3rem; margin:0 0 8px; color:var(--brand, #0f766e);">Twoje wiadomości</h2>
+                        <p style="max-width:400px; margin:0; line-height:1.5;">
+                            Wybierz rozmowę z listy po lewej stronie, aby przeglądać wiadomości lub kontynuować czat.
+                        </p>
+                    </div>
+                }
             </div>
+
         </div>
     </div>
 </section>
 
 <SiteFooter />
+
+@code {
+    [SupplyParameterFromQuery(Name = "partnerId")]
+    public int? PartnerId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "productId")]
+    public int? ProductId { get; set; }
+
+    private List<ConversationSummaryDTO> conversations = new();
+    private List<ChatMessageDTO> activeMessages = new();
+    private ConversationSummaryDTO? activeConversation;
+    private int currentUserId;
+
+    private string searchQuery = "";
+    private string draftMessage = "";
+    private bool showOfferInput;
+    private decimal? customOfferPrice;
+
+    private bool isLoadingConversations = true;
+    private bool isLoadingMessages;
+    private bool isSending;
+
+    private IEnumerable<ConversationSummaryDTO> FilteredConversations =>
+        conversations.Where(c =>
+        {
+            if (string.IsNullOrWhiteSpace(searchQuery))
+                return true;
+
+            var q = searchQuery.Trim();
+            return c.OtherUserName.Contains(q, StringComparison.OrdinalIgnoreCase)
+                   || (!string.IsNullOrEmpty(c.ProductName) && c.ProductName.Contains(q, StringComparison.OrdinalIgnoreCase))
+                   || (!string.IsNullOrEmpty(c.LastMessage) && c.LastMessage.Contains(q, StringComparison.OrdinalIgnoreCase));
+        });
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var idClaim = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (int.TryParse(idClaim, out var id))
+        {
+            currentUserId = id;
+        }
+
+        await LoadConversationsAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (PartnerId.HasValue && currentUserId > 0)
+        {
+            var existing = conversations.FirstOrDefault(c => c.OtherUserId == PartnerId.Value);
+            if (existing != null)
+            {
+                await SelectConversationAsync(existing);
+            }
+            else
+            {
+                // Nowa konwersacja, której jeszcze nie ma w historii
+                await InitializeNewConversationAsync(PartnerId.Value, ProductId);
+            }
+        }
+        else if (activeConversation == null && conversations.Any())
+        {
+            await SelectConversationAsync(conversations.First());
+        }
+    }
+
+    private async Task LoadConversationsAsync()
+    {
+        isLoadingConversations = true;
+        var result = await ChatApi.GetConversationsAsync();
+        conversations = result ?? new List<ConversationSummaryDTO>();
+        isLoadingConversations = false;
+    }
+
+    private async Task InitializeNewConversationAsync(int partnerId, int? productId)
+    {
+        string partnerName = $"Użytkownik #{partnerId}";
+        string? partnerAvatar = null;
+        string? productName = null;
+
+        if (productId.HasValue)
+        {
+            var p = await ProductApi.GetProductByIdAsync(productId.Value);
+            if (p != null)
+            {
+                productName = p.Name;
+            }
+        }
+
+        var tempConv = new ConversationSummaryDTO
+        {
+            OtherUserId = partnerId,
+            OtherUserName = partnerName,
+            OtherUserAvatar = partnerAvatar,
+            ProductId = productId,
+            ProductName = productName,
+            LastMessage = "",
+            LastMessageDate = DateTime.UtcNow,
+            UnreadCount = 0
+        };
+
+        if (!conversations.Any(c => c.OtherUserId == partnerId))
+        {
+            conversations.Insert(0, tempConv);
+        }
+
+        await SelectConversationAsync(tempConv);
+    }
+
+    private async Task SelectConversationAsync(ConversationSummaryDTO conv)
+    {
+        activeConversation = conv;
+        isLoadingMessages = true;
+        activeMessages.Clear();
+
+        var messages = await ChatApi.GetConversationAsync(conv.OtherUserId, conv.ProductId);
+        activeMessages = messages ?? new List<ChatMessageDTO>();
+        conv.UnreadCount = 0;
+        isLoadingMessages = false;
+    }
+
+    private void ToggleOfferInput()
+    {
+        showOfferInput = !showOfferInput;
+        if (!showOfferInput)
+            customOfferPrice = null;
+    }
+
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessageAsync();
+        }
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (activeConversation == null || string.IsNullOrWhiteSpace(draftMessage) || isSending)
+            return;
+
+        var textToSend = draftMessage.Trim();
+        var offerToSend = showOfferInput ? customOfferPrice : null;
+
+        isSending = true;
+
+        var request = new SendMessageRequest
+        {
+            RecipientId = activeConversation.OtherUserId,
+            ProductId = activeConversation.ProductId,
+            Content = textToSend,
+            OfferPrice = offerToSend
+        };
+
+        var sent = await ChatApi.SendMessageAsync(request);
+        isSending = false;
+
+        if (sent != null)
+        {
+            activeMessages.Add(sent);
+            draftMessage = "";
+            showOfferInput = false;
+            customOfferPrice = null;
+
+            // Zaktualizuj podgląd na liście rozmów
+            activeConversation.LastMessage = offerToSend.HasValue
+                ? $"[Oferta: {offerToSend.Value:0.##} zł] {textToSend}"
+                : textToSend;
+            activeConversation.LastMessageDate = DateTime.UtcNow;
+
+            // Przesuń na górę listy rozmów
+            conversations.Remove(activeConversation);
+            conversations.Insert(0, activeConversation);
+        }
+    }
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "U";
+
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
+            return parts[0].Length >= 2 ? parts[0][..2].ToUpper() : parts[0].ToUpper();
+
+        return $"{char.ToUpper(parts[0][0])}{char.ToUpper(parts[1][0])}";
+    }
+
+    private static string FormatTime(DateTime date)
+    {
+        var local = date.ToLocalTime();
+        var now = DateTime.Now;
+
+        if (local.Date == now.Date)
+            return local.ToString("HH:mm");
+
+        if (local.Date == now.Date.AddDays(-1))
+            return "wczoraj";
+
+        return local.ToString("dd.MM");
+    }
+}

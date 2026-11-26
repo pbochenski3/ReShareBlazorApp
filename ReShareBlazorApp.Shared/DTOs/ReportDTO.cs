@@ -20,5 +20,10 @@ namespace ReShareBlazorApp.Shared.DTOs
         public string Description { get; set; } = "";
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        public string? AdminResponse { get; set; }
+        public DateTime? AdminRespondedAt { get; set; }
+        public string? AdminRespondedBy { get; set; }
+        public ReportStatus Status { get; set; } = ReportStatus.Pending;
     }
 }

@@ -114,5 +114,35 @@ namespace ReShareBlazorApp.Api.Repositories
                 return null;
             }
         }
+        public async Task<Report?> GetReportByIdAsync(int reportId)
+        {
+            try
+            {
+                return await _context.Reports
+                    .Include(r => r.User)
+                    .Include(r => r.Product)
+                        .ThenInclude(p => p.user)
+                    .FirstOrDefaultAsync(r => r.Id == reportId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"[ReportRepository] Error occured in GetReportByIdAsync : {ex}");
+                return null;
+            }
+        }
+        public async Task<bool> UpdateReportAsync(Report report)
+        {
+            try
+            {
+                _context.Reports.Update(report);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"[ReportRepository] Error occured in UpdateReportAsync : {ex}");
+                return false;
+            }
+        }
     }
 }

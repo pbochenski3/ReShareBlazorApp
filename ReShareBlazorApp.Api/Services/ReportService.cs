@@ -12,12 +12,16 @@ namespace ReShareBlazorApp.Api.Services
 
         private readonly IReportRepository _reportRepository;
         private readonly IImageStorage _imageStorage;
+        private readonly INotificationService _notificationService;
+
         public ReportService(
             IReportRepository reportRepository,
-            IImageStorage imageStorage)
+            IImageStorage imageStorage,
+            INotificationService notificationService)
         {
             _reportRepository = reportRepository;
             _imageStorage = imageStorage;
+            _notificationService = notificationService;
         }
         public async Task<bool> AddReportAsync(ReportDTO report)
         {
@@ -56,10 +60,47 @@ namespace ReShareBlazorApp.Api.Services
                     ReportedBy = r.User?.UserName ?? "",
                     Category = r.Category,
                     Description = r.Description,
-                    CreatedAt = r.CreatedAt
+                    CreatedAt = r.CreatedAt,
+                    AdminResponse = r.AdminResponse,
+                    AdminRespondedAt = r.AdminRespondedAt,
+                    AdminRespondedBy = r.AdminRespondedBy,
+                    Status = r.Status
                 })
                 .ToList();
             return reportsDtoList;
+        }
+        public async Task<bool> ReplyToReportAsync(int reportId, string responseText, string adminUserName)
+        {
+            var report = await _reportRepository.GetReportByIdAsync(reportId);
+            if (report == null)
+                return false;
+
+            report.AdminResponse = responseText.Trim();
+            report.AdminRespondedAt = DateTime.UtcNow;
+            report.AdminRespondedBy = adminUserName;
+            report.Status = ReportStatus.Resolved;
+
+            var updated = await _reportRepository.UpdateReportAsync(report);
+            if (!updated)
+                return false;
+
+            try
+            {
+                var productName = report.Product?.Name ?? "ogłoszenia";
+                await _notificationService.CreateAsync(
+                    report.UserId,
+                    NotificationType.ReportResponse,
+                    $"Odpowiedź na zgłoszenie: {productName}",
+                    $"Administrator odpowiedział na Twoje zgłoszenie: \"{responseText.Trim()}\"",
+                    report.ProductId,
+                    adminUserName);
+            }
+            catch
+            {
+                // Błąd powiadomienia nie unieważnia zapisu odpowiedzi
+            }
+
+            return true;
         }
         public async Task<bool> DeleteReportAsync(int reportId)
         {

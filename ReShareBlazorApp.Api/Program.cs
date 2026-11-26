@@ -80,6 +80,8 @@ builder.Services.AddSingleton<IImageStorage, DiskImageStorage>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
+builder.Services.AddSingleton<IMessageEncryptionService, MessageEncryptionService>();
+builder.Services.AddScoped<IMessageService, MessageService>();
 builder.Services.AddScoped<IAppEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IBadgeService, BadgeService>();
 var stripeSecretKey = builder.Configuration["Stripe:SecretKey"];
@@ -110,6 +112,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider
          .GetRequiredService<ReshareDbContext>();
+    await context.Database.MigrateAsync();
     await LocationImportService.ImportAsync(context, app.Environment.ContentRootPath);
 
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();

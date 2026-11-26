@@ -24,6 +24,8 @@ namespace ReShareBlazorApp.Api.Date
         public DbSet<UserBadge> UserBadges { get; set; }
         public DbSet<FavoriteProduct> FavoriteProducts { get; set; }
 		public DbSet<Payment> Payments { get; set; }
+		public DbSet<ChatMessage> ChatMessages { get; set; }
+		public DbSet<MessageLog> MessageLogs { get; set; }
 
 
 
@@ -185,6 +187,42 @@ namespace ReShareBlazorApp.Api.Date
                         .WithMany()
                         .HasForeignKey(p => p.ProductId)
                         .OnDelete(DeleteBehavior.NoAction);
+                });
+
+                builder.Entity<ChatMessage>(entity =>
+                {
+                    entity.HasKey(m => m.Id);
+                    entity.Property(m => m.CreatedAt).HasColumnType("datetime2");
+                    entity.Property(m => m.OfferPrice).HasColumnType("decimal(18,2)");
+
+                    entity.HasOne(m => m.Sender)
+                        .WithMany()
+                        .HasForeignKey(m => m.SenderId)
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    entity.HasOne(m => m.Recipient)
+                        .WithMany()
+                        .HasForeignKey(m => m.RecipientId)
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    entity.HasOne(m => m.Product)
+                        .WithMany()
+                        .HasForeignKey(m => m.ProductId)
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    entity.HasIndex(m => m.SenderId);
+                    entity.HasIndex(m => m.RecipientId);
+                    entity.HasIndex(m => m.CreatedAt);
+                });
+
+                builder.Entity<MessageLog>(entity =>
+                {
+                    entity.HasKey(m => m.Id);
+                    entity.Property(m => m.CreatedAt).HasColumnType("datetime2");
+                    entity.HasIndex(m => m.MessageId);
+                    entity.HasIndex(m => m.SenderId);
+                    entity.HasIndex(m => m.RecipientId);
+                    entity.HasIndex(m => m.CreatedAt);
                 });
             });
         }

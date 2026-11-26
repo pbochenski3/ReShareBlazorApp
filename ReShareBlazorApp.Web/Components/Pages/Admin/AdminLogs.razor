@@ -165,7 +165,9 @@ else
             or ActivityActions.ReportDeleted or ActivityActions.ReportedProductDeleted
             or ActivityActions.ProductDeleted or ActivityActions.AvatarRemoved => "admin-badge-bad",
         ActivityActions.UserRegistered or ActivityActions.ProductAdded
-            or ActivityActions.AdminUserUnblocked or ActivityActions.ReviewAdded => "admin-badge-ok",
+            or ActivityActions.AdminUserUnblocked or ActivityActions.ReviewAdded
+            or ActivityActions.ReportResponded => "admin-badge-ok",
+        ActivityActions.MessageSent => "admin-badge-info",
         _ => "admin-badge-info"
     };
 

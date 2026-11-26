@@ -66,5 +66,22 @@ namespace ReShareBlazorApp.Api.Controllers
                 $"Usunięto ogłoszenie zgłoszone w zgłoszeniu (id: {id})", "Report", id);
             return Ok();
         }
+        [Authorize(Roles = "Admin")]
+        [HttpPost("{id:int}/reply")]
+        public async Task<IActionResult> ReplyToReport(int id, [FromBody] ReplyReportRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var adminName = User.Identity?.Name ?? "Administrator";
+            var result = await _reportService.ReplyToReportAsync(id, request.Response, adminName);
+            if (!result)
+                return NotFound("Nie znaleziono zgłoszenia lub nie udało się zapisać odpowiedzi.");
+
+            await _activityLogger.LogAsync(User, ActivityActions.ReportResponded,
+                $"Admin odpowiedział na zgłoszenie (id: {id})", "Report", id);
+
+            return Ok(new { success = true });
+        }
     }
 }
