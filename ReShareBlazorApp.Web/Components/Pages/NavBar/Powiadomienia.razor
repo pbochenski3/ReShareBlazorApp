@@ -3,8 +3,10 @@
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Shared.Enums
 @using ReShareBlazorApp.Web.ApiServices
+@implements IDisposable
 @inject NotificationApiService NotificationApi
 @inject NavigationManager Navigation
+@inject ChatHubClient Hub
 
 <PageTitle>Powiadomienia – ODDAJ DALEJ</PageTitle>
 
@@ -38,7 +40,7 @@
         {
             <div class="notifications-state notifications-empty">
                 <div class="notifications-empty-icon">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></svg>
                 </div>
                 <h2>@(activeFilter == "unread" ? "Wszystko przeczytane" : "Na razie cisza")</h2>
                 <p>@(activeFilter == "unread" ? "Nie masz żadnych nieprzeczytanych powiadomień." : "Gdy pojawi się coś ważnego, znajdziesz to właśnie tutaj.")</p>
@@ -57,23 +59,23 @@
                         <div class="notification-card-icon @(notification.Type == NotificationType.OfferMatch ? "is-match" : notification.Type == NotificationType.NewReview ? "is-review" : notification.Type == NotificationType.AdminWarning ? "is-warning" : notification.Type == NotificationType.BadgeEarned ? "is-badge" : "is-message")">
                             @if (notification.Type == NotificationType.OfferMatch)
                             {
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7 10 17l-5-5"/><path d="M4 4h16v16H4z"/></svg>
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7 10 17l-5-5" /><path d="M4 4h16v16H4z" /></svg>
                             }
                             else if (notification.Type == NotificationType.NewReview)
                             {
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3z"/></svg>
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3z" /></svg>
                             }
                             else if (notification.Type == NotificationType.AdminWarning)
                             {
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4m0 3h.01"/></svg>
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4m0 3h.01" /></svg>
                             }
                             else if (notification.Type == NotificationType.BadgeEarned)
                             {
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8m-4-4v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v2a4 4 0 0 0 4 4m9-6h3v2a4 4 0 0 1-4 4"/></svg>
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8m-4-4v4M7 4h10v5a5 5 0 0 1-10 0V4z" /><path d="M7 6H4v2a4 4 0 0 0 4 4m9-6h3v2a4 4 0 0 1-4 4" /></svg>
                             }
                             else
                             {
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg>
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z" /></svg>
                             }
                         </div>
                         <div class="notification-card-content">
@@ -100,7 +102,7 @@
                                     <button type="button" class="notification-text-action" disabled="@isBusy" @onclick="() => MarkAsReadAsync(notification)">Oznacz jako przeczytane</button>
                                 }
                                 <button type="button" class="notification-delete-action" aria-label="Usuń powiadomienie" disabled="@isBusy" @onclick="() => DeleteAsync(notification)">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-.8 14H5.8L5 6m4 4v6m6-6v6"/></svg>
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-.8 14H5.8L5 6m4 4v6m6-6v6" /></svg>
                                 </button>
                             </div>
                         </div>
@@ -117,6 +119,7 @@
     private bool isLoading = true;
     private bool isBusy;
     private string activeFilter = "all";
+    private bool hubSubscribed;
 
     private int UnreadCount => notifications.Count(item => !item.IsRead);
     private List<NotificationDTO> VisibleNotifications => notifications
@@ -125,6 +128,37 @@
         .ToList();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        Hub.NotificationReceived += OnNotificationPushed;
+        hubSubscribed = true;
+
+        try
+        {
+            await Hub.EnsureConnectedAsync();
+        }
+        catch (Exception)
+        {
+            // brak połączenia na żywo - lista odświeży się po ponownym wejściu na stronę
+        }
+    }
+
+    // Nowe powiadomienie z serwera (SignalR) pojawia się na liście od razu.
+    private void OnNotificationPushed(NotificationDTO notification)
+    {
+        _ = InvokeAsync(() =>
+        {
+            if (notifications.All(item => item.Id != notification.Id))
+            {
+                notifications.Insert(0, notification);
+                StateHasChanged();
+            }
+        });
+    }
 
     private string FilterClass(string filter) =>
         $"notifications-filter {(activeFilter == filter ? "active" : "")}";
@@ -201,5 +235,11 @@
         if (local.Date == now.Date) return $"Dzisiaj, {local:HH:mm}";
         if (local.Date == now.Date.AddDays(-1)) return $"Wczoraj, {local:HH:mm}";
         return local.ToString("d MMM yyyy, HH:mm", new System.Globalization.CultureInfo("pl-PL"));
+    }
+
+    public void Dispose()
+    {
+        if (hubSubscribed)
+            Hub.NotificationReceived -= OnNotificationPushed;
     }
 }

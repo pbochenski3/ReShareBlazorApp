@@ -52,7 +52,7 @@ namespace ReShareBlazorApp.Api.Controllers
             return Ok(await _chatService.GetSupportConversationsAsync());
         }
 
-        // ---------- Szybki kontakt: odpowiedź e-mailem ----------
+        // ---------- Szybki kontakt: odpowiedź na czacie (albo e-mailem, gdy nadawca nie ma konta) ----------
 
         [HttpGet("contact/{id:int}/replies")]
         public async Task<ActionResult<List<AdminReplyDTO>>> GetContactReplies(int id)
@@ -78,21 +78,54 @@ namespace ReShareBlazorApp.Api.Controllers
                 return NotFound();
 
             var subject = SanitizeSubject(contact.Subject);
-            var emailSubject = subject.StartsWith("Re:", StringComparison.OrdinalIgnoreCase)
-                ? subject
-                : $"Re: {subject}";
 
-            try
+            // E-mail jest potwierdzany przy rejestracji, więc konto z tym adresem należy do nadawcy.
+            var normalizedEmail = contact.Email.Trim().ToUpperInvariant();
+            var accountId = await _context.Users
+                .AsNoTracking()
+                .Where(u => u.NormalizedEmail == normalizedEmail && u.IsActive)
+                .Select(u => (int?)u.Id)
+                .FirstOrDefaultAsync();
+
+            string channel;
+
+            if (accountId.HasValue)
             {
-                await _emailSender.SendAsync(
-                    contact.Email,
-                    emailSubject,
-                    BuildReplyEmail(contact.Name, text, subject, contact.Message));
+                // Nadawca ma konto: odpowiedź trafia na jego czat (rozmowa z administracją).
+                try
+                {
+                    var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+                    var chatText = $"Odpowiedź na Twoją wiadomość „{subject}”:\n\n{text}";
+                    await _chatService.SendSupportMessageToUserAsync(CurrentAdminId, accountId.Value, chatText, ip);
+                }
+                catch (ChatException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
+
+                channel = "InApp";
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Nie udało się wysłać odpowiedzi na wiadomość kontaktową {Id}.", id);
-                return StatusCode(502, new { message = "Nie udało się wysłać e-maila. Sprawdź konfigurację SMTP." });
+                // Nadawca nie ma konta, więc nie ma jak odpisać na czacie - wysyłamy e-mail.
+                var emailSubject = subject.StartsWith("Re:", StringComparison.OrdinalIgnoreCase)
+                    ? subject
+                    : $"Re: {subject}";
+
+                try
+                {
+                    await _emailSender.SendAsync(
+                        contact.Email,
+                        emailSubject,
+                        BuildReplyEmail(contact.Name, text, subject, contact.Message));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Nie udało się wysłać odpowiedzi na wiadomość kontaktową {Id}.", id);
+                    return StatusCode(502, new { message = "Nadawca nie ma konta, a wysłanie e-maila się nie udało. Sprawdź konfigurację SMTP." });
+                }
+
+                channel = "Email";
             }
 
             var reply = new AdminReply
@@ -100,8 +133,9 @@ namespace ReShareBlazorApp.Api.Controllers
                 ContactMessageId = contact.Id,
                 AdminId = CurrentAdminId,
                 AdminName = CurrentAdminName,
+                RecipientUserId = accountId,
                 RecipientEmail = contact.Email,
-                Channel = "Email",
+                Channel = channel,
                 EncryptedBody = _encryption.Encrypt(text, EncryptionPurposes.AdminReply),
                 CreatedAt = DateTime.UtcNow
             };
@@ -110,7 +144,7 @@ namespace ReShareBlazorApp.Api.Controllers
             await _context.SaveChangesAsync();
 
             await _activityLogger.LogAsync(User, ActivityActions.AdminContactReplied,
-                $"Odpowiedziano e-mailem na wiadomość kontaktową (id: {id})",
+                $"Odpowiedziano na wiadomość kontaktową (id: {id}, kanał: {(channel == "InApp" ? "czat" : "e-mail")})",
                 "ContactMessage", id);
 
             return Ok(ToDto(reply));

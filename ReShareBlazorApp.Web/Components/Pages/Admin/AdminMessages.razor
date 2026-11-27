@@ -99,7 +99,7 @@ else
                             </td>
                             <td class="admin-actions">
                                 <button type="button" class="admin-btn" @onclick="() => OpenMessage(item)">
-                                    Pokaż wiadomość
+                                    Pokaż / odpowiedz
                                 </button>
                                 @if (!item.IsRead)
                                 {
@@ -137,6 +137,7 @@ else
             <div style="background:#f8f9fa; border:1px solid #e5e7eb; border-radius:8px; padding:16px; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; font-size:1rem;">
                 @selectedMessage.Message
             </div>
+
             @if (replies.Count > 0)
             {
                 <div class="admin-reply-history">
@@ -144,7 +145,7 @@ else
                     @foreach (var r in replies)
                     {
                         <div class="admin-reply-item">
-                            <small>@r.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm") · @r.AdminName · @r.Recipient</small>
+                            <small>@r.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm") · @r.AdminName · @r.Recipient (@(r.Channel == "InApp" ? "czat" : "e-mail"))</small>
                             <p>@r.Body</p>
                         </div>
                     }
@@ -152,7 +153,7 @@ else
             }
 
             <div class="admin-reply-box">
-                <span class="report-label">Odpowiedz e-mailem na @selectedMessage.Email</span>
+                <span class="report-label">Odpowiedź trafi na czat użytkownika (konto z adresem @selectedMessage.Email). Jeśli nadawca nie ma konta – zostanie wysłana e-mailem.</span>
                 <textarea class="admin-reply-textarea"
                           rows="4"
                           maxlength="@ChatConstants.MaxAdminReplyLength"
@@ -174,8 +175,8 @@ else
                     </button>
                 </div>
             </div>
-            <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
 
+            <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
                 <button type="button" class="admin-btn admin-btn-danger" @onclick="() => Delete(selectedMessage)">
                     Usuń
                 </button>
@@ -191,15 +192,16 @@ else
     private List<ContactMessageDTO>? messages;
     private ContactMessageDTO? selectedMessage;
     private string? message;
+
+    private string searchQuery = "";
+    private string statusFilter = "all";
+    private string subjectFilter = "";
+
     private List<AdminReplyDTO> replies = new();
     private string replyText = "";
     private string? replyMessage;
     private bool replyOk;
     private bool isSendingReply;
-
-    private string searchQuery = "";
-    private string statusFilter = "all";
-    private string subjectFilter = "";
 
     private IEnumerable<string> AvailableSubjects =>
         messages?
@@ -279,6 +281,7 @@ else
         else
             message = "Nie udało się zaktualizować statusu wiadomości.";
     }
+
     private async Task SendReplyAsync()
     {
         var target = selectedMessage;
@@ -303,7 +306,9 @@ else
 
             replyText = "";
             replyOk = true;
-            replyMessage = "Odpowiedź została wysłana e-mailem.";
+            replyMessage = reply.Channel == "InApp"
+                ? "Odpowiedź została wysłana na czat użytkownika."
+                : "Nadawca nie ma konta, więc odpowiedź została wysłana e-mailem.";
             target.IsRead = true;
         }
         else
@@ -312,6 +317,7 @@ else
             replyMessage = error ?? "Nie udało się wysłać odpowiedzi.";
         }
     }
+
     private async Task Delete(ContactMessageDTO item)
     {
         message = null;

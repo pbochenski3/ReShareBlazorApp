@@ -4,6 +4,8 @@
 @implements IDisposable
 @inject NotificationApiService NotificationApi
 @inject NavigationManager Navigation
+@inject ChatHubClient Hub
+@inject NotificationService Toast
 
 <div class="notification-center">
     <div class="notification-dropdown-wrapper">
@@ -88,6 +90,7 @@
     private bool isLoading;
     private bool disposed;
     private CancellationTokenSource? pollingCts;
+    private bool hubSubscribed;
 
     private int UnreadCount => notifications.Count(item => !item.IsRead);
     private string UnreadCountLabel => UnreadCount > 99 ? "99+" : UnreadCount.ToString();
@@ -101,10 +104,44 @@
             return;
 
         NotificationApi.NotificationsChanged += OnNotificationsChanged;
+        Hub.NotificationReceived += OnNotificationPushed;
+        hubSubscribed = true;
+
         await RefreshAsync();
 
         pollingCts = new CancellationTokenSource();
         _ = PollAsync(pollingCts.Token);
+
+        try
+        {
+            await Hub.EnsureConnectedAsync();
+        }
+        catch (Exception)
+        {
+            // Bez połączenia na żywo nadal działa odświeżanie co 45 sekund.
+        }
+    }
+
+    // Nowe powiadomienie z serwera (SignalR): dopisujemy je na górze listy i pokazujemy okienko.
+    private void OnNotificationPushed(NotificationDTO notification)
+    {
+        _ = InvokeAsync(() =>
+        {
+            if (disposed)
+                return;
+
+            if (notifications.All(item => item.Id != notification.Id))
+                notifications.Insert(0, notification);
+
+            // Gdy użytkownik już jest w czacie, nie pokazujemy okienka o nowej wiadomości.
+            var inChat = Navigation.Uri.Contains("/wiadomosci", StringComparison.OrdinalIgnoreCase)
+                || Navigation.Uri.Contains("/admin/support", StringComparison.OrdinalIgnoreCase);
+
+            if (!(notification.Type == NotificationType.NewMessage && inChat))
+                Toast.AddNotification(notification.Title, notification.Message);
+
+            StateHasChanged();
+        });
     }
 
     private async Task PollAsync(CancellationToken token)
@@ -118,10 +155,10 @@
                 if (disposed) return;
 
                 await InvokeAsync(() =>
-                                {
-                                    notifications = latest;
-                                    StateHasChanged();
-                                });
+                {
+                    notifications = latest;
+                    StateHasChanged();
+                });
             }
         }
         catch (OperationCanceledException) { }
@@ -191,5 +228,8 @@
         pollingCts?.Cancel();
         pollingCts?.Dispose();
         NotificationApi.NotificationsChanged -= OnNotificationsChanged;
+
+        if (hubSubscribed)
+            Hub.NotificationReceived -= OnNotificationPushed;
     }
 }

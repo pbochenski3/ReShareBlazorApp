@@ -14,6 +14,7 @@ namespace ReShareBlazorApp.Web.ApiServices
         private HubConnection? _connection;
 
         public event Action<ChatMessageDTO>? MessageReceived;
+        public event Action<NotificationDTO>? NotificationReceived;
         public event Action? ConnectionStateChanged;
 
         public ChatHubClient(IConfiguration configuration, AuthenticationStateProvider authStateProvider)
@@ -54,6 +55,11 @@ namespace ReShareBlazorApp.Web.ApiServices
                     _connection.On<ChatMessageDTO>("ReceiveMessage", message =>
                     {
                         MessageReceived?.Invoke(message);
+                    });
+
+                    _connection.On<NotificationDTO>("ReceiveNotification", notification =>
+                    {
+                        NotificationReceived?.Invoke(notification);
                     });
 
                     _connection.Reconnecting += _ =>
@@ -106,6 +112,7 @@ namespace ReShareBlazorApp.Web.ApiServices
         public async ValueTask DisposeAsync()
         {
             MessageReceived = null;
+            NotificationReceived = null;
             ConnectionStateChanged = null;
 
             if (_connection is not null)

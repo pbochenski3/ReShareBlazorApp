@@ -1,6 +1,9 @@
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
+using ReShareBlazorApp.Api.Hubs;
 using ReShareBlazorApp.Api.Interfaces.Services;
+using ReShareBlazorApp.Shared.DTOs;
 using ReShareBlazorApp.Shared.Enums;
 using System.Globalization;
 using System.Text;
@@ -10,10 +13,17 @@ namespace ReShareBlazorApp.Api.Services
     public class NotificationService : INotificationService
     {
         private readonly ReshareDbContext _context;
+        private readonly IHubContext<ChatHub> _hubContext;
+        private readonly ILogger<NotificationService> _logger;
 
-        public NotificationService(ReshareDbContext context)
+        public NotificationService(
+            ReshareDbContext context,
+            IHubContext<ChatHub> hubContext,
+            ILogger<NotificationService> logger)
         {
             _context = context;
+            _hubContext = hubContext;
+            _logger = logger;
         }
 
         public async Task CreateAsync(
@@ -25,7 +35,7 @@ namespace ReShareBlazorApp.Api.Services
             string? actorName = null,
             CancellationToken cancellationToken = default)
         {
-            _context.Notifications.Add(new Notification
+            var notification = new Notification
             {
                 UserId = userId,
                 ProductId = productId,
@@ -34,9 +44,12 @@ namespace ReShareBlazorApp.Api.Services
                 Title = Limit(title, 200),
                 Message = Limit(message, 1000),
                 CreatedAt = DateTime.UtcNow
-            });
+            };
 
+            _context.Notifications.Add(notification);
             await _context.SaveChangesAsync(cancellationToken);
+
+            await PushAsync(new[] { notification });
         }
 
         public async Task CreateForMatchingWantedListingsAsync(
@@ -80,6 +93,8 @@ namespace ReShareBlazorApp.Api.Services
 
             _context.Notifications.AddRange(matches);
             await _context.SaveChangesAsync(cancellationToken);
+
+            await PushAsync(matches);
         }
 
         public async Task CreateForMatchingOffersAsync(
@@ -123,6 +138,8 @@ namespace ReShareBlazorApp.Api.Services
 
             _context.Notifications.AddRange(matches);
             await _context.SaveChangesAsync(cancellationToken);
+
+            await PushAsync(matches);
         }
 
         public async Task<List<Notification>> GetForUserAsync(
@@ -198,6 +215,37 @@ namespace ReShareBlazorApp.Api.Services
             _context.Notifications.Remove(notification);
             await _context.SaveChangesAsync(cancellationToken);
             return true;
+        }
+
+        // Wysyła nowe powiadomienia na żywo do zalogowanego użytkownika (SignalR).
+        // Błąd wysyłki nie może zepsuć zapisu powiadomienia.
+        private async Task PushAsync(IEnumerable<Notification> notifications)
+        {
+            try
+            {
+                foreach (var notification in notifications)
+                {
+                    var dto = new NotificationDTO
+                    {
+                        Id = notification.Id,
+                        ProductId = notification.ProductId,
+                        ActorName = notification.ActorName,
+                        Type = notification.Type,
+                        Title = notification.Title,
+                        Message = notification.Message,
+                        CreatedAt = DateTime.SpecifyKind(notification.CreatedAt, DateTimeKind.Utc),
+                        IsRead = notification.IsRead
+                    };
+
+                    await _hubContext.Clients
+                        .Group(ChatHub.UserGroup(notification.UserId))
+                        .SendAsync("ReceiveNotification", dto);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Nie udało się wysłać powiadomienia przez SignalR.");
+            }
         }
 
         private static HashSet<string> GetWords(string value)

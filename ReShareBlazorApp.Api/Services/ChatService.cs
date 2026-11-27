@@ -321,8 +321,8 @@ namespace ReShareBlazorApp.Api.Services
                 IsRead = false
             };
 
-            await PublishAsync(conversation, senderId, dto);
-
+            // Najpierw powiadomienie, potem wiadomość: jeśli odbiorca ma otwarty czat,
+            // jego panel od razu oznaczy to powiadomienie jako przeczytane.
             if (recipientId.HasValue)
             {
                 if (isSupport)
@@ -340,6 +340,8 @@ namespace ReShareBlazorApp.Api.Services
                         $"{senderName} wysłał(a) do Ciebie wiadomość.");
                 }
             }
+
+            await PublishAsync(conversation, senderId, dto);
 
             return dto;
         }

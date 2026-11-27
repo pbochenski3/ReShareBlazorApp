@@ -3,6 +3,7 @@
 @using ReShareBlazorApp.Shared.Enums
 @using ReShareBlazorApp.Web.ApiServices
 @inject ChatApiService ChatApi
+@inject NotificationApiService NotificationApi
 @inject AdminSupportApiService SupportApi
 @inject ChatHubClient Hub
 @inject AuthenticationStateProvider AuthStateProvider
@@ -339,8 +340,16 @@
         messages = page;
         hasMore = page.Count >= PageSize;
 
-        await ChatApi.MarkAsReadAsync(id);
+        await MarkReadAsync(id);
         conv.UnreadCount = 0;
+    }
+
+    // Oznacza rozmowę jako przeczytaną. Serwer oznacza też powiadomienia o wiadomościach,
+    // więc odświeżamy dzwonek.
+    private async Task MarkReadAsync(int conversationId)
+    {
+        await ChatApi.MarkAsReadAsync(conversationId);
+        NotificationApi.NotifyNotificationsChanged();
     }
 
     private async Task LoadOlderAsync()
@@ -428,7 +437,7 @@
 
                 if (incoming)
                 {
-                    await ChatApi.MarkAsReadAsync(conv.Id);
+                    await MarkReadAsync(conv.Id);
                     conv.UnreadCount = 0;
                 }
             }
@@ -474,7 +483,7 @@
             {
                 messages = page;
                 hasMore = page.Count >= PageSize;
-                await ChatApi.MarkAsReadAsync(activeId);
+                await MarkReadAsync(activeId);
                 if (active is not null)
                     active.UnreadCount = 0;
             }
