@@ -35,6 +35,9 @@ builder.Services.AddScoped<AdminApiService>();
 builder.Services.AddScoped<PromoBannerApiService>();
 
 builder.Services.AddScoped<BadgeApiService>();
+builder.Services.AddScoped<ChatApiService>();
+builder.Services.AddScoped<ChatHubClient>();
+builder.Services.AddScoped<AdminSupportApiService>();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

@@ -6,6 +6,7 @@
 @using ReShareBlazorApp.Web.ApiServices
 @attribute [Authorize(Roles = "Admin")]
 @inject ReportApiService reportApi
+@inject AdminSupportApiService supportApi
 
 <h1 class="admin-title">Zgłoszenia</h1>
 
@@ -84,6 +85,39 @@ else
 
                                 <span class="report-label">Treść zgłoszenia</span>
                                 <p class="report-description">@report.Description</p>
+
+                                @if (replies.Count > 0)
+                                {
+                                    <div class="admin-reply-history">
+                                        <span class="report-label">Wysłane odpowiedzi</span>
+                                        @foreach (var r in replies)
+                                        {
+                                            <div class="admin-reply-item">
+                                                <small>@r.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm") · @r.AdminName</small>
+                                                <p>@r.Body</p>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                <div class="admin-reply-box">
+                                    <span class="report-label">Odpowiedz zgłaszającemu (@report.ReportedBy) – wiadomość w serwisie</span>
+                                    <textarea class="admin-reply-textarea"
+                                              rows="3"
+                                              maxlength="@ChatConstants.MaxAdminReplyLength"
+                                              placeholder="Treść odpowiedzi…"
+                                              @bind="replyText"
+                                              @bind:event="oninput"></textarea>
+                                    <div>
+                                        <button type="button"
+                                                class="admin-btn admin-btn-primary"
+                                                disabled="@(isSendingReply || string.IsNullOrWhiteSpace(replyText))"
+                                                @onclick="() => SendReplyAsync(report)">
+                                            @(isSendingReply ? "Wysyłanie…" : "Wyślij odpowiedź")
+                                        </button>
+                                        <a class="admin-btn" href="/admin/support">Przejdź do rozmów</a>
+                                    </div>
+                                </div>
 
                                 <div class="admin-detail-actions">
                                     <a class="admin-btn"
@@ -171,6 +205,9 @@ else
     private bool pendingDeleteProduct;
     private string? message;
     private bool messageOk;
+    private List<AdminReplyDTO> replies = new();
+    private string replyText = "";
+    private bool isSendingReply;
 
     protected override async Task OnInitializedAsync()
     {
@@ -185,15 +222,54 @@ else
         isLoading = false;
     }
 
-    private void ToggleReport(int reportId)
+    private async Task ToggleReport(int reportId)
     {
-        expandedReportId = expandedReportId == reportId ? null : reportId;
+        if (expandedReportId == reportId)
+        {
+            expandedReportId = null;
+            return;
+        }
+
+        expandedReportId = reportId;
+        replyText = "";
+        replies = new List<AdminReplyDTO>();
+
+        var loaded = await supportApi.GetReportRepliesAsync(reportId);
+        if (expandedReportId == reportId)
+            replies = loaded;
     }
 
-    private void OnRowKeyDown(KeyboardEventArgs e, int reportId)
+    private async Task OnRowKeyDown(KeyboardEventArgs e, int reportId)
     {
         if (e.Key == "Enter")
-            ToggleReport(reportId);
+            await ToggleReport(reportId);
+    }
+
+    private async Task SendReplyAsync(ReportDTO report)
+    {
+        if (isSendingReply)
+            return;
+
+        var text = replyText.Trim();
+        if (text.Length == 0)
+            return;
+
+        isSendingReply = true;
+        var (success, error, reply) = await supportApi.ReplyToReportAsync(report.ReportId, text);
+        isSendingReply = false;
+
+        if (success && reply is not null)
+        {
+            if (expandedReportId == report.ReportId)
+                replies.Add(reply);
+
+            replyText = "";
+            SetMessage($"Odpowiedź została wysłana do użytkownika {report.ReportedBy}.", true);
+        }
+        else
+        {
+            SetMessage(error ?? "Nie udało się wysłać odpowiedzi.", false);
+        }
     }
 
     private void AskDismiss(ReportDTO report)

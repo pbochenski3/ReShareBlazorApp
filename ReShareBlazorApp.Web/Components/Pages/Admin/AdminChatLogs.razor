@@ -1,0 +1,175 @@
+﻿@page "/admin/chat-logs"
+@layout AdminLayout
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@attribute [Authorize(Roles = "Admin")]
+@inject AdminSupportApiService supportApi
+
+<h1 class="admin-title">Logi wiadomości</h1>
+
+<p class="admin-muted" style="margin-bottom:16px;">
+    Treść wiadomości jest w bazie przechowywana w postaci zaszyfrowanej. Lista pokazuje tylko dane
+    techniczne. Odszyfrowanie pojedynczego wpisu zostaje zapisane w „Logach” (logi aktywności).
+</p>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="admin-alert">@message</div>
+}
+
+<div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:16px;">
+    <input class="admin-search"
+           style="margin-bottom:0; max-width:220px;"
+           type="number"
+           min="1"
+           placeholder="ID użytkownika"
+           @bind="userIdFilter" />
+
+    <button type="button" class="admin-btn admin-btn-primary" @onclick="SearchAsync">Szukaj</button>
+
+    @if (userIdFilter.HasValue)
+    {
+        <button type="button" class="admin-btn" @onclick="ClearAsync">Wyczyść</button>
+    }
+</div>
+
+@if (isLoading)
+{
+    <p class="admin-muted">Ładowanie...</p>
+}
+else if (logPage is null)
+{
+    <div class="admin-alert">Nie udało się pobrać logów. Sprawdź, czy API działa.</div>
+}
+else if (logPage.Items.Count == 0)
+{
+    <p class="admin-muted">Brak wpisów.</p>
+}
+else
+{
+    <p class="admin-muted" style="margin-bottom:12px;">
+        Wpisy @(skip + 1)–@(skip + logPage.Items.Count) z @logPage.Total
+    </p>
+
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Typ</th>
+                    <th>Nadawca</th>
+                    <th>Odbiorca</th>
+                    <th>Rozmowa</th>
+                    <th>IP</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in logPage.Items)
+                {
+                    <tr>
+                        <td>@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
+                        <td>@ActionLabel(item.Action)</td>
+                        <td>@item.SenderName <small class="admin-muted">#@item.SenderId</small></td>
+                        <td>@item.RecipientName</td>
+                        <td>#@item.ConversationId</td>
+                        <td>@(item.IpAddress ?? "-")</td>
+                        <td class="admin-actions">
+                            <button type="button" class="admin-btn" @onclick="() => ToggleContentAsync(item.Id)">
+                                @(revealed.ContainsKey(item.Id) ? "Ukryj treść" : "Pokaż treść")
+                            </button>
+                        </td>
+                    </tr>
+
+                    @if (revealed.TryGetValue(item.Id, out var content))
+                    {
+                        <tr>
+                            <td colspan="7" style="white-space:pre-wrap; overflow-wrap:anywhere;">@content</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:16px;">
+        <button type="button" class="admin-btn" disabled="@(skip == 0)" @onclick="PreviousAsync">← Nowsze</button>
+        <button type="button" class="admin-btn" disabled="@(skip + PageSize >= logPage.Total)" @onclick="NextAsync">Starsze →</button>
+    </div>
+}
+
+@code {
+    private const int PageSize = 50;
+
+    private ChatLogPageDTO? logPage;
+    private bool isLoading = true;
+    private string? message;
+    private int skip;
+    private int? userIdFilter;
+    private int? appliedUserId;
+    private readonly Dictionary<int, string> revealed = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        message = null;
+        revealed.Clear();
+
+        logPage = await supportApi.GetChatLogsAsync(skip, PageSize, appliedUserId);
+        isLoading = false;
+    }
+
+    private async Task SearchAsync()
+    {
+        appliedUserId = userIdFilter;
+        skip = 0;
+        await LoadAsync();
+    }
+
+    private async Task ClearAsync()
+    {
+        userIdFilter = null;
+        appliedUserId = null;
+        skip = 0;
+        await LoadAsync();
+    }
+
+    private async Task NextAsync()
+    {
+        skip += PageSize;
+        await LoadAsync();
+    }
+
+    private async Task PreviousAsync()
+    {
+        skip = Math.Max(0, skip - PageSize);
+        await LoadAsync();
+    }
+
+    private async Task ToggleContentAsync(int id)
+    {
+        message = null;
+
+        if (revealed.Remove(id))
+            return;
+
+        var content = await supportApi.GetChatLogContentAsync(id);
+        if (content is null)
+            message = "Nie udało się odszyfrować tego wpisu.";
+        else
+            revealed[id] = content;
+    }
+
+    private static string ActionLabel(string action) => action switch
+    {
+        "Sent" => "Użytkownik → użytkownik",
+        "SupportSent" => "Użytkownik → administracja",
+        "SupportReply" => "Administracja → użytkownik",
+        _ => action
+    };
+}

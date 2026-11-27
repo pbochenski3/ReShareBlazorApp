@@ -5,6 +5,7 @@
 @using ReShareBlazorApp.Web.ApiServices
 @attribute [Authorize(Roles = "Admin")]
 @inject ContactApiService contactApi
+@inject AdminSupportApiService supportApi
 
 <h1 class="admin-title">Wiadomości kontaktowe</h1>
 
@@ -136,8 +137,45 @@ else
             <div style="background:#f8f9fa; border:1px solid #e5e7eb; border-radius:8px; padding:16px; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; font-size:1rem;">
                 @selectedMessage.Message
             </div>
+            @if (replies.Count > 0)
+            {
+                <div class="admin-reply-history">
+                    <span class="report-label">Wysłane odpowiedzi</span>
+                    @foreach (var r in replies)
+                    {
+                        <div class="admin-reply-item">
+                            <small>@r.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm") · @r.AdminName · @r.Recipient</small>
+                            <p>@r.Body</p>
+                        </div>
+                    }
+                </div>
+            }
 
+            <div class="admin-reply-box">
+                <span class="report-label">Odpowiedz e-mailem na @selectedMessage.Email</span>
+                <textarea class="admin-reply-textarea"
+                          rows="4"
+                          maxlength="@ChatConstants.MaxAdminReplyLength"
+                          placeholder="Treść odpowiedzi…"
+                          @bind="replyText"
+                          @bind:event="oninput"></textarea>
+
+                @if (!string.IsNullOrEmpty(replyMessage))
+                {
+                    <div class="admin-alert @(replyOk ? "admin-alert-success" : "")">@replyMessage</div>
+                }
+
+                <div>
+                    <button type="button"
+                            class="admin-btn admin-btn-primary"
+                            disabled="@(isSendingReply || string.IsNullOrWhiteSpace(replyText))"
+                            @onclick="SendReplyAsync">
+                        @(isSendingReply ? "Wysyłanie…" : "Wyślij odpowiedź")
+                    </button>
+                </div>
+            </div>
             <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+
                 <button type="button" class="admin-btn admin-btn-danger" @onclick="() => Delete(selectedMessage)">
                     Usuń
                 </button>
@@ -153,6 +191,11 @@ else
     private List<ContactMessageDTO>? messages;
     private ContactMessageDTO? selectedMessage;
     private string? message;
+    private List<AdminReplyDTO> replies = new();
+    private string replyText = "";
+    private string? replyMessage;
+    private bool replyOk;
+    private bool isSendingReply;
 
     private string searchQuery = "";
     private string statusFilter = "all";
@@ -209,10 +252,18 @@ else
     private async Task OpenMessage(ContactMessageDTO item)
     {
         selectedMessage = item;
+        replyText = "";
+        replyMessage = null;
+        replies = new List<AdminReplyDTO>();
+
         if (!item.IsRead)
         {
             await MarkRead(item);
         }
+
+        var loaded = await supportApi.GetContactRepliesAsync(item.Id);
+        if (selectedMessage?.Id == item.Id)
+            replies = loaded;
     }
 
     private void CloseMessage()
@@ -228,7 +279,39 @@ else
         else
             message = "Nie udało się zaktualizować statusu wiadomości.";
     }
+    private async Task SendReplyAsync()
+    {
+        var target = selectedMessage;
+        if (target is null || isSendingReply)
+            return;
 
+        var text = replyText.Trim();
+        if (text.Length == 0)
+            return;
+
+        isSendingReply = true;
+        replyMessage = null;
+
+        var (success, error, reply) = await supportApi.ReplyToContactAsync(target.Id, text);
+
+        isSendingReply = false;
+
+        if (success && reply is not null)
+        {
+            if (selectedMessage?.Id == target.Id)
+                replies.Add(reply);
+
+            replyText = "";
+            replyOk = true;
+            replyMessage = "Odpowiedź została wysłana e-mailem.";
+            target.IsRead = true;
+        }
+        else
+        {
+            replyOk = false;
+            replyMessage = error ?? "Nie udało się wysłać odpowiedzi.";
+        }
+    }
     private async Task Delete(ContactMessageDTO item)
     {
         message = null;
