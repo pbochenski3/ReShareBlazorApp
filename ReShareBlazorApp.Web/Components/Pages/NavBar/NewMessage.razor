@@ -4,20 +4,27 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 
-<PageTitle>Nowa wiadomość – ODDAJ DALEJ</PageTitle>
+<PageTitle>Wiadomości – ODDAJ DALEJ</PageTitle>
 
-@* Strona celowo pusta – tu później powstanie okno pisania wiadomości. *@
-@* Poniższy blok służy tylko do sprawdzenia, czy ID dotarły; można go usunąć. *@
-<div class="home-container" style="padding: 2rem 0;">
-    <p>Piszący (ID): @SenderId</p>
-    <p>Wystawiający ogłoszenie (ID): @RecipientId</p>
-    <p>Ogłoszenie (ID): @ProductId</p>
-</div>
+@if (isValid)
+{
+    <section class="home-section">
+        <div class="home-container">
+            <ChatPanel BasePath="/wiadomosci"
+                       RecipientId="RecipientId"
+                       ProductId="ProductId" />
+        </div>
+    </section>
+
+    <SiteFooter />
+}
 
 @code {
     [Parameter] public int SenderId { get; set; }
     [Parameter] public int RecipientId { get; set; }
     [Parameter] public int ProductId { get; set; }
+
+    private bool isValid;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -30,7 +37,11 @@
             || loggedUserId != SenderId
             || SenderId == RecipientId)
         {
+            isValid = false;
             Navigation.NavigateTo("/");
+            return;
         }
+
+        isValid = true;
     }
 }

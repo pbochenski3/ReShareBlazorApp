@@ -1,93 +1,17 @@
 @page "/wiadomosci"
+@page "/wiadomosci/{ConversationId:int}"
+@attribute [Authorize]
 
 <PageTitle>Wiadomości – ODDAJ DALEJ</PageTitle>
 
 <section class="home-section">
     <div class="home-container">
-        <div class="chat">
-
-            <!-- Lista rozmów -->
-            <aside class="chat-list">
-                <div class="chat-list-search">
-                    <input type="search" placeholder="Szukaj w rozmowach" aria-label="Szukaj w rozmowach" />
-                </div>
-
-                <ul>
-                    <li class="chat-item active">
-                        <span class="avatar">AK</span>
-                        <div class="chat-item-text">
-                            <strong>Anna Kowalska</strong>
-                            <span>Czy bilety są nadal dostępne?</span>
-                        </div>
-                        <span class="chat-item-meta">
-                            <time>12:40</time>
-                            <span class="badge">2</span>
-                        </span>
-                    </li>
-                    <li class="chat-item">
-                        <span class="avatar">MN</span>
-                        <div class="chat-item-text">
-                            <strong>Marek Nowak</strong>
-                            <span>Super, w takim razie do piątku.</span>
-                        </div>
-                        <span class="chat-item-meta"><time>wczoraj</time></span>
-                    </li>
-                    <li class="chat-item">
-                        <span class="avatar">EW</span>
-                        <div class="chat-item-text">
-                            <strong>Ewa Wiśniewska</strong>
-                            <span>Mogę odebrać wózek w sobotę.</span>
-                        </div>
-                        <span class="chat-item-meta"><time>pon.</time></span>
-                    </li>
-                </ul>
-            </aside>
-
-            <!-- Okno rozmowy -->
-            <div class="chat-window">
-                <header class="chat-window-head">
-                    <span class="avatar">AK</span>
-                    <div>
-                        <strong>Anna Kowalska</strong>
-                        <p>Dotyczy: 2 bilety na koncert – Kraków</p>
-                    </div>
-                    <div class="chat-window-actions">
-                        <button class="home-btn home-btn-outline" type="button">Zablokuj</button>
-                        <button class="home-btn home-btn-outline" type="button">Zgłoś rozmowę</button>
-                    </div>
-                </header>
-
-                <div class="chat-messages">
-                    <div class="msg msg-in">
-                        <p>Dzień dobry, czy bilety są nadal dostępne?</p>
-                        <time>12:38</time>
-                    </div>
-                    <div class="msg msg-out">
-                        <p>Dzień dobry, tak. Oba są jeszcze do odebrania.</p>
-                        <time>12:39</time>
-                    </div>
-                    <div class="msg msg-offer">
-                        <strong>Propozycja ceny: 220 zł</strong>
-                        <div class="msg-offer-actions">
-                            <button class="home-btn home-btn-primary" type="button">Akceptuję</button>
-                            <button class="home-btn home-btn-outline" type="button">Odrzucam</button>
-                        </div>
-                    </div>
-                    <div class="msg msg-in">
-                        <p>Czy możemy się spotkać jutro po pracy?</p>
-                        <time>12:40</time>
-                    </div>
-                </div>
-
-                <form class="chat-form">
-                    <button class="chat-icon-btn" type="button" aria-label="Dodaj zdjęcie">📎</button>
-                    <input type="text" placeholder="Napisz wiadomość" aria-label="Wiadomość" />
-                    <button class="home-btn home-btn-outline" type="button">Zaproponuj cenę</button>
-                    <button class="home-btn home-btn-primary" type="submit">Wyślij</button>
-                </form>
-            </div>
-        </div>
+        <ChatPanel BasePath="/wiadomosci" SelectedConversationId="ConversationId" />
     </div>
 </section>
 
 <SiteFooter />
+
+@code {
+    [Parameter] public int? ConversationId { get; set; }
+}

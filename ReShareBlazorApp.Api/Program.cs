@@ -5,11 +5,13 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using ReShareBlazorApp.Api.Data;
 using ReShareBlazorApp.Api.Date;
+using ReShareBlazorApp.Api.Hubs;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Api.Middleware;
 using ReShareBlazorApp.Api.Repositories;
 using ReShareBlazorApp.Api.Services;
+using ReShareBlazorApp.Shared.DTOs;
 using Stripe;
 using System.Text;
 
@@ -70,6 +72,23 @@ builder.Services
                 )
             )
         };
+
+        // SignalR (WebSocket) nie wysyła nagłówka Authorization - token jest w query stringu.
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
     });
 
 // Services
@@ -93,6 +112,18 @@ if (string.IsNullOrWhiteSpace(stripeSecretKey))
 builder.Services.AddSingleton(new StripeClient(stripeSecretKey));
 
 builder.Services.AddScoped<StripeCheckoutService>();
+
+// Czat: SignalR + szyfrowanie wiadomości
+var chatEncryptionKey = builder.Configuration["Chat:EncryptionKey"];
+if (string.IsNullOrWhiteSpace(chatEncryptionKey))
+{
+    throw new InvalidOperationException(
+        "Chat:EncryptionKey is not configured.");
+}
+
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IMessageEncryptionService>(new MessageEncryptionService(chatEncryptionKey));
+builder.Services.AddScoped<IChatService, ChatService>();
 
 
 // Repositories
@@ -137,12 +168,11 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseAuthentication();
 
-// NAPRAWIONE: Middleware sprawdzające blokadę użytkownika musi być uruchomione 
-// PO Uwierzytelnieniu (żeby znać User.Identity), ale PRZED Autoryzacją.
 app.UseMiddleware<UserBlockCheckMiddleware>();
 
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>(ChatConstants.HubPath);
 
 app.Run();

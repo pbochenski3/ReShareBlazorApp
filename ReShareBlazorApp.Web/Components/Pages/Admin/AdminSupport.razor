@@ -1,0 +1,16 @@
+﻿@page "/admin/support"
+@page "/admin/support/{ConversationId:int}"
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+
+<h1 class="admin-title">Rozmowy z użytkownikami</h1>
+<p class="admin-muted" style="margin-bottom:16px;">
+    Rozmowy powstają po odpowiedzi na zgłoszenie (zakładka „Zgłoszenia”). Użytkownik może odpisać,
+    a Ty odpowiadasz tutaj. Wiadomości przychodzą na żywo.
+</p>
+
+<ChatPanel AdminMode="true" BasePath="/admin/support" SelectedConversationId="ConversationId" />
+
+@code {
+    [Parameter] public int? ConversationId { get; set; }
+}

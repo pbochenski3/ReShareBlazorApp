@@ -1,0 +1,544 @@
+﻿@using System.Security.Claims
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Shared.Enums
+@using ReShareBlazorApp.Web.ApiServices
+@inject ChatApiService ChatApi
+@inject AdminSupportApiService SupportApi
+@inject ChatHubClient Hub
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<div class="chat">
+
+    <!-- Lista rozmów -->
+    <aside class="chat-list">
+        <div class="chat-list-search">
+            <input type="search"
+                   placeholder="Szukaj w rozmowach"
+                   aria-label="Szukaj w rozmowach"
+                   @bind="search"
+                   @bind:event="oninput" />
+        </div>
+
+        @if (isLoading)
+        {
+            <p class="chat-empty">Ładowanie rozmów…</p>
+        }
+        else if (loadError is not null)
+        {
+            <p class="chat-empty chat-error">@loadError</p>
+        }
+        else if (!FilteredConversations.Any())
+        {
+            <p class="chat-empty">
+                @(AdminMode
+                    ? "Brak rozmów z użytkownikami. Pojawią się tu po odpowiedzi na zgłoszenie."
+                    : "Nie masz jeszcze żadnych rozmów. Napisz do wystawiającego z poziomu ogłoszenia.")
+            </p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var conv in FilteredConversations)
+                {
+                    <li class="chat-item @(active?.Id == conv.Id ? "active" : "")"
+                        @onclick="() => SelectConversation(conv.Id)">
+                        @if (!string.IsNullOrEmpty(conv.OtherUserAvatarUrl))
+                        {
+                            <img class="avatar avatar-img" src="@conv.OtherUserAvatarUrl" alt="" />
+                        }
+                        else
+                        {
+                            <span class="avatar">@Initials(conv.OtherUserName)</span>
+                        }
+                        <div class="chat-item-text">
+                            <strong>@conv.OtherUserName</strong>
+                            <span>@conv.LastMessage</span>
+                        </div>
+                        <span class="chat-item-meta">
+                            <time>@FormatListTime(conv.LastMessageAt)</time>
+                            @if (conv.UnreadCount > 0)
+                            {
+                                <span class="badge">@conv.UnreadCount</span>
+                            }
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+    </aside>
+
+    <!-- Okno rozmowy -->
+    <div class="chat-window">
+        @if (active is null)
+        {
+            <div class="chat-window-empty">
+                @if (windowError is not null)
+                {
+                    <p class="chat-error">@windowError</p>
+                }
+                else
+                {
+                    <p>Wybierz rozmowę z listy po lewej stronie.</p>
+                }
+            </div>
+        }
+        else
+        {
+            <header class="chat-window-head">
+                @if (!string.IsNullOrEmpty(active.OtherUserAvatarUrl))
+                {
+                    <img class="avatar avatar-img" src="@active.OtherUserAvatarUrl" alt="" />
+                }
+                else
+                {
+                    <span class="avatar">@Initials(active.OtherUserName)</span>
+                }
+
+                <div>
+                    @if (active.OtherUserId.HasValue)
+                    {
+                        <a href="@($"/user/{Uri.EscapeDataString(active.OtherUserName)}")"><strong>@active.OtherUserName</strong></a>
+                    }
+                    else
+                    {
+                        <strong>@active.OtherUserName</strong>
+                    }
+
+                    @if (active.ProductId.HasValue)
+                    {
+                        <p>Dotyczy: <a href="@($"/details/{active.ProductId.Value}")">@(active.ProductName ?? "ogłoszenie")</a></p>
+                    }
+                    else if (active.Type == ConversationType.Support)
+                    {
+                        <p>@(AdminMode ? "Rozmowa wsparcia z użytkownikiem" : "Wiadomości od administracji serwisu")</p>
+                    }
+                </div>
+
+                @if (connectionProblem)
+                {
+                    <div class="chat-window-actions">
+                        <span class="chat-status">Brak połączenia z czatem – próbuję połączyć ponownie…</span>
+                    </div>
+                }
+            </header>
+
+            <div class="chat-messages chat-messages-bottom">
+                <div class="chat-messages-inner">
+                    @if (hasMore)
+                    {
+                        <button type="button" class="chat-load-more" @onclick="LoadOlderAsync">Wczytaj starsze wiadomości</button>
+                    }
+
+                    @if (messages.Count == 0)
+                    {
+                        <p class="chat-empty">Brak wiadomości. Napisz pierwszą!</p>
+                    }
+
+                    @foreach (var m in messages)
+                    {
+                        var mine = m.SenderId == currentUserId;
+                        <div class="msg @(mine ? "msg-out" : "msg-in")">
+                            @if (!mine && active.Type == ConversationType.Support)
+                            {
+                                <strong class="msg-sender">@m.SenderName</strong>
+                            }
+                            <p class="msg-text">@m.Content</p>
+                            <time>@FormatMessageTime(m.SentAt)</time>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (sendError is not null)
+            {
+                <div class="chat-error chat-send-error">@sendError</div>
+            }
+
+            <form class="chat-form" @onsubmit="SendAsync">
+                <input type="text"
+                       placeholder="Napisz wiadomość"
+                       aria-label="Wiadomość"
+                       autocomplete="off"
+                       maxlength="@ChatConstants.MaxMessageLength"
+                       @bind="newMessage"
+                       @bind:event="oninput" />
+                <button class="home-btn home-btn-primary"
+                        type="submit"
+                        disabled="@(isSending || string.IsNullOrWhiteSpace(newMessage))">
+                    Wyślij
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+@code {
+    // true = widok administratora (rozmowy wsparcia z użytkownikami)
+    [Parameter] public bool AdminMode { get; set; }
+    // "/wiadomosci" albo "/admin/support"
+    [Parameter] public string BasePath { get; set; } = "/wiadomosci";
+    [Parameter] public int? SelectedConversationId { get; set; }
+
+    // Otwarcie czatu na podstawie ID (przycisk "Napisz wiadomość" w ogłoszeniu)
+    [Parameter] public int? RecipientId { get; set; }
+    [Parameter] public int? ProductId { get; set; }
+    private bool startedWithRecipient;
+
+    private const int PageSize = 50;
+
+    private List<ConversationDTO> conversations = new();
+    private ConversationDTO? active;
+    private List<ChatMessageDTO> messages = new();
+    private readonly HashSet<int> seenMessageIds = new();
+
+    private string search = string.Empty;
+    private string newMessage = string.Empty;
+    private string? loadError;
+    private string? windowError;
+    private string? sendError;
+
+    private bool isLoading = true;
+    private bool isSending;
+    private bool hasMore;
+    private bool connectionProblem;
+    private bool subscribed;
+
+    private int currentUserId;
+    private int? openedConversationId;
+
+    private IEnumerable<ConversationDTO> FilteredConversations
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(search))
+                return conversations;
+
+            var q = search.Trim();
+            return conversations.Where(c =>
+                c.OtherUserName.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || c.LastMessage.Contains(q, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        int.TryParse(state.User.FindFirstValue(ClaimTypes.NameIdentifier), out currentUserId);
+
+        var list = AdminMode
+            ? await SupportApi.GetSupportConversationsAsync()
+            : await ChatApi.GetConversationsAsync();
+
+        if (list is null)
+            loadError = "Nie udało się pobrać rozmów. Sprawdź, czy API działa.";
+        else
+            conversations = list;
+
+        isLoading = false;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Tryb "nowa wiadomość": znajdź lub utwórz rozmowę z autorem ogłoszenia i od razu ją otwórz.
+        if (RecipientId.HasValue && !AdminMode)
+        {
+            if (!startedWithRecipient)
+            {
+                startedWithRecipient = true;
+
+                int? productId = ProductId is > 0 ? ProductId : null;
+                var (conversation, error) = await ChatApi.StartConversationAsync(RecipientId.Value, productId);
+
+                if (conversation is null)
+                {
+                    windowError = error ?? "Nie udało się otworzyć rozmowy.";
+                    return;
+                }
+
+                await OpenConversationAsync(conversation.Id);
+            }
+
+            return;
+        }
+
+        if (SelectedConversationId == openedConversationId)
+            return;
+
+        openedConversationId = SelectedConversationId;
+
+        if (SelectedConversationId.HasValue)
+        {
+            await OpenConversationAsync(SelectedConversationId.Value);
+        }
+        else
+        {
+            active = null;
+            messages = new List<ChatMessageDTO>();
+            hasMore = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Połączenie z hubem tylko w trybie interaktywnym (nie podczas prerenderingu).
+        if (!firstRender)
+            return;
+
+        Hub.MessageReceived += OnMessageReceived;
+        Hub.ConnectionStateChanged += OnConnectionStateChanged;
+        subscribed = true;
+
+        try
+        {
+            await Hub.EnsureConnectedAsync();
+        }
+        catch (Exception)
+        {
+            connectionProblem = true;
+            StateHasChanged();
+        }
+    }
+
+    private void SelectConversation(int id)
+    {
+        Navigation.NavigateTo($"{BasePath}/{id}");
+    }
+
+    private async Task OpenConversationAsync(int id)
+    {
+        windowError = null;
+        sendError = null;
+
+        var conv = conversations.FirstOrDefault(c => c.Id == id);
+        if (conv is null)
+        {
+            conv = await ChatApi.GetConversationAsync(id);
+            if (conv is null)
+            {
+                active = null;
+                messages = new List<ChatMessageDTO>();
+                windowError = "Nie znaleziono rozmowy.";
+                return;
+            }
+
+            conversations.Insert(0, conv);
+        }
+
+        var page = await ChatApi.GetMessagesAsync(id, null, PageSize);
+        if (page is null)
+        {
+            active = null;
+            messages = new List<ChatMessageDTO>();
+            windowError = "Nie udało się pobrać wiadomości.";
+            return;
+        }
+
+        active = conv;
+        messages = page;
+        hasMore = page.Count >= PageSize;
+
+        await ChatApi.MarkAsReadAsync(id);
+        conv.UnreadCount = 0;
+    }
+
+    private async Task LoadOlderAsync()
+    {
+        if (active is null || messages.Count == 0)
+            return;
+
+        var older = await ChatApi.GetMessagesAsync(active.Id, messages[0].Id, PageSize);
+        if (older is null)
+            return;
+
+        messages.InsertRange(0, older);
+        hasMore = older.Count >= PageSize;
+    }
+
+    private async Task SendAsync()
+    {
+        if (active is null || isSending)
+            return;
+
+        var text = newMessage.Trim();
+        if (text.Length == 0)
+            return;
+
+        isSending = true;
+        sendError = null;
+
+        var (success, error) = await Hub.SendMessageAsync(active.Id, text);
+
+        if (success)
+            newMessage = string.Empty;
+        else
+            sendError = error;
+
+        isSending = false;
+        connectionProblem = !Hub.IsConnected;
+    }
+
+    private void OnMessageReceived(ChatMessageDTO message)
+    {
+        _ = InvokeAsync(() => HandleIncomingAsync(message));
+    }
+
+    private async Task HandleIncomingAsync(ChatMessageDTO m)
+    {
+        try
+        {
+            // Ta sama wiadomość może przyjść dwa razy (dwie grupy) - liczymy ją raz.
+            if (!seenMessageIds.Add(m.Id))
+                return;
+            if (seenMessageIds.Count > 2000)
+                seenMessageIds.Clear();
+
+            var conv = conversations.FirstOrDefault(c => c.Id == m.ConversationId);
+            var isNew = false;
+
+            if (conv is null)
+            {
+                var fetched = await ChatApi.GetConversationAsync(m.ConversationId);
+                if (fetched is null || !IsRelevant(fetched))
+                    return;
+
+                conv = fetched;
+                conversations.Insert(0, conv);
+                isNew = true;
+            }
+            else
+            {
+                if (conversations.IndexOf(conv) > 0)
+                {
+                    conversations.Remove(conv);
+                    conversations.Insert(0, conv);
+                }
+
+                conv.LastMessage = ToPreview(m.Content);
+                conv.LastMessageAt = m.SentAt;
+            }
+
+            var incoming = IsIncoming(m, conv);
+
+            if (active?.Id == conv.Id)
+            {
+                if (messages.All(x => x.Id != m.Id))
+                    messages.Add(m);
+
+                if (incoming)
+                {
+                    await ChatApi.MarkAsReadAsync(conv.Id);
+                    conv.UnreadCount = 0;
+                }
+            }
+            else if (incoming && !isNew)
+            {
+                conv.UnreadCount++;
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            // Błąd pojedynczej wiadomości nie może przerwać działania czatu.
+        }
+    }
+
+    private void OnConnectionStateChanged()
+    {
+        _ = InvokeAsync(OnConnectionChangedAsync);
+    }
+
+    private async Task OnConnectionChangedAsync()
+    {
+        connectionProblem = !Hub.IsConnected;
+
+        // Po wznowieniu połączenia dociągamy wiadomości, które mogły nas ominąć.
+        if (Hub.IsConnected && active is not null)
+        {
+            var activeId = active.Id;
+
+            var list = AdminMode
+                ? await SupportApi.GetSupportConversationsAsync()
+                : await ChatApi.GetConversationsAsync();
+
+            if (list is not null)
+            {
+                conversations = list;
+                active = conversations.FirstOrDefault(c => c.Id == activeId) ?? active;
+            }
+
+            var page = await ChatApi.GetMessagesAsync(activeId, null, PageSize);
+            if (page is not null)
+            {
+                messages = page;
+                hasMore = page.Count >= PageSize;
+                await ChatApi.MarkAsReadAsync(activeId);
+                if (active is not null)
+                    active.UnreadCount = 0;
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private bool IsRelevant(ConversationDTO conv)
+    {
+        var isAdminSupportView = conv.Type == ConversationType.Support && conv.OtherUserId.HasValue;
+        return AdminMode ? isAdminSupportView : !isAdminSupportView;
+    }
+
+    private bool IsIncoming(ChatMessageDTO m, ConversationDTO conv) =>
+        AdminMode
+            ? conv.OtherUserId.HasValue && m.SenderId == conv.OtherUserId.Value
+            : m.SenderId != currentUserId;
+
+    private static string ToPreview(string text)
+    {
+        var flat = text.Replace("\r", " ").Replace("\n", " ").Trim();
+        return flat.Length <= 80 ? flat : flat[..80] + "…";
+    }
+
+    private static string Initials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "?";
+
+        var trimmed = name.Trim();
+        var parts = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        return parts.Length >= 2
+            ? $"{char.ToUpper(parts[0][0])}{char.ToUpper(parts[1][0])}"
+            : trimmed[..Math.Min(2, trimmed.Length)].ToUpper();
+    }
+
+    private static string FormatListTime(DateTime utc)
+    {
+        var local = utc.ToLocalTime();
+        var today = DateTime.Now.Date;
+
+        if (local.Date == today)
+            return local.ToString("HH:mm");
+        if (local.Date == today.AddDays(-1))
+            return "wczoraj";
+        return local.ToString("dd.MM");
+    }
+
+    private static string FormatMessageTime(DateTime utc)
+    {
+        var local = utc.ToLocalTime();
+        return local.Date == DateTime.Now.Date
+            ? local.ToString("HH:mm")
+            : local.ToString("dd.MM HH:mm");
+    }
+
+    public void Dispose()
+    {
+        if (!subscribed)
+            return;
+
+        Hub.MessageReceived -= OnMessageReceived;
+        Hub.ConnectionStateChanged -= OnConnectionStateChanged;
+    }
+}

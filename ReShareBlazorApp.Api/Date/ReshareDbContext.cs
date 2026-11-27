@@ -24,6 +24,10 @@ namespace ReShareBlazorApp.Api.Date
         public DbSet<UserBadge> UserBadges { get; set; }
         public DbSet<FavoriteProduct> FavoriteProducts { get; set; }
 		public DbSet<Payment> Payments { get; set; }
+        public DbSet<Conversation> Conversations { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<ChatMessageLog> ChatMessageLogs { get; set; }
+        public DbSet<AdminReply> AdminReplies { get; set; }
 
 
 
@@ -35,6 +39,55 @@ namespace ReShareBlazorApp.Api.Date
 		protected override void OnModelCreating(ModelBuilder builder)
 		{
 			base.OnModelCreating(builder);
+
+			 builder.Entity<Conversation>(entity =>
+            {
+                entity.Property(c => c.CreatedAt).HasColumnType("datetime2");
+                entity.Property(c => c.LastMessageAt).HasColumnType("datetime2");
+
+                // Jedna rozmowa na parę użytkowników (+ ogłoszenie). HasFilter(null) wyłącza
+                // automatyczny filtr "IS NOT NULL", żeby NULL-e też były objęte unikalnością.
+                entity.HasIndex(c => new { c.UserLowId, c.UserHighId, c.ProductId, c.Type })
+                    .IsUnique()
+                    .HasFilter(null);
+                entity.HasIndex(c => c.UserHighId);
+                entity.HasIndex(c => c.LastMessageAt);
+
+                entity.HasMany(c => c.Messages)
+                    .WithOne(m => m.Conversation)
+                    .HasForeignKey(m => m.ConversationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<ChatMessage>(entity =>
+            {
+                entity.Property(m => m.SentAt).HasColumnType("datetime2");
+                entity.Property(m => m.ReadAt).HasColumnType("datetime2");
+                entity.Property(m => m.EncryptedContent).IsRequired();
+                entity.HasIndex(m => new { m.ConversationId, m.Id });
+                entity.HasIndex(m => new { m.ConversationId, m.SenderId, m.IsRead });
+            });
+
+            builder.Entity<ChatMessageLog>(entity =>
+            {
+                entity.Property(l => l.CreatedAt).HasColumnType("datetime2");
+                entity.Property(l => l.EncryptedContent).IsRequired();
+                entity.HasOne(l => l.Message)
+                    .WithMany()
+                    .HasForeignKey(l => l.MessageId)
+                    .OnDelete(DeleteBehavior.SetNull);
+                entity.HasIndex(l => l.SenderId);
+                entity.HasIndex(l => l.RecipientId);
+                entity.HasIndex(l => l.CreatedAt);
+            });
+
+            builder.Entity<AdminReply>(entity =>
+            {
+                entity.Property(r => r.CreatedAt).HasColumnType("datetime2");
+                entity.Property(r => r.EncryptedBody).IsRequired();
+                entity.HasIndex(r => r.ContactMessageId);
+                entity.HasIndex(r => r.ReportId);
+            });
 
             builder.Entity<ActivityLog>(entity =>
             {
