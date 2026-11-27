@@ -7,11 +7,8 @@ public static class IdentitySeeder
 {
     private const string AdminRole = "Admin";
     private const string AdminEmail = "admin12345@admin.pl";
-    private const string Admin1Email = "admin12345@admin.pl";
     private const string AdminPassword = "Admin12345!";
-    private const string Admin1Password = "Admin12345!";
     private const string AdminUserName = "admin12345";
-    private const string Admin1UserName = "admin12345";
 
     public static async Task SeedAsync(
         UserManager<User> userManager,
@@ -29,7 +26,6 @@ public static class IdentitySeeder
         }
 
         var user = await userManager.FindByEmailAsync(AdminEmail);
-        var user1 = await userManager.FindByEmailAsync(Admin1Email);
         if (user == null)
         {
             user = new User
@@ -40,17 +36,9 @@ public static class IdentitySeeder
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
-            user1 = new User
-            {
-                UserName = Admin1UserName,
-                Email = Admin1Email,
-                EmailConfirmed = true,
-                CreatedAt = DateTime.Now,
-                IsActive = true
-            };
+           
 
             var userResult = await userManager.CreateAsync(user, AdminPassword);
-            var user1Result = await userManager.CreateAsync(user1, Admin1Password);
             if (!userResult.Succeeded)
             {
                 throw new InvalidOperationException(
