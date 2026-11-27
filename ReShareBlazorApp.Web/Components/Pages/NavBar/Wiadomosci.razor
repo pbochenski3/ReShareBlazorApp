@@ -1,93 +1,221 @@
 @page "/wiadomosci"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.SignalR.Client
+@using ReShareBlazorApp.Shared.DTOs
+@using ReShareBlazorApp.Web.ApiServices
+@attribute [Authorize]
+@implements IAsyncDisposable
+@inject ChatApiService ChatApi
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
 
 <PageTitle>Wiadomości – ODDAJ DALEJ</PageTitle>
 
 <section class="home-section">
     <div class="home-container">
-        <div class="chat">
-
-            <!-- Lista rozmów -->
+        <h1>Wiadomości</h1>
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <div class="admin-alert">@error</div>
+        }
+        <div class="chat" style="display:grid;grid-template-columns:minmax(240px,320px) 1fr;gap:16px;min-height:560px;">
             <aside class="chat-list">
-                <div class="chat-list-search">
-                    <input type="search" placeholder="Szukaj w rozmowach" aria-label="Szukaj w rozmowach" />
+                <div style="padding:12px;border-bottom:1px solid #e5e7eb;">
+                    <strong>Nowa rozmowa</strong>
+                    <div style="display:flex;gap:6px;margin-top:8px;">
+                        <input type="number" min="1" @bind="otherUserId" placeholder="ID użytkownika" style="min-width:0;width:100%;" />
+                        <button class="home-btn home-btn-primary" @onclick="StartConversation">Otwórz</button>
+                    </div>
                 </div>
-
-                <ul>
-                    <li class="chat-item active">
-                        <span class="avatar">AK</span>
-                        <div class="chat-item-text">
-                            <strong>Anna Kowalska</strong>
-                            <span>Czy bilety są nadal dostępne?</span>
-                        </div>
-                        <span class="chat-item-meta">
-                            <time>12:40</time>
-                            <span class="badge">2</span>
-                        </span>
-                    </li>
-                    <li class="chat-item">
-                        <span class="avatar">MN</span>
-                        <div class="chat-item-text">
-                            <strong>Marek Nowak</strong>
-                            <span>Super, w takim razie do piątku.</span>
-                        </div>
-                        <span class="chat-item-meta"><time>wczoraj</time></span>
-                    </li>
-                    <li class="chat-item">
-                        <span class="avatar">EW</span>
-                        <div class="chat-item-text">
-                            <strong>Ewa Wiśniewska</strong>
-                            <span>Mogę odebrać wózek w sobotę.</span>
-                        </div>
-                        <span class="chat-item-meta"><time>pon.</time></span>
-                    </li>
-                </ul>
+                @if (loading)
+                {
+                    <p style="padding:16px;">Ładowanie rozmów...</p>
+                }
+                else if (conversations.Count == 0)
+                {
+                    <p style="padding:16px;">Nie masz jeszcze rozmów.</p>
+                }
+                else
+                {
+                    <ul>
+                        @foreach (var conversation in conversations)
+                        {
+                            <li class="chat-item @(selectedConversationId == conversation.Id ? "active" : "")"
+                                style="cursor:pointer;" @onclick="() => SelectConversation(conversation.Id)">
+                                <span class="avatar">@Initials(conversation.OtherUserName)</span>
+                                <div class="chat-item-text">
+                                    <strong>@conversation.OtherUserName</strong>
+                                    <span>@(conversation.LastMessage ?? "Brak wiadomości")</span>
+                                </div>
+                                <span class="chat-item-meta">
+                                    <time>@conversation.LastMessageAt?.ToLocalTime().ToString("HH:mm")</time>
+                                    @if (conversation.UnreadCount > 0) { <span class="badge">@conversation.UnreadCount</span> }
+                                </span>
+                            </li>
+                        }
+                    </ul>
+                }
             </aside>
 
-            <!-- Okno rozmowy -->
-            <div class="chat-window">
-                <header class="chat-window-head">
-                    <span class="avatar">AK</span>
-                    <div>
-                        <strong>Anna Kowalska</strong>
-                        <p>Dotyczy: 2 bilety na koncert – Kraków</p>
+            <div class="chat-window" style="display:flex;flex-direction:column;min-width:0;">
+                @if (selectedConversationId is null)
+                {
+                    <div style="margin:auto;padding:24px;text-align:center;">Wybierz rozmowę lub rozpocznij nową, podając ID użytkownika.</div>
+                }
+                else
+                {
+                    <header class="chat-window-head">
+                        <span class="avatar">@Initials(selectedConversation?.OtherUserName ?? "U")</span>
+                        <div><strong>@selectedConversation?.OtherUserName</strong><p>@(selectedConversation?.IsSupport == true ? "Kontakt z administracją" : "Rozmowa prywatna")</p></div>
+                    </header>
+                    <div class="chat-messages" style="flex:1;overflow-y:auto;padding:16px;">
+                        @foreach (var item in messages)
+                        {
+                            <div class="msg @(item.SenderId == currentUserId ? "msg-out" : "msg-in")" @key="item.Id">
+                                @if (item.ReplyToText is not null)
+                                {
+                                    <small style="display:block;opacity:.7;border-left:2px solid currentColor;padding-left:8px;">Odpowiedź: @item.ReplyToText</small>
+                                }
+                                <p>@item.Text</p>
+                                <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
+                                    <time>@item.CreatedAt.ToLocalTime().ToString("HH:mm")</time>
+                                    <button type="button" class="chat-icon-btn" title="Odpowiedz" @onclick="() => SetReply(item)">↩</button>
+                                </div>
+                            </div>
+                        }
                     </div>
-                    <div class="chat-window-actions">
-                        <button class="home-btn home-btn-outline" type="button">Zablokuj</button>
-                        <button class="home-btn home-btn-outline" type="button">Zgłoś rozmowę</button>
-                    </div>
-                </header>
-
-                <div class="chat-messages">
-                    <div class="msg msg-in">
-                        <p>Dzień dobry, czy bilety są nadal dostępne?</p>
-                        <time>12:38</time>
-                    </div>
-                    <div class="msg msg-out">
-                        <p>Dzień dobry, tak. Oba są jeszcze do odebrania.</p>
-                        <time>12:39</time>
-                    </div>
-                    <div class="msg msg-offer">
-                        <strong>Propozycja ceny: 220 zł</strong>
-                        <div class="msg-offer-actions">
-                            <button class="home-btn home-btn-primary" type="button">Akceptuję</button>
-                            <button class="home-btn home-btn-outline" type="button">Odrzucam</button>
+                    @if (replyTo is not null)
+                    {
+                        <div style="padding:8px 14px;background:#f3f4f6;">
+                            Odpowiadasz na: @replyTo.Text
+                            <button class="chat-icon-btn" @onclick="() => replyTo = null">✕</button>
                         </div>
-                    </div>
-                    <div class="msg msg-in">
-                        <p>Czy możemy się spotkać jutro po pracy?</p>
-                        <time>12:40</time>
-                    </div>
-                </div>
-
-                <form class="chat-form">
-                    <button class="chat-icon-btn" type="button" aria-label="Dodaj zdjęcie">📎</button>
-                    <input type="text" placeholder="Napisz wiadomość" aria-label="Wiadomość" />
-                    <button class="home-btn home-btn-outline" type="button">Zaproponuj cenę</button>
-                    <button class="home-btn home-btn-primary" type="submit">Wyślij</button>
-                </form>
+                    }
+                    <form class="chat-form" @onsubmit="SendMessage" @onsubmit:preventDefault>
+                        <input @bind="draft" @bind:event="oninput" maxlength="4000" placeholder="Napisz wiadomość..." aria-label="Wiadomość" />
+                        <button class="home-btn home-btn-primary" type="submit" disabled="@string.IsNullOrWhiteSpace(draft)">Wyślij</button>
+                    </form>
+                }
             </div>
         </div>
     </div>
 </section>
-
 <SiteFooter />
+
+@code {
+    [SupplyParameterFromQuery] public int? ConversationId { get; set; }
+    private string token = "";
+    private int currentUserId;
+    private int otherUserId;
+    private bool loading = true;
+    private string? error;
+    private string draft = "";
+    private int? selectedConversationId;
+    private ChatConversationDto? selectedConversation;
+    private ChatMessageDto? replyTo;
+    private List<ChatConversationDto> conversations = new();
+    private List<ChatMessageDto> messages = new();
+    private HubConnection? hub;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+        token = user.FindFirst("access_token")?.Value ?? "";
+        int.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out currentUserId);
+        if (string.IsNullOrWhiteSpace(token) || currentUserId <= 0)
+        {
+            error = "Sesja wygasła. Zaloguj się ponownie.";
+            loading = false;
+            return;
+        }
+
+        await LoadConversations();
+        var apiBase = Configuration["ApiSettings:BaseAddress"]!;
+        hub = new HubConnectionBuilder()
+            .WithUrl(new Uri(new Uri(apiBase), "hubs/chat"), options =>
+                options.AccessTokenProvider = () => Task.FromResult<string?>(token))
+            .WithAutomaticReconnect()
+            .Build();
+        hub.On<ChatMessagePushedDto>("MessageReceived", async pushed =>
+        {
+            if (pushed.ConversationId != selectedConversationId || pushed.Message.SenderId == currentUserId) return;
+            await InvokeAsync(() =>
+            {
+                if (messages.All(m => m.Id != pushed.Message.Id)) messages.Add(pushed.Message);
+                StateHasChanged();
+            });
+        });
+        hub.Reconnected += async _ =>
+        {
+            if (selectedConversationId.HasValue)
+                await hub.InvokeAsync("JoinConversation", selectedConversationId.Value);
+        };
+        try { await hub.StartAsync(); }
+        catch (Exception ex) { error = "Nie udało się połączyć z SignalR: " + ex.Message; }
+
+        if (ConversationId.HasValue)
+            await SelectConversation(ConversationId.Value);
+        else if (conversations.Count > 0)
+            await SelectConversation(conversations[0].Id);
+        loading = false;
+    }
+
+    private async Task LoadConversations()
+    {
+        try { conversations = await ChatApi.GetConversationsAsync(token); }
+        catch { error = "Nie udało się pobrać rozmów."; }
+    }
+
+    private async Task StartConversation()
+    {
+        error = null;
+        if (otherUserId <= 0) { error = "Podaj prawidłowe ID użytkownika."; return; }
+        var id = await ChatApi.CreateConversationAsync(token, otherUserId);
+        if (id is null) { error = "Nie udało się utworzyć rozmowy. Sprawdź ID użytkownika."; return; }
+        await LoadConversations();
+        await SelectConversation(id.Value);
+    }
+
+    private async Task SelectConversation(int id)
+    {
+        if (hub is not null && selectedConversationId.HasValue)
+            await hub.InvokeAsync("LeaveConversation", selectedConversationId.Value);
+        selectedConversationId = id;
+        selectedConversation = conversations.FirstOrDefault(c => c.Id == id);
+        try
+        {
+            messages = await ChatApi.GetMessagesAsync(token, id);
+            await ChatApi.MarkReadAsync(token, id);
+            if (hub?.State == HubConnectionState.Connected)
+                await hub.InvokeAsync("JoinConversation", id);
+            var row = conversations.FirstOrDefault(c => c.Id == id);
+            if (row is not null) row.UnreadCount = 0;
+        }
+        catch { error = "Nie udało się otworzyć rozmowy."; }
+    }
+
+    private async Task SendMessage()
+    {
+        if (selectedConversationId is null || string.IsNullOrWhiteSpace(draft)) return;
+        var text = draft.Trim();
+        var sent = await ChatApi.SendAsync(token, selectedConversationId.Value, text, replyTo?.Id);
+        if (sent is null) { error = "Nie udało się wysłać wiadomości."; return; }
+        if (messages.All(m => m.Id != sent.Id)) messages.Add(sent);
+        draft = "";
+        replyTo = null;
+        await LoadConversations();
+        selectedConversation = conversations.FirstOrDefault(c => c.Id == selectedConversationId);
+    }
+
+    private void SetReply(ChatMessageDto message) => replyTo = message;
+    private static string Initials(string value) =>
+        string.Join("", (value ?? "U").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2)
+            .Select(x => char.ToUpperInvariant(x[0])));
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hub is not null) await hub.DisposeAsync();
+    }
+}

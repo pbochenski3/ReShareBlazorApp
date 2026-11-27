@@ -6,6 +6,9 @@
 @using ReShareBlazorApp.Web.ApiServices
 @attribute [Authorize(Roles = "Admin")]
 @inject ReportApiService reportApi
+@inject ChatApiService chatApi
+@inject AuthenticationStateProvider authStateProvider
+@inject NavigationManager navigation
 
 <h1 class="admin-title">Zgłoszenia</h1>
 
@@ -86,6 +89,11 @@ else
                                 <p class="report-description">@report.Description</p>
 
                                 <div class="admin-detail-actions">
+                                    <button type="button" class="admin-btn"
+                                            disabled="@isBusy"
+                                            @onclick="() => ReplyToReport(report.ReportId)">
+                                        Odpowiedz zgłaszającemu
+                                    </button>
                                     <a class="admin-btn"
                                        href="@($"/details/{report.ProductId}")"
                                        target="_blank"
@@ -175,6 +183,24 @@ else
     protected override async Task OnInitializedAsync()
     {
         await LoadReports();
+    }
+
+    private async Task ReplyToReport(int reportId)
+    {
+        var state = await authStateProvider.GetAuthenticationStateAsync();
+        var token = state.User.FindFirst("access_token")?.Value;
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            SetMessage("Brak tokenu sesji. Zaloguj się ponownie.", false);
+            return;
+        }
+        var conversationId = await chatApi.OpenAdminReportAsync(token, reportId);
+        if (conversationId is null)
+        {
+            SetMessage("Nie udało się otworzyć rozmowy ze zgłaszającym.", false);
+            return;
+        }
+        navigation.NavigateTo($"/wiadomosci?conversationId={conversationId}");
     }
 
     private async Task LoadReports()

@@ -1,4 +1,4 @@
-﻿@page "/details/{ProductId:int}"
+@page "/details/{ProductId:int}"
 @using System.Net.Http.Headers
 @using System.Net.Http.Json
 @using System.Security.Claims
@@ -17,6 +17,7 @@
 @inject ReviewApiService ReviewApiService
 @inject RecentlyViewedApiService RecentlyViewedApiService
 @inject ReportApiService ReportApiService
+@inject ChatApiService ChatApi
 @inject NotificationService notify
 @inject FavoritesState Favorites
 @implements IDisposable
@@ -68,6 +69,13 @@
                         <span>📍</span>
                         @Product.City
                     </div>
+
+                    @if (isAuthenticated && !IsOwner)
+                    {
+                        <button type="button" class="details-primary-button" @onclick="MessageSeller">
+                            Napisz do sprzedającego
+                        </button>
+                    }
 
                     <section class="details-section">
                         <h2>Opis ogłoszenia</h2>
@@ -564,6 +572,25 @@
 </div>
 
 @code {
+    private async Task MessageSeller()
+    {
+        if (Product is null) return;
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var token = state.User.FindFirst("access_token")?.Value;
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            errorMessage = "Sesja wygasła. Zaloguj się ponownie.";
+            return;
+        }
+        var conversationId = await ChatApi.CreateConversationAsync(token, Product.UserId);
+        if (conversationId is null)
+        {
+            errorMessage = "Nie udało się rozpocząć rozmowy ze sprzedającym.";
+            return;
+        }
+        Navigation.NavigateTo($"/wiadomosci?conversationId={conversationId}");
+    }
+
     [Parameter]
     public int ProductId { get; set; }
 

@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using ReShareBlazorApp.Api.Data;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Repositories;
+using ReShareBlazorApp.Api.Hubs;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Api.Middleware;
 using ReShareBlazorApp.Api.Repositories;
@@ -70,6 +71,17 @@ builder.Services
                 )
             )
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var token = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(token) && path.StartsWithSegments("/hubs/chat"))
+                    context.Token = token;
+                return Task.CompletedTask;
+            }
+        };
     });
 
 // Services
@@ -100,6 +112,10 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IBadgeRepository, BadgeRepository>();
+
+builder.Services.AddScoped<ChatEncryptionService>();
+builder.Services.AddScoped<ChatService>();
+builder.Services.AddSignalR();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -144,5 +160,6 @@ app.UseMiddleware<UserBlockCheckMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();

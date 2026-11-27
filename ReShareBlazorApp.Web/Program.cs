@@ -33,6 +33,7 @@ builder.Services.AddScoped<ReportApiService>();
 builder.Services.AddScoped<ContactApiService>();
 builder.Services.AddScoped<AdminApiService>();
 builder.Services.AddScoped<PromoBannerApiService>();
+builder.Services.AddScoped<ChatApiService>();
 
 builder.Services.AddScoped<BadgeApiService>();
 builder.Services

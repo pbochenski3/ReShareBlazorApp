@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReShareBlazorApp.Api.Date;
 using ReShareBlazorApp.Api.Interfaces.Services;
 using ReShareBlazorApp.Shared;
 using ReShareBlazorApp.Shared.DTOs;
+using System.Security.Claims;
 
 namespace ReShareBlazorApp.Api.Controllers;
 
@@ -33,6 +34,8 @@ public class ContactController : ControllerBase
         {
             var entity = new ContactMessage
             {
+                UserId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var authenticatedUserId)
+                    ? authenticatedUserId : null,
                 Name = request.Name.Trim(),
                 Email = request.Email.Trim(),
                 Subject = request.Subject.Trim(),

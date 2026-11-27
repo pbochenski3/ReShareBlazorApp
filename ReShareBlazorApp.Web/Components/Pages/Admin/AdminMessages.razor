@@ -1,10 +1,13 @@
-﻿@page "/admin/messages"
+@page "/admin/messages"
 @layout AdminLayout
 @using Microsoft.AspNetCore.Authorization
 @using ReShareBlazorApp.Shared.DTOs
 @using ReShareBlazorApp.Web.ApiServices
 @attribute [Authorize(Roles = "Admin")]
 @inject ContactApiService contactApi
+@inject ChatApiService chatApi
+@inject AuthenticationStateProvider authStateProvider
+@inject NavigationManager navigation
 
 <h1 class="admin-title">Wiadomości kontaktowe</h1>
 
@@ -138,6 +141,9 @@ else
             </div>
 
             <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="admin-btn" @onclick="() => ReplyToContact(selectedMessage.Id)">
+                    Odpowiedz przez czat
+                </button>
                 <button type="button" class="admin-btn admin-btn-danger" @onclick="() => Delete(selectedMessage)">
                     Usuń
                 </button>
@@ -197,6 +203,24 @@ else
     protected override async Task OnInitializedAsync()
     {
         messages = await contactApi.GetContactMessagesAsync() ?? new List<ContactMessageDTO>();
+    }
+
+    private async Task ReplyToContact(int contactId)
+    {
+        var state = await authStateProvider.GetAuthenticationStateAsync();
+        var token = state.User.FindFirst("access_token")?.Value;
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            message = "Brak tokenu sesji. Zaloguj się ponownie.";
+            return;
+        }
+        var conversationId = await chatApi.OpenAdminContactAsync(token, contactId);
+        if (conversationId is null)
+        {
+            message = "Nie znaleziono aktywnego konta powiązanego z adresem e-mail tej wiadomości. W tym przypadku odpowiedź przez czat nie jest możliwa.";
+            return;
+        }
+        navigation.NavigateTo($"/wiadomosci?conversationId={conversationId}");
     }
 
     private void ClearFilters()
