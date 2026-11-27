@@ -42,8 +42,6 @@ namespace ReShareBlazorApp.Api.Services
                 product.Name.Trim().Length is < 3 or > 50 ||
                 string.IsNullOrWhiteSpace(product.Description) ||
                 product.Description.Trim().Length > 5000 ||
-                string.IsNullOrWhiteSpace(product.City) ||
-                product.City.Trim().Length > 60 ||
                 (product.Type == ProductType.Sell && product.Price < 2m) ||
                  product.Price > 100000 ||
                 !Enum.IsDefined(product.Type) ||
@@ -51,6 +49,15 @@ namespace ReShareBlazorApp.Api.Services
                 product.ExpiresAt <= DateTime.UtcNow)
             {
                 return null;
+            }
+            if (string.IsNullOrWhiteSpace(product.City) ||
+                product.City.Trim().Length > 60)
+            {
+                product.City = await _productRepository.GetLastLocation(product.UserId)!;
+                if(string.IsNullOrWhiteSpace(product.City))
+                {
+                    product.City = "Nieznane";
+                }
             }
 
             var images = new List<ProductImage>();

@@ -21,6 +21,7 @@ namespace ReShareBlazorApp.Api.Interfaces.Repositories
             ProductType? type = null);
 
         Task<bool> UpdateProductAsync(int productId, int userId, ProductUpdateDTO product);
+        Task<string?> GetLastLocation(int userId);
         Task<bool> DeleteProductAsync(int productId, int userId);
         Task<int> CountUserProductsAsync(int userId);
         Task<bool> MarkAsSoldAsync(int productId, int userId);

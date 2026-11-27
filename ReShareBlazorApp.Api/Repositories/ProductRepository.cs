@@ -69,7 +69,7 @@ namespace ReShareBlazorApp.Api.Repositories
                 return false;
             }
         }
-          
+
         public async Task<bool> DeleteProductAsync(int productId, int userId)
         {
             try
@@ -246,6 +246,14 @@ namespace ReShareBlazorApp.Api.Repositories
                 _logger.LogError(ex, "Error occurred in GetProducts");
                 throw;
             }
+        }
+        public async Task<string?> GetLastLocation(int userId)
+        {
+            return await _context.Products
+             .Where(p => p.UserId == userId)
+             .OrderByDescending(p => p.AddedAt)
+             .Select(p => p.City)
+             .FirstOrDefaultAsync();
         }
         public async Task<Product?> GetProductById(int id)
         {

@@ -16,12 +16,11 @@ namespace ReShareBlazorApp.Web.Models
 
         public ProductType Type { get; set; }
 
-        [Range(0.01, 100000, ErrorMessage = "Cena musi być większa od 0.")]
+        [Range(0, 100000, ErrorMessage = "Cena musi być większa od 0.")]
         public decimal Price { get; set; }
 
         [Required(ErrorMessage = "Podaj datę ważności produktu.")]
         public DateTime ExpiresAt { get; set; } = DateTime.UtcNow.AddDays(7);
-        [Required(ErrorMessage = "Nie udało się pobrać miejscowości.")]
         public string City { get; set; } = "";
         [Required(ErrorMessage = "Wybierz kategorię produktu.")]
         public ProductCategory Category { get; set; }

@@ -18,7 +18,6 @@
 {
     <EditForm Model="@productModel" OnValidSubmit="SaveProduct">
         <DataAnnotationsValidator />
-        <ValidationSummary />
         <div class="product-page">
             <div class="product-form">
                 <button type="button" class="product-back" @onclick="BackToTypeSelection">
@@ -260,27 +259,50 @@ else
     private string? imageError;
     private bool isSubmitting;
 
+    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && !IsEditMode && string.IsNullOrEmpty(productModel.City))
         {
             try
             {
-                var location = await JS.InvokeAsync<LocationResult>("getUserLocation");
+                using var timeout = new CancellationTokenSource(
+                    TimeSpan.FromSeconds(15));
 
-                productModel.City = await GetCityAsync(
-                    location.Latitude,
-                    location.Longitude
-                );
+                var location = await JS.InvokeAsync<LocationResult>(
+                    "getUserLocation",
+                    timeout.Token);
 
-                StateHasChanged();
+                if (location != null)
+                {
+                    productModel.City = await GetCityAsync(
+                        location.Latitude,
+                        location.Longitude);
+                }
             }
-            catch
+            catch (OperationCanceledException)
             {
-                notify.AddNotification("Lokalizacja", "Nie udało się pobrać lokalizacji.");
+                notify.AddNotification(
+                    "Lokalizacja",
+                    "Przekroczono czas oczekiwania na lokalizację.");
             }
+            catch (JSException)
+            {
+                notify.AddNotification(
+                    "Lokalizacja",
+                    "Nie udało się pobrać lokalizacji. Sprawdź uprawnienia przeglądarki.");
+            }
+            catch (Exception)
+            {
+                notify.AddNotification(
+                    "Lokalizacja",
+                    "Nie udało się ustalić miejscowości.");
+            }
+
+            StateHasChanged();
         }
     }
+
 
     public async Task SaveProduct()
     {
